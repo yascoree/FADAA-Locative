@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import can_manage_proprietaire, get_current_user, managed_proprietaire_ids
+from app.api.deps import can_view_proprietaire, get_current_user, has_permission, managed_proprietaire_ids
 from app.database import get_db
 from app.models.bail import Bail
 from app.models.bien import Bien
 from app.models.echeance import Echeance
 from app.models.lot import Lot
 from app.models.utilisateur import Utilisateur, UtilisateurRole
-from app.schemas.echeance import EcheanceRead, EcheanceUpdate
+from app.schemas.echeance import EcheanceCreate, EcheanceRead, EcheanceUpdate
 
 router = APIRouter(prefix="/due-dates", tags=["due-dates"])
 
@@ -24,7 +24,7 @@ def _can_view_echeance(db: Session, user: Utilisateur, echeance: Echeance) -> bo
     bail, bien = _bail_and_bien(db, echeance)
     if user.role == UtilisateurRole.LOCATAIRE and user.id == bail.locataire_id:
         return True
-    return bool(bien) and can_manage_proprietaire(db, user, bien.proprietaire_id)
+    return bool(bien) and can_view_proprietaire(db, user, bien.proprietaire_id)
 
 
 @router.get("/", response_model=list[EcheanceRead])
@@ -57,8 +57,28 @@ def list_echeances(
     return query.offset(skip).limit(limit).all()
 
 
-# NOTE: les échéances sont normalement générées automatiquement à la création d'un
-# bail ; aucune saisie manuelle n'est exposée pour le moment (POST volontairement absent).
+@router.post("/", response_model=EcheanceRead, status_code=status.HTTP_201_CREATED)
+def create_echeance(
+    echeance_in: EcheanceCreate,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(get_current_user),
+):
+    """Ajout manuel : la plupart des échéances sont générées automatiquement à la
+    création du bail (POST /leases). Utile pour un bail sans date de fin ou un
+    échéancier trop long pour être généré d'un coup."""
+    bail = db.get(Bail, echeance_in.bail_id)
+    if not bail:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found")
+    lot = db.get(Lot, bail.lot_id)
+    bien = db.get(Bien, lot.bien_id)
+    if not has_permission(db, current_user, bien.proprietaire_id, "CREATE_DUE_DATE"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to add a due date to this lease")
+
+    echeance = Echeance(**echeance_in.model_dump())
+    db.add(echeance)
+    db.commit()
+    db.refresh(echeance)
+    return echeance
 
 
 @router.get("/{echeance_id}", response_model=EcheanceRead)
@@ -86,7 +106,7 @@ def update_echeance(
     if not echeance:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Due date not found")
     _, bien = _bail_and_bien(db, echeance)
-    if not can_manage_proprietaire(db, current_user, bien.proprietaire_id):
+    if not has_permission(db, current_user, bien.proprietaire_id, "UPDATE_DUE_DATE"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to modify this due date")
 
     for field, value in echeance_in.model_dump(exclude_unset=True).items():

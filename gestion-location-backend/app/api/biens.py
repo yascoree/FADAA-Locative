@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import can_manage_proprietaire, get_current_user, managed_proprietaire_ids, require_gestion
+from app.api.deps import can_view_proprietaire, get_current_user, has_permission, managed_proprietaire_ids, require_gestion
 from app.database import get_db
 from app.models.bail import Bail
 from app.models.bien import Bien
@@ -23,7 +23,7 @@ def _is_tenant_of_bien(db: Session, user_id: int, bien_id: int) -> bool:
 
 
 def _can_view_bien(db: Session, user: Utilisateur, bien: Bien) -> bool:
-    if can_manage_proprietaire(db, user, bien.proprietaire_id):
+    if can_view_proprietaire(db, user, bien.proprietaire_id):
         return True
     return user.role == UtilisateurRole.LOCATAIRE and _is_tenant_of_bien(db, user.id, bien.id)
 
@@ -59,7 +59,7 @@ def create_bien(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(require_gestion),
 ):
-    if not can_manage_proprietaire(db, current_user, bien_in.proprietaire_id):
+    if not has_permission(db, current_user, bien_in.proprietaire_id, "CREATE_PROPERTY"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Cannot create a property for this proprietaire",
@@ -95,7 +95,7 @@ def update_bien(
     bien = db.get(Bien, bien_id)
     if not bien:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
-    if not can_manage_proprietaire(db, current_user, bien.proprietaire_id):
+    if not has_permission(db, current_user, bien.proprietaire_id, "UPDATE_PROPERTY"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to modify this property")
 
     for field, value in bien_in.model_dump(exclude_unset=True).items():
@@ -115,7 +115,7 @@ def delete_bien(
     bien = db.get(Bien, bien_id)
     if not bien:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
-    if not can_manage_proprietaire(db, current_user, bien.proprietaire_id):
+    if not has_permission(db, current_user, bien.proprietaire_id, "DELETE_PROPERTY"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to delete this property")
     db.delete(bien)
     db.commit()

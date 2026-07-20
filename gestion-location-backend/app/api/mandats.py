@@ -3,8 +3,11 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
 from app.database import get_db
+from app.models.manager_permission import ManagerPermission
 from app.models.mandat import Mandat
+from app.models.permission import Permission
 from app.models.utilisateur import Utilisateur, UtilisateurRole
+from app.schemas.manager_permission import ManagerPermissionRead, ManagerPermissionsUpdate
 from app.schemas.mandat import MandatCreate, MandatRead, MandatUpdate
 
 router = APIRouter(prefix="/mandates", tags=["mandates"])
@@ -117,3 +120,49 @@ def delete_mandat(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to delete this mandate")
     db.delete(mandat)
     db.commit()
+
+
+@router.get("/{mandat_id}/permissions", response_model=list[ManagerPermissionRead])
+def list_mandat_permissions(
+    mandat_id: int,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(get_current_user),
+):
+    mandat = db.get(Mandat, mandat_id)
+    if not mandat:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mandate not found")
+    if not _can_view_mandat(current_user, mandat):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to access this mandate")
+    return db.query(ManagerPermission).filter(ManagerPermission.mandat_id == mandat_id).all()
+
+
+@router.put("/{mandat_id}/permissions", response_model=list[ManagerPermissionRead])
+def set_mandat_permissions(
+    mandat_id: int,
+    permissions_in: ManagerPermissionsUpdate,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(get_current_user),
+):
+    """Remplace intégralement les permissions accordées sur ce mandat. Réservé au
+    propriétaire concerné (ou un admin) : le gestionnaire ne peut jamais se les
+    accorder lui-même."""
+    mandat = db.get(Mandat, mandat_id)
+    if not mandat:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mandate not found")
+    if current_user.role != UtilisateurRole.ADMINISTRATEUR and current_user.id != mandat.proprietaire_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to manage this mandate's permissions")
+
+    codes = set(permissions_in.permissions)
+    permissions = db.query(Permission).filter(Permission.code.in_(codes)).all() if codes else []
+    found_codes = {p.code for p in permissions}
+    unknown_codes = codes - found_codes
+    if unknown_codes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unknown permission code(s): {sorted(unknown_codes)}"
+        )
+
+    db.query(ManagerPermission).filter(ManagerPermission.mandat_id == mandat_id).delete()
+    db.add_all([ManagerPermission(mandat_id=mandat_id, permission_id=p.id) for p in permissions])
+    db.commit()
+
+    return db.query(ManagerPermission).filter(ManagerPermission.mandat_id == mandat_id).all()

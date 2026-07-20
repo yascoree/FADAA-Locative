@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import can_manage_proprietaire, get_current_user, managed_proprietaire_ids
+from app.api.deps import can_view_proprietaire, get_current_user, has_permission, managed_proprietaire_ids
 from app.database import get_db
 from app.models.bail import Bail
 from app.models.bien import Bien
@@ -27,7 +27,7 @@ def _can_view_paiement(db: Session, user: Utilisateur, paiement: Paiement) -> bo
     bail, bien = _chain_for_paiement(db, paiement.echeance_id)
     if user.role == UtilisateurRole.LOCATAIRE and user.id == bail.locataire_id:
         return True
-    return bool(bien) and can_manage_proprietaire(db, user, bien.proprietaire_id)
+    return bool(bien) and can_view_proprietaire(db, user, bien.proprietaire_id)
 
 
 @router.get("/", response_model=list[PaiementRead])
@@ -77,7 +77,7 @@ def create_paiement(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Due date not found")
 
     is_tenant = current_user.role == UtilisateurRole.LOCATAIRE and current_user.id == bail.locataire_id
-    if not is_tenant and not can_manage_proprietaire(db, current_user, bien.proprietaire_id):
+    if not is_tenant and not has_permission(db, current_user, bien.proprietaire_id, "CREATE_PAYMENT"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to record this payment")
 
     paiement = Paiement(**paiement_in.model_dump())
@@ -118,7 +118,7 @@ def update_paiement(
     if not paiement:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
     _, bien = _chain_for_paiement(db, paiement.echeance_id)
-    if not can_manage_proprietaire(db, current_user, bien.proprietaire_id):
+    if not has_permission(db, current_user, bien.proprietaire_id, "UPDATE_PAYMENT"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to modify this payment")
 
     for field, value in paiement_in.model_dump(exclude_unset=True).items():

@@ -1,0 +1,39 @@
+import enum
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer
+from sqlalchemy.orm import relationship
+
+from app.database import Base
+
+
+class SubscriptionStatus(int, enum.Enum):
+    ACTIF = 1
+    SUSPENDU = 2
+    EXPIRE = 3
+    RESILIE = 4
+
+
+class Subscription(Base):
+    """Links a property owner to exactly one subscription plan. One row per
+    owner_id, updated in place whenever the plan changes (see
+    app.services.subscription_service.assign_plan)."""
+
+    __tablename__ = "subscriptions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("utilisateurs.id"), unique=True, nullable=False)
+    plan_id = Column(Integer, ForeignKey("subscription_plans.id"), nullable=False)
+    status = Column(
+        Enum(SubscriptionStatus, name="subscription_status"), nullable=False, default=SubscriptionStatus.ACTIF
+    )
+    trial_start = Column(DateTime, nullable=True)
+    trial_end = Column(DateTime, nullable=True)
+    start_date = Column(DateTime, nullable=True)
+    end_date = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    owner = relationship("Utilisateur")
+    plan = relationship("SubscriptionPlan", back_populates="subscriptions")

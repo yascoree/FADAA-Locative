@@ -4,8 +4,9 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, require_admin
 from app.core.security import hash_password
 from app.database import get_db
-from app.models.utilisateur import Utilisateur, UtilisateurRole
+from app.models.utilisateur import StatutCompte, Utilisateur, UtilisateurRole
 from app.schemas.utilisateur import UtilisateurCreate, UtilisateurRead, UtilisateurUpdate
+from app.services import subscription_service
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -44,6 +45,10 @@ def create_utilisateur(
     db.add(utilisateur)
     db.commit()
     db.refresh(utilisateur)
+
+    if utilisateur.role == UtilisateurRole.PROPRIETAIRE:
+        subscription_service.create_trial_subscription(db, utilisateur.id)
+
     return utilisateur
 
 
@@ -105,3 +110,39 @@ def delete_utilisateur(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     db.delete(utilisateur)
     db.commit()
+
+
+@router.post("/{utilisateur_id}/activate", response_model=UtilisateurRead)
+def activate_utilisateur(
+    utilisateur_id: int,
+    db: Session = Depends(get_db),
+    _admin: Utilisateur = Depends(require_admin),
+):
+    utilisateur = db.get(Utilisateur, utilisateur_id)
+    if not utilisateur:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    utilisateur.statut_compte = StatutCompte.ACTIF
+    db.commit()
+    db.refresh(utilisateur)
+    return utilisateur
+
+
+@router.post("/{utilisateur_id}/deactivate", response_model=UtilisateurRead)
+def deactivate_utilisateur(
+    utilisateur_id: int,
+    db: Session = Depends(get_db),
+    admin: Utilisateur = Depends(require_admin),
+):
+    if utilisateur_id == admin.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot deactivate your own account")
+
+    utilisateur = db.get(Utilisateur, utilisateur_id)
+    if not utilisateur:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    # Réutilise CREE_SANS_ACCES comme statut "désactivé" : get_current_user() / login()
+    # rejettent tout compte dont statut_compte != ACTIF, donc ceci coupe l'accès
+    # immédiatement, y compris pour un token déjà émis.
+    utilisateur.statut_compte = StatutCompte.CREE_SANS_ACCES
+    db.commit()
+    db.refresh(utilisateur)
+    return utilisateur

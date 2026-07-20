@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from app.api.deps import can_manage_proprietaire, get_current_user, managed_proprietaire_ids
+from app.api.deps import can_view_proprietaire, get_current_user, managed_proprietaire_ids
 from app.database import get_db
 from app.models.bail import Bail
 from app.models.bien import Bien
@@ -31,7 +31,7 @@ def _can_view_quittance(db: Session, user: Utilisateur, quittance: Quittance) ->
     bail, bien = _bail_and_bien(db, quittance)
     if user.role == UtilisateurRole.LOCATAIRE and user.id == bail.locataire_id:
         return True
-    return bool(bien) and can_manage_proprietaire(db, user, bien.proprietaire_id)
+    return bool(bien) and can_view_proprietaire(db, user, bien.proprietaire_id)
 
 
 @router.get("/", response_model=list[QuittanceRead])

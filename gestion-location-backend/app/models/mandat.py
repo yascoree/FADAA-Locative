@@ -27,3 +27,6 @@ class Mandat(Base):
     proprietaire = relationship(
         "Utilisateur", back_populates="mandats_proprietaire", foreign_keys=[proprietaire_id]
     )
+    permissions = relationship(
+        "ManagerPermission", back_populates="mandat", cascade="all, delete-orphan"
+    )

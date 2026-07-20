@@ -12,9 +12,10 @@ from app.core.security import (
     verify_password,
 )
 from app.database import get_db
-from app.models.utilisateur import Utilisateur, UtilisateurRole
+from app.models.utilisateur import StatutCompte, Utilisateur, UtilisateurRole
 from app.schemas.auth import RefreshRequest, Token
 from app.schemas.utilisateur import UtilisateurCreate, UtilisateurRead
+from app.services import subscription_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -38,6 +39,11 @@ def register(utilisateur_in: UtilisateurCreate, db: Session = Depends(get_db)):
     db.add(utilisateur)
     db.commit()
     db.refresh(utilisateur)
+
+    # Chaque propriétaire démarre automatiquement avec un essai gratuit (Phase 2 :
+    # gestion des abonnements). Voir app.services.subscription_service.
+    subscription_service.create_trial_subscription(db, utilisateur.id)
+
     return utilisateur
 
 
@@ -50,6 +56,8 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if utilisateur.statut_compte != StatutCompte.ACTIF:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is not active")
 
     access_token = create_access_token(data={"sub": str(utilisateur.id)})
     refresh_token = create_refresh_token(data={"sub": str(utilisateur.id)})
@@ -70,7 +78,8 @@ def refresh(refresh_in: RefreshRequest, db: Session = Depends(get_db)):
         raise credentials_exception
 
     utilisateur_id = payload.get("sub")
-    if utilisateur_id is None or db.get(Utilisateur, int(utilisateur_id)) is None:
+    utilisateur = db.get(Utilisateur, int(utilisateur_id)) if utilisateur_id is not None else None
+    if utilisateur is None or utilisateur.statut_compte != StatutCompte.ACTIF:
         raise credentials_exception
 
     access_token = create_access_token(data={"sub": utilisateur_id})

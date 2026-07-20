@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import can_manage_proprietaire, get_current_user, managed_proprietaire_ids, require_gestion
+from app.api.deps import can_view_proprietaire, get_current_user, has_permission, managed_proprietaire_ids, require_gestion
 from app.database import get_db
 from app.models.bail import Bail
 from app.models.bien import Bien
@@ -18,7 +18,7 @@ def _is_tenant_of_lot(db: Session, user_id: int, lot_id: int) -> bool:
 
 def _can_view_lot(db: Session, user: Utilisateur, lot: Lot) -> bool:
     bien = db.get(Bien, lot.bien_id)
-    if bien and can_manage_proprietaire(db, user, bien.proprietaire_id):
+    if bien and can_view_proprietaire(db, user, bien.proprietaire_id):
         return True
     return user.role == UtilisateurRole.LOCATAIRE and _is_tenant_of_lot(db, user.id, lot.id)
 
@@ -52,7 +52,7 @@ def create_lot(
     bien = db.get(Bien, lot_in.bien_id)
     if not bien:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
-    if not can_manage_proprietaire(db, current_user, bien.proprietaire_id):
+    if not has_permission(db, current_user, bien.proprietaire_id, "CREATE_LOT"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to add a lot to this property")
 
     lot = Lot(**lot_in.model_dump())
@@ -87,7 +87,7 @@ def update_lot(
     if not lot:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lot not found")
     bien = db.get(Bien, lot.bien_id)
-    if not can_manage_proprietaire(db, current_user, bien.proprietaire_id):
+    if not has_permission(db, current_user, bien.proprietaire_id, "UPDATE_LOT"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to modify this lot")
 
     for field, value in lot_in.model_dump(exclude_unset=True).items():
@@ -108,7 +108,7 @@ def delete_lot(
     if not lot:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lot not found")
     bien = db.get(Bien, lot.bien_id)
-    if not can_manage_proprietaire(db, current_user, bien.proprietaire_id):
+    if not has_permission(db, current_user, bien.proprietaire_id, "DELETE_LOT"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to delete this lot")
     db.delete(lot)
     db.commit()
