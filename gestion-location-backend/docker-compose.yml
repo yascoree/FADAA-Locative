@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:16-alpine
+    
     container_name: fadaa_locative_db
     restart: unless-stopped
     environment:

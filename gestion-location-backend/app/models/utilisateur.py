@@ -8,10 +8,11 @@ from app.database import Base
 
 
 class UtilisateurRole(int, enum.Enum):
-    PROPRIETAIRE = 1
-    GESTIONNAIRE = 2
-    LOCATAIRE = 3
-    ADMINISTRATEUR = 4
+    ADMINISTRATEUR = 1
+    PROPRIETAIRE = 2
+    GESTIONNAIRE = 3
+    LOCATAIRE = 4
+    
 
 
 class StatutCompte(int, enum.Enum):
