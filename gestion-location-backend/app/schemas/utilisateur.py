@@ -33,3 +33,15 @@ class UtilisateurRead(UtilisateurBase):
 
     id: int
     date_creation: datetime
+
+
+class UtilisateurMini(BaseModel):
+    """Identité minimale d'un utilisateur, pour l'afficher en tant que partie d'un
+    Mandat (voir MandatRead) sans exposer /users/{id} (réservé à soi-même/admin)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    nom: str
+    prenom: str
+    email: EmailStr

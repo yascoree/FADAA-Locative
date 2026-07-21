@@ -20,9 +20,19 @@ from app.services import subscription_service
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+PUBLIC_REGISTER_ROLES = (UtilisateurRole.PROPRIETAIRE, UtilisateurRole.GESTIONNAIRE)
+
+
 @router.post("/register", response_model=UtilisateurRead, status_code=status.HTTP_201_CREATED)
 def register(utilisateur_in: UtilisateurCreate, db: Session = Depends(get_db)):
-    """Inscription publique : crée toujours un compte Propriétaire."""
+    """Inscription publique : Propriétaire ou Gestionnaire uniquement (jamais Admin/Locataire,
+    ces deux rôles restent créés respectivement via un mandat ou par un admin)."""
+    if utilisateur_in.role not in PUBLIC_REGISTER_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="role must be PROPRIETAIRE or GESTIONNAIRE",
+        )
+
     existing_utilisateur = db.query(Utilisateur).filter(Utilisateur.email == utilisateur_in.email).first()
     if existing_utilisateur:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
@@ -32,7 +42,7 @@ def register(utilisateur_in: UtilisateurCreate, db: Session = Depends(get_db)):
         prenom=utilisateur_in.prenom,
         email=utilisateur_in.email,
         mot_de_passe=hash_password(utilisateur_in.mot_de_passe),
-        role=UtilisateurRole.PROPRIETAIRE,
+        role=utilisateur_in.role,
         statut_compte=utilisateur_in.statut_compte,
         cree_par_id=utilisateur_in.cree_par_id,
     )
@@ -41,8 +51,9 @@ def register(utilisateur_in: UtilisateurCreate, db: Session = Depends(get_db)):
     db.refresh(utilisateur)
 
     # Chaque propriétaire démarre automatiquement avec un essai gratuit (Phase 2 :
-    # gestion des abonnements). Voir app.services.subscription_service.
-    subscription_service.create_trial_subscription(db, utilisateur.id)
+    # gestion des abonnements). Un gestionnaire n'a pas d'abonnement propre.
+    if utilisateur.role == UtilisateurRole.PROPRIETAIRE:
+        subscription_service.create_trial_subscription(db, utilisateur.id)
 
     return utilisateur
 

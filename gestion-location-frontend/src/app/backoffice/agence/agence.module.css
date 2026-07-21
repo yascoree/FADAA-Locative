@@ -1,0 +1,262 @@
+.shell {
+  --primary: #889063;
+  --primary-dark: #6d7450;
+  --accent: #cfbb99;
+  --secondary: #3a3826;
+  --bg: #f5f1ea;
+  --border: #e3ddd0;
+  --surface: #ffffff;
+  --text: #2a2820;
+  --text-muted: #8c8570;
+  --danger: #b5533e;
+  --radius-field: 10px;
+  --radius-card: 16px;
+
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.loadingScreen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8c8570;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1.75rem;
+  background: var(--secondary);
+  color: #f1ece1;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 650;
+  flex: 1;
+}
+
+.logoMark {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.userMenu {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  font-size: 0.86rem;
+  color: rgba(241, 236, 225, 0.85);
+}
+
+.userMenu button {
+  border: 1px solid rgba(241, 236, 225, 0.3);
+  background: transparent;
+  color: inherit;
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius-field);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.userMenu button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.content {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+/* ---------- Dashboard content ---------- */
+
+.selectorCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 1.25rem 1.4rem;
+  margin-bottom: 1.25rem;
+}
+
+.selectorRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.selectorRow select {
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field);
+  font-size: 0.88rem;
+  min-width: 240px;
+}
+
+.chipRow {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip {
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.chipGranted {
+  background: rgba(136, 144, 99, 0.15);
+  color: #4e5738;
+  border-color: rgba(136, 144, 99, 0.35);
+}
+
+.panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 1.25rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.panelTitle {
+  margin: 0 0 0.9rem;
+  font-size: 0.98rem;
+  font-weight: 650;
+  color: var(--secondary);
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.formGroup input,
+.formGroup select {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field);
+  font-size: 0.86rem;
+}
+
+.formRow2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.submitButton {
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 650;
+  font-size: 0.86rem;
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius-field);
+  cursor: pointer;
+}
+
+.submitButton:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
+.submitButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.banner {
+  border-radius: var(--radius-field);
+  padding: 0.55rem 0.75rem;
+  font-size: 0.8rem;
+  margin-bottom: 0.9rem;
+}
+
+.bannerSuccess {
+  background: rgba(136, 144, 99, 0.12);
+  color: #4e5738;
+  border: 1px solid rgba(136, 144, 99, 0.35);
+}
+
+.bannerError {
+  background: rgba(181, 83, 62, 0.1);
+  color: var(--danger);
+  border: 1px solid rgba(181, 83, 62, 0.3);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.listItem {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field);
+  padding: 0.5rem 0.7rem;
+  font-size: 0.84rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.listItem:hover {
+  border-color: var(--primary);
+}
+
+.listItemActive {
+  border-color: var(--primary);
+  background: rgba(136, 144, 99, 0.08);
+}
+
+.listItemLabel {
+  font-weight: 600;
+  color: var(--secondary);
+}
+
+.listItemMeta {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.empty {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding: 0.5rem 0;
+}

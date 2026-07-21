@@ -1,6 +1,7 @@
 import enum
+from datetime import datetime
 
-from sqlalchemy import Column, Date, Enum, ForeignKey, Integer
+from sqlalchemy import Column, Date, DateTime, Enum, ForeignKey, Integer
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -19,6 +20,7 @@ class Mandat(Base):
     proprietaire_id = Column(Integer, ForeignKey("utilisateurs.id"), nullable=False)
     date_debut = Column(Date, nullable=True)
     statut = Column(Enum(MandatStatus, name="mandat_status"), nullable=True)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     gestionnaire = relationship(

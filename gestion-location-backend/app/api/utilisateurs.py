@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_admin
+from app.api.deps import get_current_user, require_admin, require_gestion
 from app.core.security import hash_password
 from app.database import get_db
 from app.models.utilisateur import StatutCompte, Utilisateur, UtilisateurRole
@@ -49,6 +49,34 @@ def create_utilisateur(
     if utilisateur.role == UtilisateurRole.PROPRIETAIRE:
         subscription_service.create_trial_subscription(db, utilisateur.id)
 
+    return utilisateur
+
+
+LOOKUP_ROLES = {
+    "GESTIONNAIRE": UtilisateurRole.GESTIONNAIRE,
+    "LOCATAIRE": UtilisateurRole.LOCATAIRE,
+}
+
+
+@router.get("/lookup", response_model=UtilisateurRead)
+def lookup_utilisateur_by_email(
+    email: str,
+    role: str = "GESTIONNAIRE",
+    db: Session = Depends(get_db),
+    _current_user: Utilisateur = Depends(require_gestion),
+):
+    """Recherche un compte GESTIONNAIRE ou LOCATAIRE par e-mail, pour qu'un
+    propriétaire/gestionnaire puisse inviter un gestionnaire via un Mandat, ou
+    retrouver l'id d'un locataire pour créer un bail — sans avoir accès à
+    l'annuaire complet des utilisateurs (réservé aux admins). Doit être déclarée
+    avant /{utilisateur_id} pour ne pas être captée par cette route."""
+    target_role = LOOKUP_ROLES.get(role.upper())
+    if target_role is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="role must be GESTIONNAIRE or LOCATAIRE")
+
+    utilisateur = db.query(Utilisateur).filter(Utilisateur.email == email).first()
+    if not utilisateur or utilisateur.role != target_role:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No {role.lower()} found with this email")
     return utilisateur
 
 
