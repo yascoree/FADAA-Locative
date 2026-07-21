@@ -34,8 +34,16 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 gestion-location-backend/.env*
+!.env.example
+!gestion-location-backend/.env.example
 # vercel
 .vercel
+
+# python
+gestion-location-backend/venv/
+gestion-location-backend/__pycache__/
+gestion-location-backend/**/__pycache__/
+gestion-location-backend/**/*.pyc
 
 # typescript
 *.tsbuildinfo
