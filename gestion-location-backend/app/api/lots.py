@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from datetime import datetime
+
 
 from app.api.deps import can_view_proprietaire, get_current_user, has_permission, managed_proprietaire_ids, require_gestion
 from app.database import get_db
@@ -17,7 +19,15 @@ def _is_tenant_of_lot(db: Session, user_id: int, lot_id: int) -> bool:
 
 
 def _can_view_lot(db: Session, user: Utilisateur, lot: Lot) -> bool:
-    bien = db.get(Bien, lot.bien_id)
+    # bien = db.get(Bien, lot.bien_id)
+    bien = (
+    db.query(Bien)
+    .filter(
+        Bien.id == lot.bien_id,
+        Bien.deleted_at.is_(None)
+    )
+    .first()
+    )
     if bien and can_view_proprietaire(db, user, bien.proprietaire_id):
         return True
     return user.role == UtilisateurRole.LOCATAIRE and _is_tenant_of_lot(db, user.id, lot.id)
@@ -30,7 +40,8 @@ def list_lots(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    query = db.query(Lot)
+    # query = db.query(Lot)
+    query = db.query(Lot).filter(Lot.deleted_at.is_(None))
     if current_user.role == UtilisateurRole.PROPRIETAIRE:
         query = query.join(Bien, Bien.id == Lot.bien_id).filter(Bien.proprietaire_id == current_user.id)
     elif current_user.role == UtilisateurRole.GESTIONNAIRE:
@@ -49,7 +60,14 @@ def create_lot(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(require_gestion),
 ):
-    bien = db.get(Bien, lot_in.bien_id)
+    bien = (
+    db.query(Bien)
+    .filter(
+        Bien.id == lot_in.bien_id,
+        Bien.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not bien:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     if not has_permission(db, current_user, bien.proprietaire_id, "CREATE_LOT"):
@@ -68,7 +86,15 @@ def get_lot(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    lot = db.get(Lot, lot_id)
+    # lot = db.get(Lot, lot_id)
+    lot = (
+    db.query(Lot)
+    .filter(
+        Lot.id == lot_id,
+        Lot.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not lot:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lot not found")
     if not _can_view_lot(db, current_user, lot):
@@ -83,10 +109,26 @@ def update_lot(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    lot = db.get(Lot, lot_id)
+    # lot = db.get(Lot, lot_id)
+    lot = (
+    db.query(Lot)
+    .filter(
+        Lot.id == lot_id,
+        Lot.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not lot:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lot not found")
-    bien = db.get(Bien, lot.bien_id)
+    # bien = db.get(Bien, lot.bien_id)
+    bien = (
+    db.query(Bien)
+    .filter(
+        Bien.id == lot.bien_id,
+        Bien.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not has_permission(db, current_user, bien.proprietaire_id, "UPDATE_LOT"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to modify this lot")
 
@@ -104,11 +146,28 @@ def delete_lot(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    lot = db.get(Lot, lot_id)
+    # lot = db.get(Lot, lot_id)
+    lot = (
+    db.query(Lot)
+    .filter(
+        Lot.id == lot_id,
+        Lot.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not lot:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lot not found")
-    bien = db.get(Bien, lot.bien_id)
+    # bien = db.get(Bien, lot.bien_id)
+    bien = (
+    db.query(Bien)
+    .filter(
+        Bien.id == lot.bien_id,
+        Bien.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not has_permission(db, current_user, bien.proprietaire_id, "DELETE_LOT"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to delete this lot")
-    db.delete(lot)
+    # db.delete(lot)
+    lot.deleted_at = datetime.utcnow()
     db.commit()

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app.api.deps import can_view_proprietaire, get_current_user, has_permission, managed_proprietaire_ids, require_gestion
 from app.database import get_db
@@ -35,7 +36,8 @@ def list_biens(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    query = db.query(Bien)
+    # query = db.query(Bien)
+    query = db.query(Bien).filter(Bien.deleted_at.is_(None))
     if current_user.role == UtilisateurRole.PROPRIETAIRE:
         query = query.filter(Bien.proprietaire_id == current_user.id)
     elif current_user.role == UtilisateurRole.GESTIONNAIRE:
@@ -77,7 +79,16 @@ def get_bien(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    bien = db.get(Bien, bien_id)
+    # bien = db.get(Bien, bien_id)
+
+    bien = (
+    db.query(Bien)
+    .filter(
+        Bien.id == bien_id,
+        Bien.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not bien:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     if not _can_view_bien(db, current_user, bien):
@@ -92,7 +103,16 @@ def update_bien(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    bien = db.get(Bien, bien_id)
+    # bien = db.get(Bien, bien_id)
+
+    bien = (
+    db.query(Bien)
+    .filter(
+        Bien.id == bien_id,
+        Bien.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not bien:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     if not has_permission(db, current_user, bien.proprietaire_id, "UPDATE_PROPERTY"):
@@ -112,10 +132,19 @@ def delete_bien(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    bien = db.get(Bien, bien_id)
+    # bien = db.get(Bien, bien_id)
+
+    bien = (
+    db.query(Bien)
+    .filter(
+        Bien.id == bien_id,
+        Bien.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not bien:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     if not has_permission(db, current_user, bien.proprietaire_id, "DELETE_PROPERTY"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to delete this property")
-    db.delete(bien)
+    bien.deleted_at = datetime.utcnow()
     db.commit()

@@ -34,6 +34,9 @@ class Notification(Base):
     )
     type = Column(Enum(NotificationType, name="notification_type"), nullable=True)
     date_creation = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
     user = relationship("Utilisateur", back_populates="notifications")

@@ -1,5 +1,6 @@
 from calendar import monthrange
 from datetime import date
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -66,7 +67,8 @@ def list_baux(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    query = db.query(Bail)
+    # query = db.query(Bail)
+    query = db.query(Bail).filter(Bail.deleted_at.is_(None))
     if current_user.role == UtilisateurRole.PROPRIETAIRE:
         query = (
             query.join(Lot, Lot.id == Bail.lot_id)
@@ -121,7 +123,14 @@ def get_bail(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    bail = db.get(Bail, bail_id)
+    # bail = db.get(Bail, bail_id)
+    bail = (
+    db.query(Bail)
+    .filter(
+        Bail.id == bail_id,
+        Bail.deleted_at.is_(None)
+    ).first())
+
     if not bail:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found")
     if not _can_view_bail(db, current_user, bail):
@@ -136,7 +145,14 @@ def update_bail(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    bail = db.get(Bail, bail_id)
+    # bail = db.get(Bail, bail_id)
+
+    bail = (
+    db.query(Bail)
+    .filter(
+        Bail.id == bail_id,
+        Bail.deleted_at.is_(None)).first())
+
     if not bail:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found")
     bien = _bien_for_bail(db, bail)
@@ -157,11 +173,22 @@ def delete_bail(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    bail = db.get(Bail, bail_id)
+    # bail = db.get(Bail, bail_id)
+
+    bail = (
+    db.query(Bail)
+    .filter(
+        Bail.id == bail_id,
+        Bail.deleted_at.is_(None)
+    )
+    .first()
+    )
+
     if not bail:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found")
     bien = _bien_for_bail(db, bail)
     if not has_permission(db, current_user, bien.proprietaire_id, "DELETE_LEASE"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to delete this lease")
-    db.delete(bail)
+    # db.delete(bail)
+    bail.deleted_at = datetime.utcnow()
     db.commit()

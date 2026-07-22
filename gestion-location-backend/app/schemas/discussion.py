@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class DiscussionBase(BaseModel):
     user_id: int = Field(gt=0)
+    receiver_id: int = Field(gt=0)
     message: str = Field(min_length=1)
     pdf: Optional[str] = Field(default=None, max_length=255)
 

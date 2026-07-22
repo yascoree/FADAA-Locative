@@ -19,11 +19,58 @@ router = APIRouter(prefix="/receipts", tags=["receipts"])
 
 
 def _bail_and_bien(db: Session, quittance: Quittance):
-    paiement = db.get(Paiement, quittance.paiement_id)
-    echeance = db.get(Echeance, paiement.echeance_id)
-    bail = db.get(Bail, echeance.bail_id)
-    lot = db.get(Lot, bail.lot_id)
-    bien = db.get(Bien, lot.bien_id)
+    # paiement = db.get(Paiement, quittance.paiement_id)
+
+    paiement = (
+    db.query(Paiement)
+    .filter(
+        Paiement.id == quittance.paiement_id,
+        Paiement.deleted_at.is_(None)
+    )
+    .first()
+    )
+
+    # echeance = db.get(Echeance, paiement.echeance_id)
+    # bail = db.get(Bail, echeance.bail_id)
+    # lot = db.get(Lot, bail.lot_id)
+    # bien = db.get(Bien, lot.bien_id)
+
+    echeance = (
+    db.query(Echeance)
+    .filter(
+        Echeance.id == paiement.echeance_id,
+        Echeance.deleted_at.is_(None)
+    )
+    .first()
+    )
+
+    bail = (
+    db.query(Bail)
+    .filter(
+        Bail.id == echeance.bail_id,
+        Bail.deleted_at.is_(None)
+    )
+    .first()
+    )
+
+    lot = (
+    db.query(Lot)
+    .filter(
+        Lot.id == bail.lot_id,
+        Lot.deleted_at.is_(None)
+    )
+    .first()
+    )
+
+    bien = (
+    db.query(Bien)
+    .filter(
+        Bien.id == lot.bien_id,
+        Bien.deleted_at.is_(None)
+    )
+    .first()
+    )
+
     return bail, bien
 
 
@@ -41,7 +88,8 @@ def list_quittances(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    query = db.query(Quittance)
+    # query = db.query(Quittance)
+    query = db.query(Quittance).filter(Quittance.deleted_at.is_(None))
     if current_user.role == UtilisateurRole.PROPRIETAIRE:
         query = (
             query.join(Paiement, Paiement.id == Quittance.paiement_id)
@@ -79,7 +127,17 @@ def get_quittance(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    quittance = db.get(Quittance, quittance_id)
+    # quittance = db.get(Quittance, quittance_id)
+
+    quittance = (
+    db.query(Quittance)
+    .filter(
+        Quittance.id == quittance_id,
+        Quittance.deleted_at.is_(None)
+    )
+    .first()
+    )
+
     if not quittance:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Receipt not found")
     if not _can_view_quittance(db, current_user, quittance):
@@ -93,7 +151,17 @@ def download_quittance(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    quittance = db.get(Quittance, quittance_id)
+    # quittance = db.get(Quittance, quittance_id)
+
+    quittance = (
+    db.query(Quittance)
+    .filter(
+        Quittance.id == quittance_id,
+        Quittance.deleted_at.is_(None)
+    )
+    .first()
+    )
+
     if not quittance:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Receipt not found")
     if not _can_view_quittance(db, current_user, quittance):
