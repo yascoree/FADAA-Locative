@@ -1,6 +1,7 @@
 import enum
+from datetime import datetime
 
-from sqlalchemy import DECIMAL, Column, Date, Enum, ForeignKey, Integer
+from sqlalchemy import DECIMAL, Column, DateTime, Date, Enum, ForeignKey, Integer
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -20,6 +21,9 @@ class Echeance(Base):
     date_echeance = Column(Date, nullable=True)
     montant_du = Column(DECIMAL(10, 2), nullable=True)
     statut = Column(Enum(EcheanceStatus, name="echeance_status"), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
     bail = relationship("Bail", back_populates="echeances")

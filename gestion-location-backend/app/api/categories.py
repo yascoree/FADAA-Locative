@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app.api.deps import require_admin
 from app.database import get_db
@@ -17,7 +18,14 @@ router = APIRouter(prefix="/categories", tags=["categories"])
 
 @router.get("/", response_model=list[CategorieRead])
 def list_categories(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return db.query(Categorie).offset(skip).limit(limit).all()
+    # return db.query(Categorie).offset(skip).limit(limit).all()
+    return (
+    db.query(Categorie)
+    .filter(Categorie.deleted_at.is_(None))
+    .offset(skip)
+    .limit(limit)
+    .all()
+    )
 
 
 @router.post("/", response_model=CategorieRead, status_code=status.HTTP_201_CREATED)
@@ -35,7 +43,16 @@ def create_categorie(
 
 @router.get("/{categorie_id}", response_model=CategorieRead)
 def get_categorie(categorie_id: int, db: Session = Depends(get_db)):
-    categorie = db.get(Categorie, categorie_id)
+    # categorie = db.get(Categorie, categorie_id)
+
+    categorie = (
+    db.query(Categorie)
+    .filter(
+        Categorie.id == categorie_id,
+        Categorie.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not categorie:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
     return categorie
@@ -48,7 +65,15 @@ def update_categorie(
     db: Session = Depends(get_db),
     _admin: Utilisateur = Depends(require_admin),
 ):
-    categorie = db.get(Categorie, categorie_id)
+    # categorie = db.get(Categorie, categorie_id)
+    categorie = (
+    db.query(Categorie)
+    .filter(
+        Categorie.id == categorie_id,
+        Categorie.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not categorie:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
 
@@ -66,13 +91,32 @@ def delete_categorie(
     db: Session = Depends(get_db),
     _admin: Utilisateur = Depends(require_admin),
 ):
-    categorie = db.get(Categorie, categorie_id)
+    # categorie = db.get(Categorie, categorie_id)
+
+    categorie = (
+    db.query(Categorie)
+    .filter(
+        Categorie.id == categorie_id,
+        Categorie.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not categorie:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
 
-    in_use = db.query(Bien).filter(Bien.categorie_id == categorie_id).first() is not None
+    in_use = (
+    db.query(Bien)
+    .filter(
+        Bien.categorie_id == categorie_id,
+        Bien.deleted_at.is_(None)
+    )
+    .first()
+    is not None
+    )
     if in_use:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Category is used by existing properties")
 
-    db.delete(categorie)
+    # db.delete(categorie)
+    categorie.deleted_at = datetime.utcnow()
+
     db.commit()

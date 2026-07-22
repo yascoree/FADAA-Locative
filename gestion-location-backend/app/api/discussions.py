@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from datetime import datetime
+
 
 from app.api.deps import get_current_user
 from app.database import get_db
@@ -22,7 +24,8 @@ def list_discussions(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    query = db.query(Discussion)
+    # query = db.query(Discussion)
+    query = db.query(Discussion).filter(Discussion.deleted_at.is_(None))
     if current_user.role != UtilisateurRole.ADMINISTRATEUR:
         query = query.filter(Discussion.user_id == current_user.id)
     return query.offset(skip).limit(limit).all()
@@ -52,7 +55,15 @@ def get_discussion(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    discussion = db.get(Discussion, discussion_id)
+    # discussion = db.get(Discussion, discussion_id)
+    discussion = (
+    db.query(Discussion)
+    .filter(
+        Discussion.id == discussion_id,
+        Discussion.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not discussion:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Discussion not found")
     _ensure_owner_or_admin(current_user, discussion)
@@ -66,7 +77,16 @@ def update_discussion(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    discussion = db.get(Discussion, discussion_id)
+    # discussion = db.get(Discussion, discussion_id)
+
+    discussion = (
+    db.query(Discussion)
+    .filter(
+        Discussion.id == discussion_id,
+        Discussion.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not discussion:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Discussion not found")
     _ensure_owner_or_admin(current_user, discussion)
@@ -85,9 +105,18 @@ def delete_discussion(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    discussion = db.get(Discussion, discussion_id)
+    # discussion = db.get(Discussion, discussion_id)
+
+    discussion = (
+    db.query(Discussion)
+    .filter(
+        Discussion.id == discussion_id,
+        Discussion.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not discussion:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Discussion not found")
     _ensure_owner_or_admin(current_user, discussion)
-    db.delete(discussion)
+    discussion.deleted_at = datetime.utcnow()
     db.commit()

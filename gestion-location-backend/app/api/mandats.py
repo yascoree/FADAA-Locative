@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app.api.deps import get_current_user, require_roles
 from app.database import get_db
@@ -33,7 +34,8 @@ def list_mandats(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    query = db.query(Mandat)
+    # query = db.query(Mandat)
+    query = db.query(Mandat).filter(Mandat.deleted_at.is_(None))
     if current_user.role == UtilisateurRole.PROPRIETAIRE:
         query = query.filter(Mandat.proprietaire_id == current_user.id)
     elif current_user.role == UtilisateurRole.GESTIONNAIRE:
@@ -78,7 +80,16 @@ def get_mandat(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    mandat = db.get(Mandat, mandat_id)
+    # mandat = db.get(Mandat, mandat_id)
+
+    mandat = (
+    db.query(Mandat)
+    .filter(
+        Mandat.id == mandat_id,
+        Mandat.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not mandat:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mandate not found")
     if not _can_view_mandat(current_user, mandat):
@@ -93,7 +104,15 @@ def update_mandat(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    mandat = db.get(Mandat, mandat_id)
+    # mandat = db.get(Mandat, mandat_id)
+    mandat = (
+    db.query(Mandat)
+    .filter(
+        Mandat.id == mandat_id,
+        Mandat.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not mandat:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mandate not found")
     if not _can_view_mandat(current_user, mandat):
@@ -113,12 +132,21 @@ def delete_mandat(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    mandat = db.get(Mandat, mandat_id)
+    # mandat = db.get(Mandat, mandat_id)
+    mandat = (
+    db.query(Mandat)
+    .filter(
+        Mandat.id == mandat_id,
+        Mandat.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not mandat:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mandate not found")
     if current_user.role != UtilisateurRole.ADMINISTRATEUR and current_user.id != mandat.proprietaire_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to delete this mandate")
-    db.delete(mandat)
+    # db.delete(mandat)
+    mandat.deleted_at = datetime.utcnow()
     db.commit()
 
 
@@ -128,7 +156,15 @@ def list_mandat_permissions(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    mandat = db.get(Mandat, mandat_id)
+    # mandat = db.get(Mandat, mandat_id)
+    mandat = (
+    db.query(Mandat)
+    .filter(
+        Mandat.id == mandat_id,
+        Mandat.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not mandat:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mandate not found")
     if not _can_view_mandat(current_user, mandat):
@@ -146,7 +182,15 @@ def set_mandat_permissions(
     """Remplace intégralement les permissions accordées sur ce mandat. Réservé au
     propriétaire concerné (ou un admin) : le gestionnaire ne peut jamais se les
     accorder lui-même."""
-    mandat = db.get(Mandat, mandat_id)
+    # mandat = db.get(Mandat, mandat_id)
+    mandat = (
+    db.query(Mandat)
+    .filter(
+        Mandat.id == mandat_id,
+        Mandat.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not mandat:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mandate not found")
     if current_user.role != UtilisateurRole.ADMINISTRATEUR and current_user.id != mandat.proprietaire_id:

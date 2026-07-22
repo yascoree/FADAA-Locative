@@ -14,9 +14,33 @@ router = APIRouter(prefix="/due-dates", tags=["due-dates"])
 
 
 def _bail_and_bien(db: Session, echeance: Echeance):
-    bail = db.get(Bail, echeance.bail_id)
-    lot = db.get(Lot, bail.lot_id)
-    bien = db.get(Bien, lot.bien_id)
+    # bail = db.get(Bail, echeance.bail_id)
+    bail = (
+    db.query(Bail)
+    .filter(
+        Bail.id == echeance.bail_id,
+        Bail.deleted_at.is_(None)
+    )
+    .first()
+    )
+    # lot = db.get(Lot, bail.lot_id)
+    lot = (
+    db.query(Lot)
+    .filter(
+        Lot.id == bail.lot_id,
+        Lot.deleted_at.is_(None)
+    )
+    .first()
+    )
+    # bien = db.get(Bien, lot.bien_id)
+    bien = (
+    db.query(Bien)
+    .filter(
+        Bien.id == lot.bien_id,
+        Bien.deleted_at.is_(None)
+    )
+    .first()
+    )
     return bail, bien
 
 
@@ -34,7 +58,8 @@ def list_echeances(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    query = db.query(Echeance)
+    # query = db.query(Echeance)
+    query = db.query(Echeance).filter(Echeance.deleted_at.is_(None))
     if current_user.role == UtilisateurRole.PROPRIETAIRE:
         query = (
             query.join(Bail, Bail.id == Echeance.bail_id)
@@ -66,11 +91,38 @@ def create_echeance(
     """Ajout manuel : la plupart des échéances sont générées automatiquement à la
     création du bail (POST /leases). Utile pour un bail sans date de fin ou un
     échéancier trop long pour être généré d'un coup."""
-    bail = db.get(Bail, echeance_in.bail_id)
+    # bail = db.get(Bail, echeance_in.bail_id)
+
+    bail = (
+    db.query(Bail)
+    .filter(
+        Bail.id == echeance_in.bail_id,
+        Bail.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not bail:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found")
-    lot = db.get(Lot, bail.lot_id)
-    bien = db.get(Bien, lot.bien_id)
+    # lot = db.get(Lot, bail.lot_id)
+
+    lot = (
+    db.query(Lot)
+    .filter(
+        Lot.id == bail.lot_id,
+        Lot.deleted_at.is_(None)
+    )
+    .first()
+    )
+    # bien = db.get(Bien, lot.bien_id)
+
+    bien = (
+    db.query(Bien)
+    .filter(
+        Bien.id == lot.bien_id,
+        Bien.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not has_permission(db, current_user, bien.proprietaire_id, "CREATE_DUE_DATE"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to add a due date to this lease")
 
@@ -87,7 +139,15 @@ def get_echeance(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    echeance = db.get(Echeance, echeance_id)
+    # echeance = db.get(Echeance, echeance_id)
+    echeance = (
+    db.query(Echeance)
+    .filter(
+        Echeance.id == echeance_id,
+        Echeance.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not echeance:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Due date not found")
     if not _can_view_echeance(db, current_user, echeance):
@@ -102,7 +162,15 @@ def update_echeance(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    echeance = db.get(Echeance, echeance_id)
+    # echeance = db.get(Echeance, echeance_id)
+    echeance = (
+    db.query(Echeance)
+    .filter(
+        Echeance.id == echeance_id,
+        Echeance.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not echeance:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Due date not found")
     _, bien = _bail_and_bien(db, echeance)

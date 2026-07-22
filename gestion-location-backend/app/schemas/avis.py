@@ -7,9 +7,12 @@ from app.models.avis import AvisStatus
 
 
 class AvisBase(BaseModel):
-    user_id: int = Field(gt=0)
+    user_id: int | None = Field(default=None, gt=0)
+    nom: str = Field(max_length=100)
+    prenom: str = Field(max_length=100)
     note: int = Field(ge=1, le=5)
     commentaire: Optional[str] = None
+
 
 
 class AvisCreate(AvisBase):

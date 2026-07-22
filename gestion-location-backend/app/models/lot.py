@@ -1,6 +1,8 @@
 import enum
 
-from sqlalchemy import DECIMAL, Column, Enum, ForeignKey, Integer, String
+from datetime import datetime
+
+from sqlalchemy import DECIMAL, Column, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -21,6 +23,9 @@ class Lot(Base):
     loyer_reference = Column(DECIMAL(10, 2), nullable=True)
     statut = Column(Enum(LotStatus, name="lot_status"), nullable=True)
     attachement = Column(String(255), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
     bien = relationship("Bien", back_populates="lots")

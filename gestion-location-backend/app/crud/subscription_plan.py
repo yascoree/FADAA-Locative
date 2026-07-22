@@ -5,15 +5,40 @@ from app.schemas.subscription_plan import SubscriptionPlanCreate, SubscriptionPl
 
 
 def get(db: Session, plan_id: int) -> SubscriptionPlan | None:
-    return db.get(SubscriptionPlan, plan_id)
+    # return db.get(SubscriptionPlan, plan_id)
+        return (
+        db.query(SubscriptionPlan)
+        .filter(
+            SubscriptionPlan.id == plan_id,
+            SubscriptionPlan.deleted_at.is_(None)
+        )
+        .first()
+        )
 
 
 def get_by_name(db: Session, name: str) -> SubscriptionPlan | None:
-    return db.query(SubscriptionPlan).filter(SubscriptionPlan.name == name).first()
+    # return db.query(SubscriptionPlan).filter(SubscriptionPlan.name == name).first()
+
+        return (
+        db.query(SubscriptionPlan)
+        .filter(
+            SubscriptionPlan.name == name,
+            SubscriptionPlan.deleted_at.is_(None)
+        )
+        .first()
+        )
 
 
 def get_multi(db: Session, skip: int = 0, limit: int = 100) -> list[SubscriptionPlan]:
-    return db.query(SubscriptionPlan).offset(skip).limit(limit).all()
+    # return db.query(SubscriptionPlan).offset(skip).limit(limit).all()
+
+        return (
+        db.query(SubscriptionPlan)
+        .filter(SubscriptionPlan.deleted_at.is_(None))
+        .offset(skip)
+        .limit(limit)
+        .all()
+        )
 
 
 def create(db: Session, plan_in: SubscriptionPlanCreate) -> SubscriptionPlan:

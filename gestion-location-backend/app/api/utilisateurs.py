@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from datetime import datetime
+
 
 from app.api.deps import get_current_user, require_admin
 from app.core.security import hash_password
@@ -18,7 +20,15 @@ def list_utilisateurs(
     db: Session = Depends(get_db),
     _admin: Utilisateur = Depends(require_admin),
 ):
-    return db.query(Utilisateur).offset(skip).limit(limit).all()
+    # return db.query(Utilisateur).offset(skip).limit(limit).all()
+
+    return (
+    db.query(Utilisateur)
+    .filter(Utilisateur.deleted_at.is_(None))
+    .offset(skip)
+    .limit(limit)
+    .all()
+     )
 
 
 @router.post("/", response_model=UtilisateurRead, status_code=status.HTTP_201_CREATED)
@@ -61,7 +71,16 @@ def get_utilisateur(
     if current_user.role != UtilisateurRole.ADMINISTRATEUR and current_user.id != utilisateur_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
 
-    utilisateur = db.get(Utilisateur, utilisateur_id)
+    # utilisateur = db.get(Utilisateur, utilisateur_id)
+
+    utilisateur = (
+    db.query(Utilisateur)
+    .filter(
+        Utilisateur.id == utilisateur_id,
+        Utilisateur.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not utilisateur:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return utilisateur
@@ -78,7 +97,16 @@ def update_utilisateur(
     if not is_admin and current_user.id != utilisateur_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
 
-    utilisateur = db.get(Utilisateur, utilisateur_id)
+    # utilisateur = db.get(Utilisateur, utilisateur_id)
+
+    utilisateur = (
+    db.query(Utilisateur)
+    .filter(
+        Utilisateur.id == utilisateur_id,
+        Utilisateur.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not utilisateur:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
@@ -105,10 +133,20 @@ def delete_utilisateur(
     db: Session = Depends(get_db),
     _admin: Utilisateur = Depends(require_admin),
 ):
-    utilisateur = db.get(Utilisateur, utilisateur_id)
+    # utilisateur = db.get(Utilisateur, utilisateur_id)
+
+    utilisateur = (
+    db.query(Utilisateur)
+    .filter(
+        Utilisateur.id == utilisateur_id,
+        Utilisateur.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not utilisateur:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    db.delete(utilisateur)
+    # db.delete(utilisateur)
+    utilisateur.deleted_at = datetime.utcnow()
     db.commit()
 
 
@@ -118,7 +156,16 @@ def activate_utilisateur(
     db: Session = Depends(get_db),
     _admin: Utilisateur = Depends(require_admin),
 ):
-    utilisateur = db.get(Utilisateur, utilisateur_id)
+    # utilisateur = db.get(Utilisateur, utilisateur_id)
+
+    utilisateur = (
+    db.query(Utilisateur)
+    .filter(
+        Utilisateur.id == utilisateur_id,
+        Utilisateur.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not utilisateur:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     utilisateur.statut_compte = StatutCompte.ACTIF
@@ -136,7 +183,16 @@ def deactivate_utilisateur(
     if utilisateur_id == admin.id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot deactivate your own account")
 
-    utilisateur = db.get(Utilisateur, utilisateur_id)
+    # utilisateur = db.get(Utilisateur, utilisateur_id)
+
+    utilisateur = (
+    db.query(Utilisateur)
+    .filter(
+        Utilisateur.id == utilisateur_id,
+        Utilisateur.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not utilisateur:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     # Réutilise CREE_SANS_ACCES comme statut "désactivé" : get_current_user() / login()

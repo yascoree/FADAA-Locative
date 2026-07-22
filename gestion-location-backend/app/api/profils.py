@@ -23,7 +23,15 @@ def create_profil(
 ):
     _ensure_owner_or_admin(current_user, profil_in.utilisateur_id)
 
-    existing = db.query(Profil).filter(Profil.utilisateur_id == profil_in.utilisateur_id).first()
+    # existing = db.query(Profil).filter(Profil.utilisateur_id == profil_in.utilisateur_id).first()
+    existing = (
+    db.query(Profil)
+    .filter(
+        Profil.utilisateur_id == profil_in.utilisateur_id,
+        Profil.deleted_at.is_(None)
+    )
+    .first()
+    )
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Profile already exists")
 
@@ -42,7 +50,17 @@ def get_profil(
 ):
     _ensure_owner_or_admin(current_user, utilisateur_id)
 
-    profil = db.query(Profil).filter(Profil.utilisateur_id == utilisateur_id).first()
+    # profil = db.query(Profil).filter(Profil.utilisateur_id == utilisateur_id).first()
+
+    profil = (
+    db.query(Profil)
+    .filter(
+        Profil.utilisateur_id == utilisateur_id,
+        Profil.deleted_at.is_(None)
+    )
+    .first()
+    )
+
     if not profil:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
     return profil
@@ -57,7 +75,17 @@ def update_profil(
 ):
     _ensure_owner_or_admin(current_user, utilisateur_id)
 
-    profil = db.query(Profil).filter(Profil.utilisateur_id == utilisateur_id).first()
+    # profil = db.query(Profil).filter(Profil.utilisateur_id == utilisateur_id).first()
+
+    profil = (
+    db.query(Profil)
+    .filter(
+        Profil.utilisateur_id == utilisateur_id,
+        Profil.deleted_at.is_(None)
+    )
+    .first()
+    )
+    
     if not profil:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
 

@@ -1,6 +1,8 @@
 import enum
 
-from sqlalchemy import Column, Enum, ForeignKey, Integer, String
+from datetime import datetime
+
+from sqlalchemy import Column, Enum, ForeignKey, Integer, String, DateTime
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -22,6 +24,9 @@ class Bien(Base):
     designation = Column(String(150), nullable=True)
     statut = Column(Enum(BienStatus, name="bien_status"), nullable=True)
     attachement = Column(String(255), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
     proprietaire = relationship("Utilisateur", back_populates="biens", foreign_keys=[proprietaire_id])

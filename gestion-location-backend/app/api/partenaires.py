@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app.api.deps import require_admin
 from app.database import get_db
@@ -12,7 +13,8 @@ router = APIRouter(prefix="/partners", tags=["partners"])
 
 @router.get("/", response_model=list[PartenaireRead])
 def list_partenaires(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return db.query(Partenaire).offset(skip).limit(limit).all()
+    # return db.query(Partenaire).offset(skip).limit(limit).all()
+    return (db.query(Partenaire).filter(Partenaire.deleted_at.is_(None)).offset(skip).limit(limit).all())
 
 
 @router.post("/", response_model=PartenaireRead, status_code=status.HTTP_201_CREATED)
@@ -30,7 +32,15 @@ def create_partenaire(
 
 @router.get("/{partenaire_id}", response_model=PartenaireRead)
 def get_partenaire(partenaire_id: int, db: Session = Depends(get_db)):
-    partenaire = db.get(Partenaire, partenaire_id)
+    # partenaire = db.get(Partenaire, partenaire_id)
+    partenaire = (
+    db.query(Partenaire)
+    .filter(
+        Partenaire.id == partenaire_id,
+        Partenaire.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not partenaire:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Partenaire not found")
     return partenaire
@@ -43,7 +53,16 @@ def update_partenaire(
     db: Session = Depends(get_db),
     _admin: Utilisateur = Depends(require_admin),
 ):
-    partenaire = db.get(Partenaire, partenaire_id)
+    # partenaire = db.get(Partenaire, partenaire_id)
+
+    partenaire = (
+    db.query(Partenaire)
+    .filter(
+        Partenaire.id == partenaire_id,
+        Partenaire.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not partenaire:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Partenaire not found")
 
@@ -61,8 +80,17 @@ def delete_partenaire(
     db: Session = Depends(get_db),
     _admin: Utilisateur = Depends(require_admin),
 ):
-    partenaire = db.get(Partenaire, partenaire_id)
+    # partenaire = db.get(Partenaire, partenaire_id)
+    partenaire = (
+    db.query(Partenaire)
+    .filter(
+        Partenaire.id == partenaire_id,
+        Partenaire.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not partenaire:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Partenaire not found")
-    db.delete(partenaire)
+    # db.delete(partenaire)
+    partenaire.deleted_at = datetime.utcnow()
     db.commit()

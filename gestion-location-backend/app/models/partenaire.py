@@ -25,4 +25,10 @@ class Partenaire(Base):
     statut = Column(
         Enum(PartenaireStatus, name="partenaire_status"), nullable=False, default=PartenaireStatus.ACTIF
     )
+
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)
+
+    
     date_creation = Column(DateTime, nullable=False, default=datetime.utcnow)

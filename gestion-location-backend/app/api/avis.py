@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models.avis import Avis, AvisStatus
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.avis import AvisCreate, AvisRead, AvisUpdate
+from datetime import datetime
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 
@@ -18,7 +19,8 @@ def list_avis(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    query = db.query(Avis)
+    # query = db.query(Avis)
+    query = db.query(Avis).filter(Avis.deleted_at.is_(None))
     if current_user.role != UtilisateurRole.ADMINISTRATEUR:
         query = query.filter(or_(Avis.statut == AvisStatus.PUBLIE, Avis.user_id == current_user.id))
     return query.offset(skip).limit(limit).all()
@@ -86,5 +88,6 @@ def delete_avis(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Avis not found")
     if current_user.role != UtilisateurRole.ADMINISTRATEUR and current_user.id != avis.user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to delete this review")
-    db.delete(avis)
+    # db.delete(avis)
+    avis.deleted_at = datetime.utcnow()
     db.commit()

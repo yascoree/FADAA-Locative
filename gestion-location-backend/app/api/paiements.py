@@ -16,10 +16,45 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 
 
 def _chain_for_paiement(db: Session, echeance_id: int):
-    echeance = db.get(Echeance, echeance_id)
-    bail = db.get(Bail, echeance.bail_id)
-    lot = db.get(Lot, bail.lot_id)
-    bien = db.get(Bien, lot.bien_id)
+    # echeance = db.get(Echeance, echeance_id)
+    # bail = db.get(Bail, echeance.bail_id)
+    # lot = db.get(Lot, bail.lot_id)
+    # bien = db.get(Bien, lot.bien_id)
+    echeance = (
+    db.query(Echeance)
+    .filter(
+        Echeance.id == echeance_id,
+        Echeance.deleted_at.is_(None)
+    )
+    .first()
+    )
+
+    bail = (
+    db.query(Bail)
+    .filter(
+        Bail.id == echeance.bail_id,
+        Bail.deleted_at.is_(None)
+    )
+    .first()
+    )
+
+    lot = (
+    db.query(Lot)
+    .filter(
+        Lot.id == bail.lot_id,
+        Lot.deleted_at.is_(None)
+    )
+    .first()
+    )
+
+    bien = (
+    db.query(Bien)
+    .filter(
+        Bien.id == lot.bien_id,
+        Bien.deleted_at.is_(None)
+    )
+    .first()
+    )
     return bail, bien
 
 
@@ -37,7 +72,8 @@ def list_paiements(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    query = db.query(Paiement)
+    # query = db.query(Paiement)
+    query = db.query(Paiement).filter(Paiement.deleted_at.is_(None))
     if current_user.role == UtilisateurRole.PROPRIETAIRE:
         query = (
             query.join(Echeance, Echeance.id == Paiement.echeance_id)
@@ -99,7 +135,15 @@ def get_paiement(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    paiement = db.get(Paiement, paiement_id)
+    # paiement = db.get(Paiement, paiement_id)
+    paiement = (
+    db.query(Paiement)
+    .filter(
+        Paiement.id == paiement_id,
+        Paiement.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not paiement:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
     if not _can_view_paiement(db, current_user, paiement):
@@ -114,7 +158,15 @@ def update_paiement(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    paiement = db.get(Paiement, paiement_id)
+    # paiement = db.get(Paiement, paiement_id)
+    paiement = (
+    db.query(Paiement)
+    .filter(
+        Paiement.id == paiement_id,
+        Paiement.deleted_at.is_(None)
+    )
+    .first()
+    )
     if not paiement:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
     _, bien = _chain_for_paiement(db, paiement.echeance_id)
