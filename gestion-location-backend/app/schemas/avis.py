@@ -4,6 +4,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.avis import AvisStatus
+from app.schemas.utilisateur import UtilisateurMini
 
 
 class AvisBase(BaseModel):
@@ -29,3 +30,4 @@ class AvisRead(AvisBase):
     id: int
     date_creation: datetime
     statut: AvisStatus
+    user: Optional[UtilisateurMini] = None

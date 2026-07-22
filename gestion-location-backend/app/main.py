@@ -1,4 +1,8 @@
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api import (
     auth,
@@ -8,6 +12,7 @@ from app.api import (
     categories,
     discussions,
     echeances,
+    fcm_tokens,
     locataires,
     lots,
     mandats,
@@ -17,12 +22,30 @@ from app.api import (
     permissions,
     profils,
     quittances,
+    reclamations,
+    stats,
     subscription_plans,
     subscriptions,
     utilisateurs,
 )
+from app.scheduler import shutdown_scheduler, start_scheduler
 
 app = FastAPI(title="Gestion Location API")
+
+# Dev/test uniquement : les pages de test HTML statiques (fichier local ou autre
+# origine) doivent pouvoir appeler l'API. Bearer token, pas de cookies -> pas
+# besoin d'allow_credentials.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 app.include_router(auth.router)
 app.include_router(utilisateurs.router)
@@ -40,9 +63,22 @@ app.include_router(quittances.router)
 app.include_router(mandats.router)
 app.include_router(permissions.router)
 app.include_router(notifications.router)
+app.include_router(fcm_tokens.router)
 app.include_router(discussions.router)
 app.include_router(avis.router)
 app.include_router(partenaires.router)
+app.include_router(reclamations.router)
+app.include_router(stats.router)
+
+
+@app.on_event("startup")
+def _on_startup():
+    start_scheduler()
+
+
+@app.on_event("shutdown")
+def _on_shutdown():
+    shutdown_scheduler()
 
 
 @app.get("/")

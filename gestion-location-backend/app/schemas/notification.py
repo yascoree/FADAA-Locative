@@ -11,6 +11,7 @@ class NotificationBase(BaseModel):
     description: Optional[str] = None
     statut: NotificationStatus = NotificationStatus.NON_LUE
     type: Optional[NotificationType] = None
+    reference_id: Optional[int] = None
 
 
 class NotificationCreate(BaseModel):
@@ -18,6 +19,7 @@ class NotificationCreate(BaseModel):
     titre: Optional[str] = Field(default=None, max_length=150)
     description: Optional[str] = None
     type: Optional[NotificationType] = None
+    reference_id: Optional[int] = None
 
 
 class NotificationUpdate(BaseModel):

@@ -5,6 +5,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.echeance import EcheanceStatus
+from app.schemas.bail import BailRead
 
 
 class EcheanceBase(BaseModel):
@@ -28,3 +29,4 @@ class EcheanceRead(EcheanceBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    bail: Optional[BailRead] = None

@@ -1,9 +1,10 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.mandat import MandatStatus
+from app.schemas.utilisateur import UtilisateurMini
 
 
 class MandatBase(BaseModel):
@@ -31,3 +32,6 @@ class MandatRead(MandatBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    updated_at: datetime
+    gestionnaire: Optional[UtilisateurMini] = None
+    proprietaire: Optional[UtilisateurMini] = None

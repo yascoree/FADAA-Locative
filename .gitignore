@@ -45,6 +45,14 @@ gestion-location-backend/__pycache__/
 gestion-location-backend/**/__pycache__/
 gestion-location-backend/**/*.pyc
 
+# fichiers générés (photos utilisateurs, PDF de quittances contenant des données personnelles)
+gestion-location-backend/uploads/
+gestion-location-backend/storage/
+
+# clé de compte de service Firebase (secret — ne doit jamais être committée)
+gestion-location-backend/*firebase*.json
+gestion-location-backend/serviceAccountKey.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

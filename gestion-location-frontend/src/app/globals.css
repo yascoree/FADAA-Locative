@@ -1,6 +1,55 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* ---------------------------------------------------------------------------
+     Thème partagé FADAA Locative — SOURCE UNIQUE des couleurs/rayons/ombres pour
+     TOUTE l'app (composants réutilisables ET les 4 espaces backoffice : admin,
+     proprietaire, agence, locataire). Chaque espace redéfinit sur son .shell des
+     variables locales (--primary, --bg, ...) qui ALIASENT ces tokens --brand-*
+     (`--primary: var(--brand-primary);`) plutôt que de recopier les valeurs —
+     changer une couleur ici la propage partout. Ne jamais hardcoder une couleur
+     de marque ailleurs que dans ce bloc. */
+  --brand-primary: #889063;
+  --brand-primary-dark: #6d7450;
+  --brand-primary-soft: rgba(136, 144, 99, 0.12);
+  --brand-accent: #cfbb99;
+  --brand-accent-soft: rgba(207, 187, 153, 0.28);
+  --brand-secondary: #3a3826;
+  --brand-bg: #f5f1ea;
+  --brand-border: #e3ddd0;
+  --brand-surface: #ffffff;
+  --brand-text: #2a2820;
+  --brand-text-muted: #8c8570;
+  --brand-danger: #b5533e;
+  --brand-danger-soft: rgba(181, 83, 62, 0.12);
+  --brand-warning: #c1852f;
+  --brand-warning-soft: rgba(193, 133, 47, 0.14);
+  --brand-info: #4a7a8c;
+  --brand-info-soft: rgba(74, 122, 140, 0.12);
+  --brand-radius-field: 10px;
+  --brand-radius-card: 16px;
+  --brand-shadow-sm: 0 1px 2px rgba(42, 40, 32, 0.05), 0 1px 1px rgba(42, 40, 32, 0.04);
+  --brand-shadow-md: 0 6px 20px -8px rgba(58, 56, 38, 0.18), 0 2px 6px rgba(58, 56, 38, 0.06);
+  --brand-shadow-lift: 0 10px 28px -10px rgba(58, 56, 38, 0.24), 0 3px 8px rgba(58, 56, 38, 0.07);
+
+  /* Palette dashboard (tuiles/jauges/courbes) : Terracotta / Charcoal / Navy / Olive. */
+  --brand-tone-terracotta: #a8522e;
+  --brand-tone-terracotta-dark: #7a3a1f;
+  --brand-tone-terracotta-soft: rgba(168, 82, 46, 0.14);
+  --brand-tone-charcoal: #34302c;
+  --brand-tone-charcoal-dark: #1c1a17;
+  --brand-tone-charcoal-soft: rgba(52, 48, 44, 0.12);
+  --brand-tone-navy: #1b2a44;
+  --brand-tone-navy-dark: #0f1830;
+  --brand-tone-navy-soft: rgba(27, 42, 68, 0.14);
+  --brand-tone-olive: #5f6b3a;
+  --brand-tone-olive-dark: #3f4726;
+  --brand-tone-olive-soft: rgba(95, 107, 58, 0.16);
+
+  /* Accent ponctuel pour les badges/rubans mis en avant (ex. "Populaire"). */
+  --brand-gold: #d9ac3d;
+  --brand-gold-dark: #a97a1a;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -45,5 +94,67 @@ a {
 @media (prefers-color-scheme: dark) {
   html {
     color-scheme: dark;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Effets partagés (transition de page, apparition des banners) — keyframes
+   définis une seule fois ici (les noms de @keyframes ne sont pas scopés par les
+   CSS Modules), réutilisés par les 4 espaces backoffice sur leurs propres
+   classes .banner / .page-transition. */
+
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-transition {
+  animation: pageFadeIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes bannerSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalPopIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
   }
 }

@@ -5,6 +5,8 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.bail import BailStatus
+from app.schemas.lot import LotRead
+from app.schemas.utilisateur import UtilisateurMini
 
 
 class BailBase(BaseModel):
@@ -40,3 +42,5 @@ class BailRead(BailBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    locataire: Optional[UtilisateurMini] = None
+    lot: Optional[LotRead] = None

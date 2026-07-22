@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import uuid
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -9,6 +12,11 @@ from app.models.utilisateur import Utilisateur
 from app.schemas.partenaire import PartenaireCreate, PartenaireRead, PartenaireUpdate
 
 router = APIRouter(prefix="/partners", tags=["partners"])
+
+# app/api/partenaires.py -> parents[2] = racine du backend (là où tourne uvicorn).
+UPLOAD_ROOT = Path(__file__).resolve().parents[2] / "uploads" / "partenaires"
+ALLOWED_PHOTO_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+MAX_PHOTO_SIZE = 5 * 1024 * 1024  # 5 Mo
 
 
 @router.get("/", response_model=list[PartenaireRead])
@@ -94,3 +102,32 @@ def delete_partenaire(
     # db.delete(partenaire)
     partenaire.deleted_at = datetime.utcnow()
     db.commit()
+
+
+@router.post("/{partenaire_id}/logo", response_model=PartenaireRead)
+async def upload_partenaire_logo(
+    partenaire_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _admin: Utilisateur = Depends(require_admin),
+):
+    partenaire = db.get(Partenaire, partenaire_id)
+    if not partenaire:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Partenaire not found")
+
+    extension = ALLOWED_PHOTO_TYPES.get(file.content_type)
+    if not extension:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only JPEG, PNG or WEBP images are allowed")
+
+    content = await file.read()
+    if len(content) > MAX_PHOTO_SIZE:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Image must be smaller than 5 MB")
+
+    UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}{extension}"
+    (UPLOAD_ROOT / filename).write_bytes(content)
+
+    partenaire.logo = f"/uploads/partenaires/{filename}"
+    db.commit()
+    db.refresh(partenaire)
+    return partenaire

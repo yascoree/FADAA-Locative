@@ -14,6 +14,7 @@ from app.models.paiement import Paiement
 from app.models.quittance import Quittance
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.quittance import QuittanceRead
+from app.services.receipt_service import generate_receipt_pdf
 
 router = APIRouter(prefix="/receipts", tags=["receipts"])
 
@@ -168,7 +169,9 @@ def download_quittance(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to access this receipt")
 
     if not quittance.fichier_pdf or not Path(quittance.fichier_pdf).is_file():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="PDF file not available")
+        # Quittance créée avant l'ajout de la génération PDF (ou fichier perdu) : on le (re)génère à la volée.
+        quittance.fichier_pdf = generate_receipt_pdf(db, quittance)
+        db.commit()
 
     return FileResponse(
         quittance.fichier_pdf, media_type="application/pdf", filename=f"quittance_{quittance.id}.pdf"

@@ -11,7 +11,9 @@ class Discussion(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("utilisateurs.id"), nullable=False)
-    receiver_id = Column(Integer, ForeignKey("utilisateurs.id"), nullable=False)
+    # Nullable en base pour ne pas casser les lignes créées avant l'ajout de ce
+    # champ ; toujours requis côté API (voir DiscussionCreate) pour tout nouveau message.
+    destinataire_id = Column(Integer, ForeignKey("utilisateurs.id"), nullable=True)
     message = Column(Text, nullable=False)
     date_sent = Column(DateTime, nullable=False, default=datetime.utcnow)
     pdf = Column(String(255), nullable=True)
@@ -20,13 +22,5 @@ class Discussion(Base):
     deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
-    user = relationship(
-        "Utilisateur",
-        foreign_keys=[user_id],
-        back_populates="discussions"
-    )
-
-    receiver = relationship(
-        "Utilisateur",
-        foreign_keys=[receiver_id]
-    )
+    user = relationship("Utilisateur", back_populates="discussions", foreign_keys=[user_id])
+    destinataire = relationship("Utilisateur", foreign_keys=[destinataire_id])
