@@ -4,17 +4,24 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { ROLES } from "@/lib/roles";
+import NotificationBell from "@/components/NotificationBell";
+import PageTransition from "@/components/PageTransition";
 import ProprietaireSidebar from "./ProprietaireSidebar";
 import styles from "./proprietaire.module.css";
 
 const PAGE_TITLES = {
   "/backoffice/proprietaire": "Dashboard",
-  "/backoffice/proprietaire/biens": "Mes biens",
+  "/backoffice/proprietaire/biens": "Biens",
+  "/backoffice/proprietaire/lots": "Lots",
   "/backoffice/proprietaire/baux": "Baux",
-  "/backoffice/proprietaire/messagerie": "Messagerie",
-  "/backoffice/proprietaire/revenus": "Revenus",
+  "/backoffice/proprietaire/echeances": "Échéances",
+  "/backoffice/proprietaire/paiements": "Paiements",
   "/backoffice/proprietaire/quittances": "Quittances",
-  "/backoffice/proprietaire/permissions": "Gestion Permission",
+  "/backoffice/proprietaire/revenus": "Revenus",
+  "/backoffice/proprietaire/permissions": "Gestionnaires",
+  "/backoffice/proprietaire/locataires": "Locataires",
+  "/backoffice/proprietaire/messagerie": "Discussions",
+  "/backoffice/proprietaire/notifications": "Notifications",
   "/backoffice/proprietaire/parametres": "Paramètres",
 };
 
@@ -49,11 +56,11 @@ export default function ProprietaireLayout({ children }) {
       <div className={styles.main}>
         <header className={styles.topbar}>
           <h1 className={styles.pageTitle}>{PAGE_TITLES[pathname] || "FADAA Locative"}</h1>
-          <button type="button" className={styles.topbarAction} title="Notifications">
-            <i className="bi bi-bell" />
-          </button>
+          <NotificationBell href="/backoffice/proprietaire/notifications" />
         </header>
-        <main className={styles.content}>{children}</main>
+        <main className={styles.content}>
+          <PageTransition>{children}</PageTransition>
+        </main>
       </div>
     </div>
   );

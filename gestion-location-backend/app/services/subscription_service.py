@@ -89,6 +89,15 @@ def reactivate(db: Session, subscription: Subscription) -> Subscription:
     return subscription
 
 
+def cancel(db: Session, subscription: Subscription) -> Subscription:
+    """Résiliation définitive (contrairement à suspend/reactivate, pensée comme
+    réversible). Le propriétaire garde son compte mais n'a plus d'abonnement actif."""
+    subscription.status = SubscriptionStatus.RESILIE
+    db.commit()
+    db.refresh(subscription)
+    return subscription
+
+
 def extend(db: Session, subscription: Subscription, new_end_date: datetime) -> Subscription:
     subscription.end_date = new_end_date
     db.commit()

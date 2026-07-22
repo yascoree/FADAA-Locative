@@ -1,8 +1,5 @@
+import EmptyState from "./EmptyState";
+
 export default function ComingSoon({ title }) {
-  return (
-    <div>
-      <h1 className="h4">{title}</h1>
-      <p className="text-muted">Cette section arrive bientôt.</p>
-    </div>
-  );
+  return <EmptyState icon="bi-hourglass-split" title={title} description="Cette section arrive bientôt." />;
 }

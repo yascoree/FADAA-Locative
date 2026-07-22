@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, managed_proprietaire_ids, require_gestion
@@ -44,23 +45,30 @@ def list_locataires(
 ):
     query = db.query(Utilisateur).filter(Utilisateur.role == UtilisateurRole.LOCATAIRE)
     if current_user.role == UtilisateurRole.PROPRIETAIRE:
-        query = (
-            query.join(Bail, Bail.locataire_id == Utilisateur.id)
+        # "Mes locataires" = ceux qui ont déjà un bail avec moi, OU ceux que j'ai
+        # créés moi-même mais pour qui aucun bail n'existe encore (onboarding
+        # avant la création du premier bail).
+        tenant_ids_with_bail = (
+            db.query(Bail.locataire_id)
             .join(Lot, Lot.id == Bail.lot_id)
             .join(Bien, Bien.id == Lot.bien_id)
             .filter(Bien.proprietaire_id == current_user.id)
-            .distinct()
+        )
+        query = query.filter(
+            or_(Utilisateur.id.in_(tenant_ids_with_bail), Utilisateur.cree_par_id == current_user.id)
         )
     elif current_user.role == UtilisateurRole.GESTIONNAIRE:
         ids = managed_proprietaire_ids(db, current_user.id)
-        if not ids:
-            return []
-        query = (
-            query.join(Bail, Bail.locataire_id == Utilisateur.id)
+        tenant_ids_with_bail = (
+            db.query(Bail.locataire_id)
             .join(Lot, Lot.id == Bail.lot_id)
             .join(Bien, Bien.id == Lot.bien_id)
             .filter(Bien.proprietaire_id.in_(ids))
-            .distinct()
+            if ids
+            else db.query(Bail.locataire_id).filter(False)
+        )
+        query = query.filter(
+            or_(Utilisateur.id.in_(tenant_ids_with_bail), Utilisateur.cree_par_id == current_user.id)
         )
     elif current_user.role != UtilisateurRole.ADMINISTRATEUR:
         return []

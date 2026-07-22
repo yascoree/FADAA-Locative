@@ -27,3 +27,6 @@ class Bien(Base):
     proprietaire = relationship("Utilisateur", back_populates="biens", foreign_keys=[proprietaire_id])
     categorie = relationship("Categorie", back_populates="biens")
     lots = relationship("Lot", back_populates="bien", cascade="all, delete-orphan")
+    photos = relationship(
+        "BienPhoto", back_populates="bien", cascade="all, delete-orphan", order_by="BienPhoto.date_ajout"
+    )

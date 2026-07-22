@@ -3,6 +3,8 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.paiement import PaiementRead
+
 
 class QuittanceBase(BaseModel):
     paiement_id: int = Field(gt=0)
@@ -14,3 +16,4 @@ class QuittanceRead(QuittanceBase):
 
     id: int
     date_generation: datetime
+    paiement: Optional[PaiementRead] = None

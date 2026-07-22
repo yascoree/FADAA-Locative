@@ -48,7 +48,7 @@ class Utilisateur(Base):
     mandats_proprietaire = relationship(
         "Mandat", back_populates="proprietaire", foreign_keys="Mandat.proprietaire_id"
     )
-    discussions = relationship("Discussion", back_populates="user")
+    discussions = relationship("Discussion", back_populates="user", foreign_keys="Discussion.user_id")
     avis = relationship("Avis", back_populates="user")
     notifications = relationship("Notification", back_populates="user")
     cree_par = relationship("Utilisateur", remote_side=[id], back_populates="utilisateurs_crees")

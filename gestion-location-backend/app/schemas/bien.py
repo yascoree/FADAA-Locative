@@ -3,6 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.bien import BienStatus
+from app.schemas.bien_photo import BienPhotoRead
 
 
 class BienBase(BaseModel):
@@ -28,3 +29,4 @@ class BienRead(BienBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    photos: list[BienPhotoRead] = []

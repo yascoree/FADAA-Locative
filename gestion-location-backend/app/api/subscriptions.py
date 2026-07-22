@@ -6,8 +6,8 @@ from app.crud import subscription as subscription_crud
 from app.crud import subscription_plan as subscription_plan_crud
 from app.database import get_db
 from app.models.utilisateur import Utilisateur
-from app.schemas.subscription import SubscriptionAssign, SubscriptionExtend, SubscriptionRead
-from app.services import subscription_service
+from app.schemas.subscription import SubscriptionAssign, SubscriptionExtend, SubscriptionRead, SubscriptionUsageRead
+from app.services import subscription_service, usage_service
 from app.services.subscription_service import SubscriptionError
 
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
@@ -35,6 +35,42 @@ def read_my_subscription(
     if not subscription:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No subscription for this account")
     return subscription
+
+
+@router.get("/me/usage", response_model=SubscriptionUsageRead)
+def read_my_usage(
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(get_current_user),
+):
+    """Équivalent self-service de /by-owner/{id}/usage, pour que le propriétaire
+    consulte sa propre consommation depuis son dashboard sans droits admin."""
+    return usage_service.compute_owner_usage(db, current_user.id)
+
+
+@router.get("/by-owner/{owner_id}", response_model=SubscriptionRead)
+def get_subscription_by_owner(
+    owner_id: int,
+    db: Session = Depends(get_db),
+    _admin: Utilisateur = Depends(require_admin),
+):
+    """Pratique pour l'interface admin : retrouver directement l'abonnement d'un
+    propriétaire choisi, sans avoir à parcourir /subscriptions/ en entier."""
+    subscription = subscription_crud.get_by_owner(db, owner_id)
+    if not subscription:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No subscription for this owner")
+    return subscription
+
+
+@router.get("/by-owner/{owner_id}/usage", response_model=SubscriptionUsageRead)
+def get_owner_usage(
+    owner_id: int,
+    db: Session = Depends(get_db),
+    _admin: Utilisateur = Depends(require_admin),
+):
+    """Usage réel du propriétaire (biens, lots, baux actifs, gestionnaires,
+    locataires, quittances du mois) — à comparer aux limites de son plan.
+    Informatif uniquement : rien n'est encore bloqué au-delà de ces limites."""
+    return usage_service.compute_owner_usage(db, owner_id)
 
 
 @router.get("/{subscription_id}", response_model=SubscriptionRead)
@@ -93,6 +129,18 @@ def reactivate_subscription(
     if not subscription:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
     return subscription_service.reactivate(db, subscription)
+
+
+@router.post("/{subscription_id}/cancel", response_model=SubscriptionRead)
+def cancel_subscription(
+    subscription_id: int,
+    db: Session = Depends(get_db),
+    _admin: Utilisateur = Depends(require_admin),
+):
+    subscription = subscription_crud.get(db, subscription_id)
+    if not subscription:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
+    return subscription_service.cancel(db, subscription)
 
 
 @router.put("/{subscription_id}/extend", response_model=SubscriptionRead)

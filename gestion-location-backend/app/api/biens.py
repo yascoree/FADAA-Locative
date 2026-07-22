@@ -1,15 +1,25 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import uuid
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import can_view_proprietaire, get_current_user, has_permission, managed_proprietaire_ids, require_gestion
 from app.database import get_db
 from app.models.bail import Bail
 from app.models.bien import Bien
+from app.models.bien_photo import BienPhoto
 from app.models.lot import Lot
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.bien import BienCreate, BienRead, BienUpdate
+from app.schemas.bien_photo import BienPhotoRead
 
 router = APIRouter(prefix="/properties", tags=["properties"])
+
+# app/api/biens.py -> parents[2] = racine du backend (là où tourne uvicorn).
+UPLOAD_ROOT = Path(__file__).resolve().parents[2] / "uploads" / "biens"
+ALLOWED_PHOTO_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+MAX_PHOTO_SIZE = 5 * 1024 * 1024  # 5 Mo
 
 
 def _is_tenant_of_bien(db: Session, user_id: int, bien_id: int) -> bool:
@@ -119,3 +129,60 @@ def delete_bien(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to delete this property")
     db.delete(bien)
     db.commit()
+
+
+@router.post("/{bien_id}/photos", response_model=BienPhotoRead, status_code=status.HTTP_201_CREATED)
+async def upload_bien_photo(
+    bien_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(get_current_user),
+):
+    bien = db.get(Bien, bien_id)
+    if not bien:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    if not has_permission(db, current_user, bien.proprietaire_id, "UPDATE_PROPERTY"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to modify this property")
+
+    extension = ALLOWED_PHOTO_TYPES.get(file.content_type)
+    if not extension:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only JPEG, PNG or WEBP images are allowed")
+
+    content = await file.read()
+    if len(content) > MAX_PHOTO_SIZE:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Image must be smaller than 5 MB")
+
+    bien_dir = UPLOAD_ROOT / str(bien_id)
+    bien_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}{extension}"
+    (bien_dir / filename).write_bytes(content)
+
+    photo = BienPhoto(bien_id=bien_id, url=f"/uploads/biens/{bien_id}/{filename}")
+    db.add(photo)
+    db.commit()
+    db.refresh(photo)
+    return photo
+
+
+@router.delete("/{bien_id}/photos/{photo_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_bien_photo(
+    bien_id: int,
+    photo_id: int,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(get_current_user),
+):
+    bien = db.get(Bien, bien_id)
+    if not bien:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    if not has_permission(db, current_user, bien.proprietaire_id, "UPDATE_PROPERTY"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to modify this property")
+
+    photo = db.get(BienPhoto, photo_id)
+    if not photo or photo.bien_id != bien_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Photo not found")
+
+    file_path = Path(__file__).resolve().parents[2] / photo.url.lstrip("/")
+    db.delete(photo)
+    db.commit()
+    if file_path.exists():
+        file_path.unlink()

@@ -7,10 +7,13 @@ from app.models.bail import Bail
 from app.models.bien import Bien
 from app.models.echeance import Echeance
 from app.models.lot import Lot
+from app.models.notification import NotificationType
 from app.models.paiement import Paiement
 from app.models.quittance import Quittance
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.paiement import PaiementCreate, PaiementRead, PaiementUpdate
+from app.services.push_service import send_push_to_user
+from app.services.receipt_service import generate_receipt_pdf
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -85,10 +88,23 @@ def create_paiement(
     db.commit()
     db.refresh(paiement)
 
-    # Une quittance est générée automatiquement pour chaque paiement.
+    # Une quittance est générée automatiquement pour chaque paiement, PDF inclus.
     quittance = Quittance(paiement_id=paiement.id)
     db.add(quittance)
     db.commit()
+    db.refresh(quittance)
+
+    quittance.fichier_pdf = generate_receipt_pdf(db, quittance)
+    db.commit()
+
+    send_push_to_user(
+        db,
+        user_id=bail.locataire_id,
+        title="Quittance émise",
+        body=f"Votre quittance de {paiement.montant} MAD a été générée.",
+        notif_type=NotificationType.PAIEMENT,
+        reference_id=quittance.id,
+    )
 
     return paiement
 

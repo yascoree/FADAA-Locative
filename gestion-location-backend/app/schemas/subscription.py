@@ -33,3 +33,12 @@ class SubscriptionRead(BaseModel):
     end_date: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+
+
+class SubscriptionUsageRead(BaseModel):
+    biens: int
+    lots: int
+    baux_actifs: int
+    gestionnaires: int
+    locataires: int
+    quittances_mois: int

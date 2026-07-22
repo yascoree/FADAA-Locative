@@ -18,6 +18,7 @@ class NotificationType(int, enum.Enum):
     BAIL = 3
     MANDAT = 4
     DISCUSSION = 5
+    RELANCE = 6
 
 
 class Notification(Base):
@@ -33,6 +34,10 @@ class Notification(Base):
         default=NotificationStatus.NON_LUE,
     )
     type = Column(Enum(NotificationType, name="notification_type"), nullable=True)
+    # Référence libre vers l'entité concernée (id d'échéance, de paiement...) selon
+    # `type`. Sert notamment au scheduler de rappels pour éviter d'alerter deux fois
+    # la même échéance.
+    reference_id = Column(Integer, nullable=True)
     date_creation = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     # Relationships

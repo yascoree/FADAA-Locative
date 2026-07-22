@@ -1,0 +1,519 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { extractErrorMessage } from "@/lib/apiClient";
+import { fetchUsers } from "@/lib/subscriptions";
+import {
+  ACCOUNT_STATUS,
+  ACCOUNT_STATUS_LABELS,
+  createUser,
+  updateUser,
+  deleteUser,
+  activateUser,
+  deactivateUser,
+} from "@/lib/users";
+import { ROLES, ROLE_LABELS } from "@/lib/roles";
+import { useAuth } from "@/context/AuthContext";
+import StatCard from "@/components/StatCard";
+import Modal from "@/components/Modal";
+import ConfirmationDialog from "@/components/ConfirmationDialog";
+import TextField from "@/components/TextField";
+import SelectField from "@/components/SelectField";
+import styles from "../admin.module.css";
+
+function Banner({ banner }) {
+  if (!banner) return null;
+  return (
+    <div className={`${styles.banner} ${banner.type === "success" ? styles.bannerSuccess : styles.bannerError}`}>
+      {banner.message}
+    </div>
+  );
+}
+
+function badgeClass(status) {
+  if (status === ACCOUNT_STATUS.ACTIF) return styles.badgeActive;
+  if (status === ACCOUNT_STATUS.INVITE_EN_ATTENTE) return styles.badgeSuspended;
+  return styles.badgeExpired;
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+  return new Date(value).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+}
+
+const ROLE_OPTIONS = Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label }));
+const STATUS_OPTIONS = Object.entries(ACCOUNT_STATUS_LABELS).map(([value, label]) => ({ value, label }));
+
+const EMPTY_FORM = {
+  nom: "",
+  prenom: "",
+  email: "",
+  role: String(ROLES.PROPRIETAIRE),
+  statut_compte: String(ACCOUNT_STATUS.ACTIF),
+  mot_de_passe: "",
+};
+
+const PAGE_SIZE = 10;
+
+export default function AdminUtilisateursPage() {
+  const { user: currentUser } = useAuth();
+
+  const [users, setUsers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const [formOpen, setFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState("create");
+  const [formTargetId, setFormTargetId] = useState(null);
+  const [formDraft, setFormDraft] = useState(EMPTY_FORM);
+  const [formBusy, setFormBusy] = useState(false);
+  const [formBanner, setFormBanner] = useState(null);
+
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [rowBanner, setRowBanner] = useState(null);
+  const [rowBusyId, setRowBusyId] = useState(null);
+
+  useEffect(() => {
+    async function init() {
+      setIsLoading(true);
+      try {
+        const list = await fetchUsers();
+        setUsers(list);
+      } catch (err) {
+        setLoadError(extractErrorMessage(err));
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    init();
+  }, []);
+
+  const stats = useMemo(() => {
+    const actifs = users.filter((u) => u.statut_compte === ACCOUNT_STATUS.ACTIF).length;
+    const enAttente = users.filter((u) => u.statut_compte === ACCOUNT_STATUS.INVITE_EN_ATTENTE).length;
+    const desactives = users.filter((u) => u.statut_compte === ACCOUNT_STATUS.CREE_SANS_ACCES).length;
+    return { total: users.length, actifs, enAttente, desactives };
+  }, [users]);
+
+  const roleDistribution = useMemo(() => {
+    const dist = Object.entries(ROLE_LABELS).map(([value, label]) => ({
+      role: Number(value),
+      label,
+      count: users.filter((u) => u.role === Number(value)).length,
+    }));
+    const maxCount = Math.max(1, ...dist.map((d) => d.count));
+    return { dist, maxCount };
+  }, [users]);
+
+  const filteredUsers = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return users.filter((u) => {
+      if (term) {
+        const matches = `${u.prenom} ${u.nom}`.toLowerCase().includes(term) || u.email.toLowerCase().includes(term);
+        if (!matches) return false;
+      }
+      if (roleFilter && String(u.role) !== roleFilter) return false;
+      if (statusFilter && String(u.statut_compte) !== statusFilter) return false;
+      return true;
+    });
+  }, [users, search, roleFilter, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedUsers = filteredUsers.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  function openCreate() {
+    setFormMode("create");
+    setFormTargetId(null);
+    setFormDraft(EMPTY_FORM);
+    setFormBanner(null);
+    setFormOpen(true);
+  }
+
+  function openEdit(u) {
+    setFormMode("edit");
+    setFormTargetId(u.id);
+    setFormDraft({
+      nom: u.nom,
+      prenom: u.prenom,
+      email: u.email,
+      role: String(u.role),
+      statut_compte: String(u.statut_compte),
+      mot_de_passe: "",
+    });
+    setFormBanner(null);
+    setFormOpen(true);
+  }
+
+  function closeForm() {
+    if (formBusy) return;
+    setFormOpen(false);
+  }
+
+  async function handleSubmitForm(e) {
+    e.preventDefault();
+    setFormBusy(true);
+    setFormBanner(null);
+    try {
+      if (formMode === "create") {
+        const payload = {
+          nom: formDraft.nom,
+          prenom: formDraft.prenom,
+          email: formDraft.email,
+          role: Number(formDraft.role),
+          statut_compte: Number(formDraft.statut_compte),
+          mot_de_passe: formDraft.mot_de_passe,
+        };
+        const created = await createUser(payload);
+        setUsers((prev) => [...prev, created]);
+      } else {
+        const payload = {
+          nom: formDraft.nom,
+          prenom: formDraft.prenom,
+          email: formDraft.email,
+          role: Number(formDraft.role),
+          statut_compte: Number(formDraft.statut_compte),
+        };
+        if (formDraft.mot_de_passe) payload.mot_de_passe = formDraft.mot_de_passe;
+        const updated = await updateUser(formTargetId, payload);
+        setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+      }
+      setFormOpen(false);
+    } catch (err) {
+      setFormBanner({ type: "error", message: extractErrorMessage(err) });
+    } finally {
+      setFormBusy(false);
+    }
+  }
+
+  async function handleToggleActive(u) {
+    setRowBanner(null);
+    setRowBusyId(u.id);
+    try {
+      const updated =
+        u.statut_compte === ACCOUNT_STATUS.CREE_SANS_ACCES ? await activateUser(u.id) : await deactivateUser(u.id);
+      setUsers((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
+    } catch (err) {
+      setRowBanner({ type: "error", message: extractErrorMessage(err) });
+    } finally {
+      setRowBusyId(null);
+    }
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    try {
+      await deleteUser(deleteTarget.id);
+      setUsers((prev) => prev.filter((u) => u.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      setRowBanner({ type: "error", message: extractErrorMessage(err) });
+      setDeleteTarget(null);
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
+  if (isLoading) {
+    return <p>Chargement...</p>;
+  }
+
+  return (
+    <div>
+      <Banner banner={loadError ? { type: "error", message: loadError } : null} />
+
+      {/* ---- Stats ---- */}
+      <div className={styles.section}>
+        <div className={styles.statsGrid}>
+          <StatCard icon="bi-people-fill" tone="primary" label="Utilisateurs" value={stats.total} />
+          <StatCard icon="bi-check-circle-fill" tone="accent" label="Comptes actifs" value={stats.actifs} />
+          <StatCard icon="bi-hourglass-split" tone="warning" label="Invités en attente" value={stats.enAttente} />
+          <StatCard icon="bi-slash-circle-fill" tone="danger" label="Comptes désactivés" value={stats.desactives} />
+        </div>
+      </div>
+
+      {/* ---- Répartition par rôle ---- */}
+      <div className={styles.section}>
+        <div className={styles.card}>
+          <h2 className={styles.cardTitle}>
+            <i className="bi bi-pie-chart-fill" style={{ color: "var(--primary)" }} />
+            Répartition par rôle
+          </h2>
+          <div className={styles.distribution}>
+            {roleDistribution.dist.map(({ role, label, count }) => (
+              <div className={styles.distributionRow} key={role}>
+                <span className={styles.distributionName}>{label}</span>
+                <div className={styles.distributionTrack}>
+                  <div
+                    className={styles.distributionFill}
+                    style={{ width: `${(count / roleDistribution.maxCount) * 100}%` }}
+                  />
+                </div>
+                <span className={styles.distributionCount}>{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ---- Table des utilisateurs ---- */}
+      <div className={styles.section}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem" }}>
+          <div>
+            <h2 className={styles.sectionTitle}>
+              <i className="bi bi-table" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
+              Utilisateurs
+            </h2>
+            <p className={styles.sectionSubtitle}>
+              {filteredUsers.length} utilisateur(s) affiché(s) sur {users.length}.
+            </p>
+          </div>
+          <button type="button" className={styles.btn} onClick={openCreate}>
+            <i className="bi bi-plus-lg" />
+            Nouvel utilisateur
+          </button>
+        </div>
+
+        <Banner banner={rowBanner} />
+
+        <div className={styles.filtersRow}>
+          <input
+            type="text"
+            placeholder="Rechercher par nom ou e-mail..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
+          />
+          <select
+            value={roleFilter}
+            onChange={(e) => {
+              setRoleFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="">Tous les rôles</option>
+            {ROLE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="">Tous les statuts</option>
+            {STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Utilisateur</th>
+                <th>Email</th>
+                <th>Rôle</th>
+                <th>Statut</th>
+                <th>Créé le</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredUsers.length === 0 && (
+                <tr>
+                  <td colSpan={6} className={styles.empty}>
+                    Aucun utilisateur ne correspond à ces critères.
+                  </td>
+                </tr>
+              )}
+              {paginatedUsers.map((u) => {
+                const initials = `${u.prenom?.[0] || ""}${u.nom?.[0] || ""}`.toUpperCase();
+                const isSelf = currentUser?.id === u.id;
+                const isDisabled = u.statut_compte === ACCOUNT_STATUS.CREE_SANS_ACCES;
+                const isBusy = rowBusyId === u.id;
+                return (
+                  <tr key={u.id}>
+                    <td>
+                      <div className={styles.userCell}>
+                        <span className={styles.avatarSm}>{initials || "?"}</span>
+                        <span className={styles.userName}>
+                          {u.prenom} {u.nom}
+                        </span>
+                      </div>
+                    </td>
+                    <td>{u.email}</td>
+                    <td>{ROLE_LABELS[u.role]}</td>
+                    <td>
+                      <span className={`${styles.badge} ${badgeClass(u.statut_compte)}`}>
+                        {ACCOUNT_STATUS_LABELS[u.statut_compte]}
+                      </span>
+                    </td>
+                    <td>{formatDate(u.date_creation)}</td>
+                    <td>
+                      <div className={styles.tableActions}>
+                        <button
+                          type="button"
+                          className={styles.iconBtn}
+                          onClick={() => openEdit(u)}
+                          title="Modifier"
+                        >
+                          <i className="bi bi-pencil" />
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.iconBtn}
+                          onClick={() => handleToggleActive(u)}
+                          disabled={isSelf || isBusy}
+                          title={isSelf ? "Impossible sur son propre compte" : isDisabled ? "Activer" : "Désactiver"}
+                        >
+                          <i className={`bi ${isDisabled ? "bi-play-circle" : "bi-pause-circle"}`} />
+                        </button>
+                        <button
+                          type="button"
+                          className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                          onClick={() => setDeleteTarget(u)}
+                          disabled={isSelf}
+                          title={isSelf ? "Impossible sur son propre compte" : "Supprimer"}
+                        >
+                          <i className="bi bi-trash" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          {filteredUsers.length > 0 && (
+            <div className={styles.paginationRow}>
+              <span>
+                Page {safePage} / {totalPages} · {filteredUsers.length} utilisateur(s)
+              </span>
+              <div className={styles.paginationButtons}>
+                <button
+                  type="button"
+                  className={styles.btnOutline}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage <= 1}
+                >
+                  <i className="bi bi-chevron-left" />
+                  Précédent
+                </button>
+                <button
+                  type="button"
+                  className={styles.btnOutline}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage >= totalPages}
+                >
+                  Suivant
+                  <i className="bi bi-chevron-right" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ---- Créer / modifier un utilisateur ---- */}
+      <Modal
+        isOpen={formOpen}
+        onClose={closeForm}
+        title={formMode === "create" ? "Nouvel utilisateur" : "Modifier l'utilisateur"}
+      >
+        <form onSubmit={handleSubmitForm}>
+          <Banner banner={formBanner} />
+          <TextField
+            label="Prénom"
+            name="prenom"
+            value={formDraft.prenom}
+            onChange={(e) => setFormDraft((d) => ({ ...d, prenom: e.target.value }))}
+            required
+          />
+          <TextField
+            label="Nom"
+            name="nom"
+            value={formDraft.nom}
+            onChange={(e) => setFormDraft((d) => ({ ...d, nom: e.target.value }))}
+            required
+          />
+          <TextField
+            label="Email"
+            name="email"
+            type="email"
+            value={formDraft.email}
+            onChange={(e) => setFormDraft((d) => ({ ...d, email: e.target.value }))}
+            required
+          />
+          <SelectField
+            label="Rôle"
+            name="role"
+            options={ROLE_OPTIONS}
+            value={formDraft.role}
+            onChange={(e) => setFormDraft((d) => ({ ...d, role: e.target.value }))}
+          />
+          <SelectField
+            label="Statut du compte"
+            name="statut_compte"
+            options={STATUS_OPTIONS}
+            value={formDraft.statut_compte}
+            onChange={(e) => setFormDraft((d) => ({ ...d, statut_compte: e.target.value }))}
+          />
+          <TextField
+            label={formMode === "create" ? "Mot de passe" : "Nouveau mot de passe (optionnel)"}
+            name="mot_de_passe"
+            type="password"
+            value={formDraft.mot_de_passe}
+            onChange={(e) => setFormDraft((d) => ({ ...d, mot_de_passe: e.target.value }))}
+            hint="8 caractères minimum"
+            required={formMode === "create"}
+            minLength={8}
+          />
+          <div className={styles.editActions}>
+            <button type="submit" className={styles.btn} disabled={formBusy}>
+              <i className="bi bi-check-lg" />
+              {formBusy ? "Enregistrement..." : "Enregistrer"}
+            </button>
+            <button type="button" className={styles.btnOutline} onClick={closeForm} disabled={formBusy}>
+              <i className="bi bi-x-lg" />
+              Annuler
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ---- Confirmation de suppression ---- */}
+      <ConfirmationDialog
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Supprimer l'utilisateur"
+        message={
+          deleteTarget
+            ? `Supprimer définitivement ${deleteTarget.prenom} ${deleteTarget.nom} (${deleteTarget.email}) ? Cette action est irréversible.`
+            : ""
+        }
+        confirmLabel="Supprimer"
+        danger
+        isBusy={deleteBusy}
+      />
+    </div>
+  );
+}

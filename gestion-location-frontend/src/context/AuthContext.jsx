@@ -67,8 +67,13 @@ export function AuthProvider({ children }) {
     setAuthToken(null);
   }, []);
 
+  const refreshUser = useCallback(() => {
+    if (!token) return Promise.resolve(null);
+    return loadUser(token);
+  }, [token, loadUser]);
+
   return (
-    <AuthContext.Provider value={{ token, user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ token, user, isLoading, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
