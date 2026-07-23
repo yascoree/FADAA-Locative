@@ -97,6 +97,20 @@ export default function AdminMessageriePage() {
   }, []);
 
   useEffect(() => {
+    // Rafraîchit le fil en tâche de fond pour afficher les messages reçus sans
+    // avoir à recharger la page (le backend ne pousse pas les nouveaux messages).
+    const interval = setInterval(async () => {
+      try {
+        const discussions = await fetchDiscussions();
+        setMessages(discussions);
+      } catch {
+        // Silencieux : un échec de polling ne doit pas perturber la conversation en cours.
+      }
+    }, 6000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
     const el = tabRefs.current[activeTab];
     if (!el) return;
     setTabIndicator({ width: el.offsetWidth, left: el.offsetLeft });

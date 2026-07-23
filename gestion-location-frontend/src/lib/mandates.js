@@ -26,10 +26,11 @@ export async function lookupLocataireByEmail(email) {
   return data;
 }
 
-export async function createMandate({ gestionnaireId, proprietaireId }) {
+export async function createMandate({ gestionnaireId, proprietaireId, bienId }) {
   const { data } = await apiClient.post("/mandates/", {
     gestionnaire_id: gestionnaireId,
     proprietaire_id: proprietaireId,
+    bien_id: bienId || null,
     statut: MANDAT_STATUS.ACTIF,
     date_debut: new Date().toISOString().slice(0, 10),
   });
@@ -72,15 +73,20 @@ const RESOURCE_LABELS = {
   PAYMENT: "Paiements",
 };
 
+const ACTION_ORDER = { VIEW: 0, CREATE: 1, UPDATE: 2, DELETE: 3 };
+
 export function groupPermissionCatalog(catalog) {
   const groups = new Map();
   catalog.forEach((permission) => {
-    const [, ...rest] = permission.code.split("_");
+    const [action, ...rest] = permission.code.split("_");
     const resource = rest.join("_");
     if (!groups.has(resource)) {
       groups.set(resource, { resource, label: RESOURCE_LABELS[resource] || resource, permissions: [] });
     }
-    groups.get(resource).permissions.push(permission);
+    groups.get(resource).permissions.push({ ...permission, _action: action });
+  });
+  groups.forEach((group) => {
+    group.permissions.sort((a, b) => (ACTION_ORDER[a._action] ?? 9) - (ACTION_ORDER[b._action] ?? 9));
   });
   return Array.from(groups.values());
 }

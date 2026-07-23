@@ -117,7 +117,7 @@ export default function ProprietaireBiensPage() {
   function openCreate() {
     setFormMode("create");
     setFormTargetId(null);
-    setFormDraft(EMPTY_FORM);
+    setFormDraft({ ...EMPTY_FORM, categorie_id: categories[0] ? String(categories[0].id) : "" });
     setFormBanner(null);
     setStagedFiles([]);
     setEditingPhotos([]);

@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { updateUser } from "@/lib/users";
 import { fetchProfile, createProfile, updateProfile } from "@/lib/profile";
 import TextField from "@/components/TextField";
+import PasswordChangeCard from "@/components/PasswordChangeCard";
 import styles from "../admin.module.css";
 
 function Banner({ banner }) {
@@ -32,9 +33,7 @@ export default function AdminParametresPage() {
   const [accountBusy, setAccountBusy] = useState(false);
   const [accountBanner, setAccountBanner] = useState(null);
 
-  const [passwordDraft, setPasswordDraft] = useState({ mot_de_passe: "", confirmation: "" });
-  const [passwordBusy, setPasswordBusy] = useState(false);
-  const [passwordBanner, setPasswordBanner] = useState(null);
+  const [passwordSuccessBanner, setPasswordSuccessBanner] = useState(null);
 
   useEffect(() => {
     if (!user) return;
@@ -103,25 +102,6 @@ export default function AdminParametresPage() {
       setAccountBanner({ type: "error", message: extractErrorMessage(err) });
     } finally {
       setAccountBusy(false);
-    }
-  }
-
-  async function handleSubmitPassword(e) {
-    e.preventDefault();
-    setPasswordBanner(null);
-    if (passwordDraft.mot_de_passe !== passwordDraft.confirmation) {
-      setPasswordBanner({ type: "error", message: "Les deux mots de passe ne correspondent pas." });
-      return;
-    }
-    setPasswordBusy(true);
-    try {
-      await updateUser(user.id, { mot_de_passe: passwordDraft.mot_de_passe });
-      setPasswordDraft({ mot_de_passe: "", confirmation: "" });
-      setPasswordBanner({ type: "success", message: "Mot de passe mis à jour." });
-    } catch (err) {
-      setPasswordBanner({ type: "error", message: extractErrorMessage(err) });
-    } finally {
-      setPasswordBusy(false);
     }
   }
 
@@ -228,42 +208,12 @@ export default function AdminParametresPage() {
       </div>
 
       {/* ---- Sécurité ---- */}
-      <div className={styles.section} style={{ marginBottom: 0 }}>
-        <div className={styles.card}>
-          <h3 className={styles.cardTitle}>
-            <i className="bi bi-shield-lock-fill" style={{ color: "var(--primary)" }} />
-            Sécurité
-          </h3>
-          <form onSubmit={handleSubmitPassword}>
-            <Banner banner={passwordBanner} />
-            <TextField
-              label="Nouveau mot de passe"
-              name="mot_de_passe"
-              type="password"
-              value={passwordDraft.mot_de_passe}
-              onChange={(e) => setPasswordDraft((d) => ({ ...d, mot_de_passe: e.target.value }))}
-              hint="8 caractères minimum"
-              minLength={8}
-              required
-            />
-            <TextField
-              label="Confirmer le mot de passe"
-              name="confirmation"
-              type="password"
-              value={passwordDraft.confirmation}
-              onChange={(e) => setPasswordDraft((d) => ({ ...d, confirmation: e.target.value }))}
-              minLength={8}
-              required
-            />
-            <div className={styles.editActions} style={{ marginTop: "1rem" }}>
-              <button type="submit" className={styles.btn} disabled={passwordBusy}>
-                <i className="bi bi-check-lg" />
-                {passwordBusy ? "Enregistrement..." : "Mettre à jour le mot de passe"}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+      <Banner banner={passwordSuccessBanner} />
+      <PasswordChangeCard
+        styles={styles}
+        userId={user.id}
+        onSuccess={() => setPasswordSuccessBanner({ type: "success", message: "Mot de passe mis à jour." })}
+      />
     </div>
   );
 }

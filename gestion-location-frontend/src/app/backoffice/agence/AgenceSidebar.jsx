@@ -17,6 +17,14 @@ const NAV_SECTIONS = [
     ],
   },
   {
+    label: "Finances",
+    items: [
+      { href: "/backoffice/agence/echeances", label: "Échéances", icon: "bi-calendar-check" },
+      { href: "/backoffice/agence/paiements", label: "Paiements", icon: "bi-receipt" },
+      { href: "/backoffice/agence/quittances", label: "Quittances", icon: "bi-file-earmark-pdf" },
+    ],
+  },
+  {
     label: "Échanges",
     items: [
       { href: "/backoffice/agence/discussions", label: "Discussions", icon: "bi-chat-dots" },

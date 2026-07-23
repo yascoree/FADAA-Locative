@@ -12,7 +12,7 @@ export default function NotificationBell({ href }) {
 
   useEffect(() => {
     let cancelled = false;
-    async function init() {
+    async function load() {
       try {
         const list = await fetchNotifications();
         if (!cancelled) {
@@ -22,9 +22,13 @@ export default function NotificationBell({ href }) {
         // Le compteur est un simple confort d'UX : une erreur ne doit jamais casser le topbar.
       }
     }
-    init();
+    load();
+    // Poll périodiquement pour que le badge (nouveaux messages, échéances...) se
+    // mette à jour sans que l'utilisateur ait à recharger la page.
+    const interval = setInterval(load, 15000);
     return () => {
       cancelled = true;
+      clearInterval(interval);
     };
   }, []);
 

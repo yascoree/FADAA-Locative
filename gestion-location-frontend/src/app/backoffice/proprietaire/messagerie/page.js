@@ -111,6 +111,20 @@ export default function ProprietaireMessageriePage() {
     init();
   }, []);
 
+  useEffect(() => {
+    // Rafraîchit le fil en tâche de fond pour afficher les messages reçus sans
+    // avoir à recharger la page (le backend ne pousse pas les nouveaux messages).
+    const interval = setInterval(async () => {
+      try {
+        const discussions = await fetchDiscussions();
+        setMessages(discussions);
+      } catch {
+        // Silencieux : un échec de polling ne doit pas perturber la conversation en cours.
+      }
+    }, 6000);
+    return () => clearInterval(interval);
+  }, []);
+
   const latestReclamation = reclamations[0] || null;
   const adminUnlocked = reclamations.some((r) => r.statut === RECLAMATION_STATUS.ACCEPTEE);
   const hasPendingReclamation = reclamations.some((r) => r.statut === RECLAMATION_STATUS.EN_ATTENTE);

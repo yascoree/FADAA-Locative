@@ -16,7 +16,7 @@ import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
-import styles from "../proprietaire.module.css";
+import styles from "../agence.module.css";
 
 function Banner({ banner }) {
   if (!banner) return null;
@@ -51,7 +51,7 @@ function isOverdue(echeance) {
 const STATUS_OPTIONS = Object.entries(ECHEANCE_STATUS_LABELS).map(([value, label]) => ({ value, label }));
 const PAGE_SIZE = 10;
 
-export default function ProprietaireEcheancesPage() {
+export default function AgenceEcheancesPage() {
   const [echeances, setEcheances] = useState([]);
   const [baux, setBaux] = useState([]);
   const [biens, setBiens] = useState([]);
@@ -220,8 +220,8 @@ export default function ProprietaireEcheancesPage() {
               Échéances
             </h2>
             <p className={styles.sectionSubtitle}>
-              {filteredEcheances.length} échéance(s) affichée(s) sur {echeances.length}. Générées automatiquement à la
-              création de chaque bail.
+              {filteredEcheances.length} échéance(s) affichée(s) sur {echeances.length}, tous propriétaires confondus.
+              Générées automatiquement à la création de chaque bail.
             </p>
           </div>
         </div>

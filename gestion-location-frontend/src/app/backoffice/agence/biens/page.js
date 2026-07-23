@@ -128,7 +128,11 @@ export default function AgenceBiensPage() {
   function openCreate() {
     setFormMode("create");
     setFormTargetId(null);
-    setFormDraft(EMPTY_FORM);
+    setFormDraft({
+      ...EMPTY_FORM,
+      proprietaire_id: proprietaires[0] ? String(proprietaires[0].id) : "",
+      categorie_id: categories[0] ? String(categories[0].id) : "",
+    });
     setFormBanner(null);
     setStagedFiles([]);
     setEditingPhotos([]);

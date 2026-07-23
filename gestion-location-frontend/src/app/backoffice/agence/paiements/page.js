@@ -20,7 +20,7 @@ import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
-import styles from "../proprietaire.module.css";
+import styles from "../agence.module.css";
 
 function Banner({ banner }) {
   if (!banner) return null;
@@ -51,7 +51,7 @@ const EMPTY_CREATE_FORM = {
   mode_paiement: String(MODE_PAIEMENT.VIREMENT),
 };
 
-export default function ProprietairePaiementsPage() {
+export default function AgencePaiementsPage() {
   const [paiements, setPaiements] = useState([]);
   const [echeances, setEcheances] = useState([]);
   const [biens, setBiens] = useState([]);
@@ -341,7 +341,7 @@ export default function ProprietairePaiementsPage() {
               Paiements
             </h2>
             <p className={styles.sectionSubtitle}>
-              {filteredPaiements.length} paiement(s) affiché(s) sur {paiements.length}.
+              {filteredPaiements.length} paiement(s) affiché(s) sur {paiements.length}, tous propriétaires confondus.
             </p>
           </div>
           <button
@@ -493,7 +493,7 @@ export default function ProprietairePaiementsPage() {
             options={locatairesWithEcheances.map((l) => ({ value: l.id, label: `${l.prenom} ${l.nom} (${l.email})` }))}
             value={createDraft.locataire_id}
             onChange={(e) => handleLocataireChange(e.target.value)}
-            hint="Le propriétaire peut enregistrer un paiement pour le compte de son locataire."
+            hint="Enregistrez un paiement pour le compte du locataire, pour les biens que vous gérez."
             required
           />
           {createEcheanceOptions.length === 0 ? (

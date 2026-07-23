@@ -117,6 +117,10 @@ export async function updateEcheance(echeanceId, payload) {
   return data;
 }
 
+export async function deleteEcheance(echeanceId) {
+  await apiClient.delete(`/due-dates/${echeanceId}`);
+}
+
 export async function fetchPaiements() {
   const { data } = await apiClient.get("/payments/");
   return data;
@@ -143,6 +147,10 @@ export async function createPaiement({ echeanceId, montant, modePaiement }) {
 export async function updatePaiement(paiementId, payload) {
   const { data } = await apiClient.put(`/payments/${paiementId}`, payload);
   return data;
+}
+
+export async function deletePaiement(paiementId) {
+  await apiClient.delete(`/payments/${paiementId}`);
 }
 
 export async function fetchQuittances() {
