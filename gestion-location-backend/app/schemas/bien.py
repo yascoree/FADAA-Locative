@@ -6,6 +6,16 @@ from app.models.bien import BienStatus
 from app.schemas.bien_photo import BienPhotoRead
 
 
+class BienMini(BaseModel):
+    """Identité minimale d'un bien, pour l'afficher en tant que portée d'un
+    Mandat (voir MandatRead) sans exposer toute la ressource /properties/{id}."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    designation: Optional[str] = None
+
+
 class BienBase(BaseModel):
     proprietaire_id: int = Field(gt=0)
     categorie_id: int = Field(gt=0)

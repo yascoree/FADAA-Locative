@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Date, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, Date, ForeignKey, Integer, String, Text, DateTime
 from sqlalchemy.orm import relationship
+from datetime import datetime
 
 from app.database import Base
 
@@ -14,6 +15,9 @@ class Profil(Base):
     photo = Column(String(255), nullable=True)
     date_naissance = Column(Date, nullable=True)
     piece_identite = Column(String(255), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
     utilisateur = relationship("Utilisateur", back_populates="profil")

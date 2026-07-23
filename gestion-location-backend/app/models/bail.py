@@ -1,6 +1,8 @@
 import enum
 
-from sqlalchemy import DECIMAL, Column, Date, Enum, ForeignKey, Integer
+from datetime import datetime
+
+from sqlalchemy import DECIMAL, Column, Date, Enum, ForeignKey, Integer, DateTime
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -25,6 +27,9 @@ class Bail(Base):
     charges = Column(DECIMAL(10, 2), nullable=True)
     depot = Column(DECIMAL(10, 2), nullable=True)
     statut = Column(Enum(BailStatus, name="bail_status"), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
     lot = relationship("Lot", back_populates="baux")

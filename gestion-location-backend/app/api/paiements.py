@@ -1,36 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import can_view_proprietaire, get_current_user, has_permission, managed_proprietaire_ids
+from app.api.deps import get_current_user
 from app.database import get_db
-from app.models.bail import Bail
-from app.models.bien import Bien
-from app.models.echeance import Echeance
-from app.models.lot import Lot
-from app.models.notification import NotificationType
-from app.models.paiement import Paiement
-from app.models.quittance import Quittance
-from app.models.utilisateur import Utilisateur, UtilisateurRole
+from app.models.utilisateur import Utilisateur
 from app.schemas.paiement import PaiementCreate, PaiementRead, PaiementUpdate
-from app.services.push_service import send_push_to_user
-from app.services.receipt_service import generate_receipt_pdf
+from app.services import paiement_service
+from app.services.exceptions import Forbidden, NotFound
 
 router = APIRouter(prefix="/payments", tags=["payments"])
-
-
-def _chain_for_paiement(db: Session, echeance_id: int):
-    echeance = db.get(Echeance, echeance_id)
-    bail = db.get(Bail, echeance.bail_id)
-    lot = db.get(Lot, bail.lot_id)
-    bien = db.get(Bien, lot.bien_id)
-    return bail, bien
-
-
-def _can_view_paiement(db: Session, user: Utilisateur, paiement: Paiement) -> bool:
-    bail, bien = _chain_for_paiement(db, paiement.echeance_id)
-    if user.role == UtilisateurRole.LOCATAIRE and user.id == bail.locataire_id:
-        return True
-    return bool(bien) and can_view_proprietaire(db, user, bien.proprietaire_id)
 
 
 @router.get("/", response_model=list[PaiementRead])
@@ -40,33 +18,7 @@ def list_paiements(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    query = db.query(Paiement)
-    if current_user.role == UtilisateurRole.PROPRIETAIRE:
-        query = (
-            query.join(Echeance, Echeance.id == Paiement.echeance_id)
-            .join(Bail, Bail.id == Echeance.bail_id)
-            .join(Lot, Lot.id == Bail.lot_id)
-            .join(Bien, Bien.id == Lot.bien_id)
-            .filter(Bien.proprietaire_id == current_user.id)
-        )
-    elif current_user.role == UtilisateurRole.GESTIONNAIRE:
-        ids = managed_proprietaire_ids(db, current_user.id)
-        if not ids:
-            return []
-        query = (
-            query.join(Echeance, Echeance.id == Paiement.echeance_id)
-            .join(Bail, Bail.id == Echeance.bail_id)
-            .join(Lot, Lot.id == Bail.lot_id)
-            .join(Bien, Bien.id == Lot.bien_id)
-            .filter(Bien.proprietaire_id.in_(ids))
-        )
-    elif current_user.role == UtilisateurRole.LOCATAIRE:
-        query = (
-            query.join(Echeance, Echeance.id == Paiement.echeance_id)
-            .join(Bail, Bail.id == Echeance.bail_id)
-            .filter(Bail.locataire_id == current_user.id)
-        )
-    return query.offset(skip).limit(limit).all()
+    return paiement_service.list_paiements(db, current_user, skip, limit)
 
 
 @router.post("/", response_model=PaiementRead, status_code=status.HTTP_201_CREATED)
@@ -75,38 +27,12 @@ def create_paiement(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    bail, bien = _chain_for_paiement(db, paiement_in.echeance_id)
-    if not bail:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Due date not found")
-
-    is_tenant = current_user.role == UtilisateurRole.LOCATAIRE and current_user.id == bail.locataire_id
-    if not is_tenant and not has_permission(db, current_user, bien.proprietaire_id, "CREATE_PAYMENT"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to record this payment")
-
-    paiement = Paiement(**paiement_in.model_dump())
-    db.add(paiement)
-    db.commit()
-    db.refresh(paiement)
-
-    # Une quittance est générée automatiquement pour chaque paiement, PDF inclus.
-    quittance = Quittance(paiement_id=paiement.id)
-    db.add(quittance)
-    db.commit()
-    db.refresh(quittance)
-
-    quittance.fichier_pdf = generate_receipt_pdf(db, quittance)
-    db.commit()
-
-    send_push_to_user(
-        db,
-        user_id=bail.locataire_id,
-        title="Quittance émise",
-        body=f"Votre quittance de {paiement.montant} MAD a été générée.",
-        notif_type=NotificationType.PAIEMENT,
-        reference_id=quittance.id,
-    )
-
-    return paiement
+    try:
+        return paiement_service.create_paiement(db, current_user, paiement_in)
+    except NotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except Forbidden as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
 
 
 @router.get("/{paiement_id}", response_model=PaiementRead)
@@ -115,12 +41,12 @@ def get_paiement(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    paiement = db.get(Paiement, paiement_id)
-    if not paiement:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
-    if not _can_view_paiement(db, current_user, paiement):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to access this payment")
-    return paiement
+    try:
+        return paiement_service.get_paiement(db, current_user, paiement_id)
+    except NotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except Forbidden as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
 
 
 @router.put("/{paiement_id}", response_model=PaiementRead)
@@ -130,16 +56,23 @@ def update_paiement(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    paiement = db.get(Paiement, paiement_id)
-    if not paiement:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
-    _, bien = _chain_for_paiement(db, paiement.echeance_id)
-    if not has_permission(db, current_user, bien.proprietaire_id, "UPDATE_PAYMENT"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to modify this payment")
+    try:
+        return paiement_service.update_paiement(db, current_user, paiement_id, paiement_in)
+    except NotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except Forbidden as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
 
-    for field, value in paiement_in.model_dump(exclude_unset=True).items():
-        setattr(paiement, field, value)
 
-    db.commit()
-    db.refresh(paiement)
-    return paiement
+@router.delete("/{paiement_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_paiement(
+    paiement_id: int,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(get_current_user),
+):
+    try:
+        paiement_service.delete_paiement(db, current_user, paiement_id)
+    except NotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except Forbidden as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))

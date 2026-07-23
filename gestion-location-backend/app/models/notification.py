@@ -19,6 +19,7 @@ class NotificationType(int, enum.Enum):
     MANDAT = 4
     DISCUSSION = 5
     RELANCE = 6
+    GESTION = 7
 
 
 class Notification(Base):
@@ -39,6 +40,9 @@ class Notification(Base):
     # la même échéance.
     reference_id = Column(Integer, nullable=True)
     date_creation = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
     user = relationship("Utilisateur", back_populates="notifications")

@@ -13,6 +13,9 @@ class Quittance(Base):
     paiement_id = Column(Integer, ForeignKey("paiements.id"), unique=True, nullable=False)
     fichier_pdf = Column(String(255), nullable=True)
     date_generation = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
     paiement = relationship("Paiement", back_populates="quittance")

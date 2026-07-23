@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import decode_access_token
 from app.database import get_db
+from app.models.bien import Bien
 from app.models.manager_permission import ManagerPermission
 from app.models.mandat import Mandat, MandatStatus
 from app.models.permission import Permission
@@ -67,24 +68,59 @@ def managed_proprietaire_ids(db: Session, gestionnaire_id: int) -> list[int]:
     return [row[0] for row in rows]
 
 
-def can_view_proprietaire(db: Session, user: Utilisateur, proprietaire_id: int) -> bool:
-    """Read access: admin, the proprietaire themself, or any gestionnaire with an
-    active Mandat with that proprietaire. Unlike write actions, viewing is never
-    gated behind an individual permission grant — it comes with the mandate."""
+def gestionnaire_ids_for_proprietaire(db: Session, proprietaire_id: int) -> list[int]:
+    """Ids of gestionnaires who have an active Mandat with this proprietaire —
+    symmetric counterpart of managed_proprietaire_ids, used to fan out
+    notifications (paiement/échéance/relance) to whoever manages the property."""
+    rows = (
+        db.query(Mandat.gestionnaire_id)
+        .filter(Mandat.proprietaire_id == proprietaire_id, Mandat.statut == MandatStatus.ACTIF)
+        .all()
+    )
+    return [row[0] for row in rows]
+
+
+def proprietaire_ids_with_permission(db: Session, gestionnaire_id: int, code: str) -> list[int]:
+    """Ids of proprietaires for whom this gestionnaire holds an active, PORTFOLIO-WIDE
+    Mandat (bien_id IS NULL) granting this code. A mandate scoped to a single bien does
+    NOT count here — it grants no authority over the rest of that proprietaire's
+    portfolio. Used for actions that aren't tied to an existing bien (e.g. creating a
+    brand new property)."""
+    rows = (
+        db.query(Mandat.proprietaire_id)
+        .join(ManagerPermission, ManagerPermission.mandat_id == Mandat.id)
+        .join(Permission, Permission.id == ManagerPermission.permission_id)
+        .filter(
+            Mandat.gestionnaire_id == gestionnaire_id,
+            Mandat.statut == MandatStatus.ACTIF,
+            Mandat.bien_id.is_(None),
+            Permission.code == code,
+        )
+        .distinct()
+        .all()
+    )
+    return [row[0] for row in rows]
+
+
+def has_permission(db: Session, user: Utilisateur, proprietaire_id: int, code: str) -> bool:
+    """Portfolio-wide check: true for an admin, the proprietaire themself, or a
+    gestionnaire whose active, portfolio-wide Mandat was granted this code. Use
+    has_permission_for_bien for anything scoped to one existing bien."""
     if user.role == UtilisateurRole.ADMINISTRATEUR:
         return True
     if user.role == UtilisateurRole.PROPRIETAIRE:
         return user.id == proprietaire_id
     if user.role == UtilisateurRole.GESTIONNAIRE:
-        return proprietaire_id in managed_proprietaire_ids(db, user.id)
+        return proprietaire_id in proprietaire_ids_with_permission(db, user.id, code)
     return False
 
 
-def proprietaire_ids_with_permission(db: Session, gestionnaire_id: int, code: str) -> list[int]:
-    """Ids of proprietaires for whom this gestionnaire holds an active Mandat that
-    was granted the given permission code (see app.models.permission)."""
+def bien_ids_with_permission(db: Session, gestionnaire_id: int, code: str) -> list[int]:
+    """Ids of biens this gestionnaire can act on with this permission — via a
+    portfolio-wide Mandat (covers every bien of that proprietaire) or a Mandat
+    scoped to that one bien specifically."""
     rows = (
-        db.query(Mandat.proprietaire_id)
+        db.query(Mandat.bien_id, Mandat.proprietaire_id)
         .join(ManagerPermission, ManagerPermission.mandat_id == Mandat.id)
         .join(Permission, Permission.id == ManagerPermission.permission_id)
         .filter(
@@ -95,16 +131,31 @@ def proprietaire_ids_with_permission(db: Session, gestionnaire_id: int, code: st
         .distinct()
         .all()
     )
-    return [row[0] for row in rows]
+    bien_ids = set()
+    blanket_proprietaire_ids = set()
+    for bien_id, proprietaire_id in rows:
+        if bien_id is None:
+            blanket_proprietaire_ids.add(proprietaire_id)
+        else:
+            bien_ids.add(bien_id)
+    if blanket_proprietaire_ids:
+        extra = (
+            db.query(Bien.id)
+            .filter(Bien.proprietaire_id.in_(blanket_proprietaire_ids), Bien.deleted_at.is_(None))
+            .all()
+        )
+        bien_ids.update(row[0] for row in extra)
+    return list(bien_ids)
 
 
-def has_permission(db: Session, user: Utilisateur, proprietaire_id: int, code: str) -> bool:
-    """True for an admin, the proprietaire themself, or a gestionnaire whose active
-    Mandat with that proprietaire was explicitly granted this permission code."""
+def has_permission_for_bien(db: Session, user: Utilisateur, bien: Bien, code: str) -> bool:
+    """Read/write access to one specific, already-existing bien: an admin, the
+    proprietaire themself, or a gestionnaire whose active Mandat (portfolio-wide or
+    scoped to this exact bien) was granted this code."""
     if user.role == UtilisateurRole.ADMINISTRATEUR:
         return True
     if user.role == UtilisateurRole.PROPRIETAIRE:
-        return user.id == proprietaire_id
+        return user.id == bien.proprietaire_id
     if user.role == UtilisateurRole.GESTIONNAIRE:
-        return proprietaire_id in proprietaire_ids_with_permission(db, user.id, code)
+        return bien.id in bien_ids_with_permission(db, user.id, code)
     return False

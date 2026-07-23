@@ -23,9 +23,19 @@ class Paiement(Base):
     montant = Column(DECIMAL(10, 2), nullable=True)
     date_paiement = Column(DateTime, nullable=False, default=datetime.utcnow)
     mode_paiement = Column(Enum(ModePaiement, name="mode_paiement"), nullable=True)
+    encaisse_par = Column(Integer, ForeignKey("utilisateurs.id"), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
     echeance = relationship("Echeance", back_populates="paiements")
     quittance = relationship(
         "Quittance", back_populates="paiement", uselist=False, cascade="all, delete-orphan"
+    )
+
+    encaisseur = relationship(
+    "Utilisateur",
+    back_populates="paiements",
+    foreign_keys=[encaisse_par]
     )

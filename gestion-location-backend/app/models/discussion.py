@@ -17,6 +17,9 @@ class Discussion(Base):
     message = Column(Text, nullable=False)
     date_sent = Column(DateTime, nullable=False, default=datetime.utcnow)
     pdf = Column(String(255), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
     user = relationship("Utilisateur", back_populates="discussions", foreign_keys=[user_id])

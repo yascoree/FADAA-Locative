@@ -4,12 +4,16 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.mandat import MandatStatus
+from app.schemas.bien import BienMini
 from app.schemas.utilisateur import UtilisateurMini
 
 
 class MandatBase(BaseModel):
     gestionnaire_id: int = Field(gt=0)
     proprietaire_id: int = Field(gt=0)
+    # None = mandat sur tous les biens du propriétaire ; un id précis restreint le
+    # mandat à ce seul bien.
+    bien_id: Optional[int] = Field(default=None, gt=0)
     date_debut: Optional[date] = None
     statut: Optional[MandatStatus] = None
 
@@ -35,3 +39,4 @@ class MandatRead(MandatBase):
     updated_at: datetime
     gestionnaire: Optional[UtilisateurMini] = None
     proprietaire: Optional[UtilisateurMini] = None
+    bien: Optional[BienMini] = None

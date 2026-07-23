@@ -35,6 +35,9 @@ class Utilisateur(Base):
         Enum(StatutCompte, name="statut_compte"), nullable=False, default=StatutCompte.ACTIF
     )
     cree_par_id = Column(Integer, ForeignKey("utilisateurs.id"), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
     profil = relationship(
@@ -48,8 +51,29 @@ class Utilisateur(Base):
     mandats_proprietaire = relationship(
         "Mandat", back_populates="proprietaire", foreign_keys="Mandat.proprietaire_id"
     )
-    discussions = relationship("Discussion", back_populates="user", foreign_keys="Discussion.user_id")
+    discussions = relationship(
+    "Discussion",
+    foreign_keys="Discussion.user_id",
+    back_populates="user"
+)
+
+    received_discussions = relationship(
+        "Discussion",
+        foreign_keys="Discussion.destinataire_id",
+        back_populates="destinataire"
+    )
     avis = relationship("Avis", back_populates="user")
     notifications = relationship("Notification", back_populates="user")
     cree_par = relationship("Utilisateur", remote_side=[id], back_populates="utilisateurs_crees")
     utilisateurs_crees = relationship("Utilisateur", back_populates="cree_par")
+
+    paiements = relationship(
+        "Paiement",
+        back_populates="encaisseur",
+        foreign_keys="Paiement.encaisse_par"
+    )
+
+    historiques = relationship(
+        "Historique",
+        back_populates="utilisateur"
+    )

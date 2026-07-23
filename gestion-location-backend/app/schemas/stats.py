@@ -70,8 +70,8 @@ class GestionnaireDashboardStats(BaseModel):
     echeances_en_retard: int
     montant_en_retard: float
     revenu_mois: float
-    lots_by_status: list[StatusCount]
-    baux_by_status: list[StatusCount]
+    lots_by_status: list[StatusCount] = []
+    baux_by_status: list[StatusCount] = []
 
 
 class LocataireDashboardStats(BaseModel):
