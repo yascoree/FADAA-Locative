@@ -15,10 +15,12 @@ const NAV_SECTIONS = [
     ],
   },
   {
-    label: "Abonnements",
+    label: "Plateforme",
     items: [
       { href: "/backoffice/admin/abonnements", label: "Abonnements", icon: "bi-credit-card" },
-      { href: "/backoffice/admin/architecture", label: "Architecture", icon: "bi-diagram-3" },
+      { href: "/backoffice/admin/architecture", label: "Catégories", icon: "bi-diagram-3" },
+      { href: "/backoffice/admin/avis", label: "Avis", icon: "bi-chat-square-quote" },
+      { href: "/backoffice/admin/partenaires", label: "Partenaires", icon: "bi-handshake" },
     ],
   },
   {

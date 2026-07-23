@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { ROLES } from "@/lib/roles";
@@ -25,6 +25,11 @@ export default function AgenceLayout({ children }) {
   const pathname = usePathname();
   const { user, isLoading, logout } = useAuth();
   const isAuthorized = !isLoading && user && user.role === ROLES.GESTIONNAIRE;
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  function handleContentScroll(e) {
+    setIsScrolled(e.currentTarget.scrollTop > 4);
+  }
 
   useEffect(() => {
     if (!isLoading && (!user || user.role !== ROLES.GESTIONNAIRE)) {
@@ -49,11 +54,11 @@ export default function AgenceLayout({ children }) {
     <div className={styles.shell}>
       <AgenceSidebar user={user} onLogout={handleLogout} />
       <div className={styles.main}>
-        <header className={styles.topbar}>
+        <header className={`${styles.topbar} ${isScrolled ? styles.topbarScrolled : ""}`}>
           <h1 className={styles.pageTitle}>{PAGE_TITLES[pathname] || "FADAA Locative"}</h1>
           <NotificationBell href="/backoffice/agence/notifications" />
         </header>
-        <main className={styles.content}>
+        <main className={styles.content} onScroll={handleContentScroll}>
           <PageTransition>{children}</PageTransition>
         </main>
       </div>

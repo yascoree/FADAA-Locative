@@ -1,29 +1,104 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { extractErrorMessage } from "@/lib/apiClient";
 import { useAuth } from "@/context/AuthContext";
-import { fetchDashboardStats } from "@/lib/stats";
-import StatCard from "@/components/StatCard";
+import { LOT_STATUS_LABELS, BAIL_STATUS_LABELS } from "@/lib/properties";
+import { fetchDashboardStats, fetchRevenueStats } from "@/lib/stats";
 import CountUp from "@/components/CountUp";
 import styles from "./agence.module.css";
 
-function formatCurrency(value) {
-  return `${Number(value || 0).toLocaleString("fr-FR", { maximumFractionDigits: 0 })} MAD`;
+function formatCurrency(value, compact = false) {
+  const num = Number(value || 0);
+  if (compact) {
+    return `${num.toLocaleString("fr-FR", { maximumFractionDigits: 1, notation: "compact" })} MAD`;
+  }
+  return `${num.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} MAD`;
+}
+
+function shortMonthLabel(year, month) {
+  const label = new Date(year, month - 1, 1).toLocaleDateString("fr-FR", { month: "short" });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function fullMonthLabel(year, month) {
+  const label = new Date(year, month - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function niceMax(value) {
+  if (value <= 0) return 100;
+  const magnitude = 10 ** Math.floor(Math.log10(value));
+  const residual = value / magnitude;
+  let niceResidual = 10;
+  if (residual <= 1) niceResidual = 1;
+  else if (residual <= 2) niceResidual = 2;
+  else if (residual <= 5) niceResidual = 5;
+  return niceResidual * magnitude;
+}
+
+const CHART_WIDTH = 520;
+const CHART_HEIGHT = 200;
+const PAD_LEFT = 46;
+const PAD_RIGHT = 8;
+const PAD_TOP = 16;
+const PAD_BOTTOM = 24;
+const INNER_WIDTH = CHART_WIDTH - PAD_LEFT - PAD_RIGHT;
+const INNER_HEIGHT = CHART_HEIGHT - PAD_TOP - PAD_BOTTOM;
+
+/** Jauge circulaire (meter) : le remplissage porte la valeur, la piste est un
+    palier plus clair de la même teinte (voir skill dataviz — jamais un donut nominal). */
+function RadialMeter({ percent, label, sublabel, tone }) {
+  const size = 118;
+  const stroke = 11;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const clamped = percent === null ? 0 : Math.max(0, Math.min(100, percent));
+  const offset = c * (1 - clamped / 100);
+  return (
+    <div className={styles.meterCard}>
+      <div className={styles.meterWrap}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <circle cx={size / 2} cy={size / 2} r={r} strokeWidth={stroke} fill="none" className={styles[`meterTrack${tone}`]} />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            strokeWidth={stroke}
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray={c}
+            strokeDashoffset={offset}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            className={styles[`meterFill${tone}`]}
+          />
+        </svg>
+        <div className={styles.meterCenter}>
+          <div className={styles.meterValue}>{percent === null ? "—" : `${clamped.toFixed(0)}%`}</div>
+        </div>
+      </div>
+      <div className={styles.meterLabel}>{label}</div>
+      {sublabel && <div className={styles.meterSublabel}>{sublabel}</div>}
+    </div>
+  );
 }
 
 export default function AgenceDashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
+  const [revenue, setRevenue] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
+  const [hoverIndex, setHoverIndex] = useState(null);
+  const svgRef = useRef(null);
 
   useEffect(() => {
     async function init() {
       setIsLoading(true);
       try {
-        const data = await fetchDashboardStats();
-        setStats(data);
+        const [statsData, revenueData] = await Promise.all([fetchDashboardStats(), fetchRevenueStats()]);
+        setStats(statsData);
+        setRevenue(revenueData);
       } catch (err) {
         setLoadError(extractErrorMessage(err));
       } finally {
@@ -33,15 +108,51 @@ export default function AgenceDashboardPage() {
     init();
   }, []);
 
+  const trailing = useMemo(() => {
+    if (!revenue) return { points: [], max: 100, linePath: "", areaPath: "" };
+    const months = revenue.trailing_12_months;
+    const stepX = INNER_WIDTH / (months.length - 1);
+    const raw = months.map((m, i) => ({
+      key: `${m.year}-${m.month}`,
+      label: shortMonthLabel(m.year, m.month),
+      fullLabel: fullMonthLabel(m.year, m.month),
+      total: m.total,
+      x: PAD_LEFT + i * stepX,
+    }));
+    const max = niceMax(Math.max(...raw.map((p) => p.total), 1));
+    const points = raw.map((p) => ({ ...p, y: PAD_TOP + INNER_HEIGHT - (p.total / max) * INNER_HEIGHT }));
+    const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+    const baseline = PAD_TOP + INNER_HEIGHT;
+    const areaPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${baseline} L ${points[0].x.toFixed(1)} ${baseline} Z`;
+    return { points, max, linePath, areaPath };
+  }, [revenue]);
+
+  function handlePointerMove(e) {
+    if (!svgRef.current || trailing.points.length === 0) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const ratio = (e.clientX - rect.left) / rect.width;
+    const dataX = ratio * CHART_WIDTH;
+    const stepX = INNER_WIDTH / (trailing.points.length - 1);
+    const idx = Math.max(0, Math.min(trailing.points.length - 1, Math.round((dataX - PAD_LEFT) / stepX)));
+    setHoverIndex(idx);
+  }
+
   const today = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
 
   if (isLoading) {
     return <p>Chargement...</p>;
   }
 
-  if (loadError || !stats) {
+  if (loadError || !stats || !revenue) {
     return <div className={`${styles.banner} ${styles.bannerError}`}>{loadError || "Impossible de charger les statistiques."}</div>;
   }
+
+  const lotsMax = Math.max(1, ...stats.lots_by_status.map((s) => s.count));
+  const bauxMax = Math.max(1, ...stats.baux_by_status.map((s) => s.count));
+  const gridLines = [0, 0.5, 1];
+  const lastPoint = trailing.points[trailing.points.length - 1];
+  const hoverPoint = hoverIndex !== null ? trailing.points[hoverIndex] : null;
+  const occupationRate = stats.total_lots > 0 ? (stats.lots_occupes / stats.total_lots) * 100 : null;
 
   return (
     <div>
@@ -57,42 +168,211 @@ export default function AgenceDashboardPage() {
         </span>
       </div>
 
-      {/* ---- Stats ---- */}
-      <div className={styles.section}>
-        <div className={styles.statsGrid}>
-          <StatCard
-            icon="bi-person-badge-fill"
-            tone="primary"
-            label="Propriétaires gérés"
-            value={<CountUp value={stats.proprietaires_geres} />}
-          />
-          <StatCard icon="bi-house-door-fill" tone="accent" label="Biens gérés" value={<CountUp value={stats.total_biens} />} />
-          <StatCard icon="bi-grid-3x3-gap-fill" tone="primary" label="Lots gérés" value={<CountUp value={stats.total_lots} />} />
-          <StatCard
-            icon="bi-file-earmark-text-fill"
-            tone="accent"
-            label="Baux actifs"
-            value={<CountUp value={stats.baux_actifs} />}
-          />
-          <StatCard
-            icon="bi-exclamation-octagon-fill"
-            tone={stats.echeances_en_retard > 0 ? "danger" : "primary"}
-            label="Loyers en retard"
-            value={<CountUp value={stats.echeances_en_retard} />}
-          />
-          <StatCard
-            icon="bi-cash-stack"
-            tone="accent"
-            label="Revenu collecté ce mois"
-            value={<CountUp value={stats.revenu_mois} formatter={formatCurrency} />}
-          />
-        </div>
-      </div>
-
-      {stats.proprietaires_geres === 0 && (
+      {stats.proprietaires_geres === 0 ? (
         <p className={styles.empty}>
           Aucun mandat actif pour l&apos;instant. Un propriétaire doit vous inviter pour que ses biens apparaissent ici.
         </p>
+      ) : (
+        <>
+          {/* ---- Tuiles ---- */}
+          <div className={styles.heroTilesGrid}>
+            <div className={`${styles.heroTile} ${styles.heroTilePrimary}`}>
+              <div className={styles.heroTileTop}>
+                <span className={styles.heroTileIcon}>
+                  <i className="bi bi-cash-stack" />
+                </span>
+              </div>
+              <div>
+                <div className={styles.heroTileLabel}>Revenu ce mois</div>
+                <div className={styles.heroTileValue}>
+                  <CountUp value={stats.revenu_mois} formatter={formatCurrency} />
+                </div>
+              </div>
+            </div>
+
+            <div className={`${styles.heroTile} ${styles.heroTileDanger}`}>
+              <div className={styles.heroTileTop}>
+                <span className={styles.heroTileIcon}>
+                  <i className="bi bi-exclamation-octagon-fill" />
+                </span>
+              </div>
+              <div>
+                <div className={styles.heroTileLabel}>Loyers en retard</div>
+                <div className={styles.heroTileValue}>
+                  <CountUp value={stats.montant_en_retard} formatter={formatCurrency} />
+                </div>
+              </div>
+            </div>
+
+            <div className={`${styles.heroTile} ${styles.heroTileGold}`}>
+              <div className={styles.heroTileTop}>
+                <span className={styles.heroTileIcon}>
+                  <i className="bi bi-person-badge-fill" />
+                </span>
+              </div>
+              <div>
+                <div className={styles.heroTileLabel}>Propriétaires gérés</div>
+                <div className={styles.heroTileValue}>
+                  <CountUp value={stats.proprietaires_geres} />
+                </div>
+              </div>
+            </div>
+
+            <div className={`${styles.heroTile} ${styles.heroTileInfo}`}>
+              <div className={styles.heroTileTop}>
+                <span className={styles.heroTileIcon}>
+                  <i className="bi bi-file-earmark-text-fill" />
+                </span>
+              </div>
+              <div>
+                <div className={styles.heroTileLabel}>Baux actifs</div>
+                <div className={styles.heroTileValue}>
+                  <CountUp value={stats.baux_actifs} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ---- Courbe + jauges ---- */}
+          <div className={styles.section}>
+            <div className={styles.heroGrid}>
+              <div className={styles.card}>
+                <div className={styles.chartHeader}>
+                  <h2 className={styles.cardTitle} style={{ marginBottom: 0 }}>
+                    <i className="bi bi-graph-up" style={{ color: "var(--primary)" }} />
+                    Revenus — 12 derniers mois
+                  </h2>
+                  <div className={styles.chartEndValue}>
+                    <div className={styles.chartEndLabel}>{lastPoint?.label}</div>
+                    <div className={styles.chartEndAmount}>{formatCurrency(lastPoint?.total)}</div>
+                  </div>
+                </div>
+
+                <div className={styles.chartWrap}>
+                  <svg
+                    ref={svgRef}
+                    className={styles.chartSvg}
+                    viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+                    preserveAspectRatio="none"
+                    onMouseMove={handlePointerMove}
+                    onMouseLeave={() => setHoverIndex(null)}
+                    role="img"
+                    aria-label="Courbe des revenus mensuels sur les 12 derniers mois"
+                  >
+                    {gridLines.map((frac) => {
+                      const y = PAD_TOP + INNER_HEIGHT * (1 - frac);
+                      return (
+                        <g key={frac}>
+                          <line x1={PAD_LEFT} y1={y} x2={CHART_WIDTH - PAD_RIGHT} y2={y} className={styles.chartGrid} />
+                          <text x={PAD_LEFT - 8} y={y + 3} textAnchor="end" className={styles.chartAxisText}>
+                            {frac === 0 ? "0" : formatCurrency(trailing.max * frac, true)}
+                          </text>
+                        </g>
+                      );
+                    })}
+
+                    <path d={trailing.areaPath} className={styles.chartArea} />
+                    <path d={trailing.linePath} className={styles.chartLine} />
+
+                    {trailing.points.map((p, i) => (
+                      <text
+                        key={p.key}
+                        x={p.x}
+                        y={CHART_HEIGHT - 4}
+                        textAnchor="middle"
+                        className={styles.chartAxisText}
+                        opacity={i % 2 === 0 ? 1 : 0.55}
+                      >
+                        {p.label}
+                      </text>
+                    ))}
+
+                    {lastPoint && <circle cx={lastPoint.x} cy={lastPoint.y} r={4} className={styles.chartDotEnd} />}
+
+                    {hoverPoint && (
+                      <>
+                        <line x1={hoverPoint.x} y1={PAD_TOP} x2={hoverPoint.x} y2={PAD_TOP + INNER_HEIGHT} className={styles.chartCrosshair} />
+                        <circle cx={hoverPoint.x} cy={hoverPoint.y} r={4.5} className={styles.chartDot} />
+                      </>
+                    )}
+
+                    <rect x={PAD_LEFT} y={PAD_TOP} width={INNER_WIDTH} height={INNER_HEIGHT} className={styles.chartHit} onMouseMove={handlePointerMove} />
+                  </svg>
+
+                  {hoverPoint && (
+                    <div
+                      className={styles.chartTooltip}
+                      style={{ left: `${(hoverPoint.x / CHART_WIDTH) * 100}%`, top: `${(hoverPoint.y / CHART_HEIGHT) * 100}%` }}
+                    >
+                      <div className={styles.chartTooltipLabel}>{hoverPoint.fullLabel}</div>
+                      <div className={styles.chartTooltipValue}>{formatCurrency(hoverPoint.total)}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className={styles.metersRow}>
+                <RadialMeter
+                  percent={occupationRate}
+                  tone="Navy"
+                  label="Taux d'occupation"
+                  sublabel={`${stats.lots_occupes}/${stats.total_lots} lot(s)`}
+                />
+                <RadialMeter
+                  percent={revenue.taux_recouvrement}
+                  tone={revenue.taux_recouvrement === null || revenue.taux_recouvrement >= 90 ? "Olive" : "Terracotta"}
+                  label="Taux de recouvrement"
+                  sublabel="Sur l'année en cours"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ---- Répartitions ---- */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
+            <div className={styles.section} style={{ marginBottom: 0 }}>
+              <div className={styles.card}>
+                <h2 className={styles.cardTitle}>
+                  <i className="bi bi-grid-3x3-gap-fill" style={{ color: "var(--primary)" }} />
+                  Statut des lots
+                </h2>
+                <div className={styles.distribution}>
+                  {stats.lots_by_status.length === 0 && <p className={styles.empty}>Aucun lot enregistré.</p>}
+                  {stats.lots_by_status.map((s) => (
+                    <div className={styles.distributionRow} key={s.status}>
+                      <span className={styles.distributionName}>{LOT_STATUS_LABELS[s.status] || s.status}</span>
+                      <div className={styles.distributionTrack}>
+                        <div className={styles.distributionFill} style={{ width: `${(s.count / lotsMax) * 100}%` }} />
+                      </div>
+                      <span className={styles.distributionCount}>{s.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.section} style={{ marginBottom: 0 }}>
+              <div className={styles.card}>
+                <h2 className={styles.cardTitle}>
+                  <i className="bi bi-file-earmark-text-fill" style={{ color: "var(--primary)" }} />
+                  Statut des baux
+                </h2>
+                <div className={styles.distribution}>
+                  {stats.baux_by_status.length === 0 && <p className={styles.empty}>Aucun bail enregistré.</p>}
+                  {stats.baux_by_status.map((s) => (
+                    <div className={styles.distributionRow} key={s.status}>
+                      <span className={styles.distributionName}>{BAIL_STATUS_LABELS[s.status] || s.status}</span>
+                      <div className={styles.distributionTrack}>
+                        <div className={styles.distributionFill} style={{ width: `${(s.count / bauxMax) * 100}%` }} />
+                      </div>
+                      <span className={styles.distributionCount}>{s.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

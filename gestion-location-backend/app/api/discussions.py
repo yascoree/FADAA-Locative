@@ -10,7 +10,7 @@ from app.models.bail import Bail
 from app.models.bien import Bien
 from app.models.discussion import Discussion
 from app.models.lot import Lot
-from app.models.mandat import Mandat
+from app.models.mandat import Mandat, MandatStatus
 from app.models.reclamation import Reclamation, ReclamationStatus
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.discussion import DiscussionCreate, DiscussionRead, DiscussionUpdate
@@ -66,7 +66,11 @@ def _is_legitimate_contact(db: Session, current_user: Utilisateur, destinataire:
         if destinataire.role == UtilisateurRole.GESTIONNAIRE:
             return (
                 db.query(Mandat)
-                .filter(Mandat.proprietaire_id == current_user.id, Mandat.gestionnaire_id == destinataire.id)
+                .filter(
+                    Mandat.proprietaire_id == current_user.id,
+                    Mandat.gestionnaire_id == destinataire.id,
+                    Mandat.statut == MandatStatus.ACTIF,
+                )
                 .first()
                 is not None
             )
@@ -88,7 +92,11 @@ def _is_legitimate_contact(db: Session, current_user: Utilisateur, destinataire:
         if destinataire.role == UtilisateurRole.PROPRIETAIRE:
             return (
                 db.query(Mandat)
-                .filter(Mandat.gestionnaire_id == current_user.id, Mandat.proprietaire_id == destinataire.id)
+                .filter(
+                    Mandat.gestionnaire_id == current_user.id,
+                    Mandat.proprietaire_id == destinataire.id,
+                    Mandat.statut == MandatStatus.ACTIF,
+                )
                 .first()
                 is not None
             )

@@ -36,6 +36,7 @@
   --radius-card: var(--brand-radius-card);
   --shadow-sm: var(--brand-shadow-sm);
   --shadow-md: var(--brand-shadow-md);
+  --shadow-lift: var(--brand-shadow-lift);
 
   height: 100vh;
   overflow: hidden;
@@ -237,9 +238,17 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.75rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid transparent;
   background: var(--surface);
   flex-shrink: 0;
+  box-shadow: none;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  z-index: 1;
+}
+
+.topbarScrolled {
+  border-bottom-color: var(--border);
+  box-shadow: 0 4px 12px -8px rgba(0, 0, 0, 0.18);
 }
 
 .pageTitle {
@@ -259,10 +268,19 @@
 /* ---------- Dashboard content ---------- */
 
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid color-mix(in srgb, white 50%, var(--border));
   border-radius: var(--radius-card);
   padding: 1.4rem 1.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lift);
 }
 
 .cardTitle {
@@ -319,21 +337,6 @@
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 1.1rem;
   margin-bottom: 1.5rem;
-}
-
-.statsGrid::before {
-  content: "";
-  position: absolute;
-  top: -20px;
-  left: 0;
-  right: 0;
-  height: 240px;
-  background: radial-gradient(circle at 15% 30%, color-mix(in srgb, var(--tone-olive) 60%, transparent), transparent 60%),
-    radial-gradient(circle at 55% 65%, color-mix(in srgb, var(--tone-navy) 55%, transparent), transparent 60%),
-    radial-gradient(circle at 88% 25%, color-mix(in srgb, var(--tone-terracotta) 50%, transparent), transparent 60%);
-  filter: blur(45px);
-  z-index: -1;
-  pointer-events: none;
 }
 
 .dashboardHeader {

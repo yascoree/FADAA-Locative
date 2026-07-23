@@ -213,21 +213,16 @@ def get_gestionnaire_dashboard_stats(db: Session, gestionnaire_id: int) -> Gesti
             proprietaires_geres=0,
             total_biens=0,
             total_lots=0,
+            lots_occupes=0,
             baux_actifs=0,
             echeances_en_retard=0,
             montant_en_retard=0.0,
             revenu_mois=0.0,
+            lots_by_status=[],
+            baux_by_status=[],
         )
     counts = _proprietaire_counts(db, owner_ids)
-    return GestionnaireDashboardStats(
-        proprietaires_geres=len(owner_ids),
-        total_biens=counts["total_biens"],
-        total_lots=counts["total_lots"],
-        baux_actifs=counts["baux_actifs"],
-        echeances_en_retard=counts["echeances_en_retard"],
-        montant_en_retard=counts["montant_en_retard"],
-        revenu_mois=counts["revenu_mois"],
-    )
+    return GestionnaireDashboardStats(proprietaires_geres=len(owner_ids), **counts)
 
 
 # ---------- Locataire ----------
