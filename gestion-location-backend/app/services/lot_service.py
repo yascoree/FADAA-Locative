@@ -3,13 +3,13 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.api.deps import bien_ids_with_permission, has_permission_for_bien
-from app.models.bail import Bail
+from app.models.bail import Bail, BailStatus
 from app.models.bien import Bien
 from app.models.lot import Lot
 from app.models.notification import NotificationType
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.lot import LotCreate, LotUpdate
-from app.services.exceptions import Forbidden, NotFound
+from app.services.exceptions import BadRequest, Forbidden, NotFound
 from app.services.push_service import send_push_to_user
 
 
@@ -137,6 +137,13 @@ def delete_lot(db: Session, current_user: Utilisateur, lot_id: int) -> None:
     )
     if not has_permission_for_bien(db, current_user, bien, "DELETE_LOT"):
         raise Forbidden("Not allowed to delete this lot")
+    has_active_bail = (
+        db.query(Bail)
+        .filter(Bail.lot_id == lot.id, Bail.deleted_at.is_(None), Bail.statut == BailStatus.ACTIF)
+        .first()
+    )
+    if has_active_bail:
+        raise BadRequest("Impossible de supprimer ce lot : il possède un bail actif.")
     lot.deleted_at = datetime.utcnow()
     db.commit()
     _notify_proprietaire_of_activity(

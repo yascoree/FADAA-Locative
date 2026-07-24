@@ -15,6 +15,13 @@ class BailStatus(int, enum.Enum):
     EXPIRE = 4
 
 
+class FrequencePaiement(int, enum.Enum):
+    JOUR = 1
+    SEMAINE = 2
+    MOIS = 3  
+    ANNEE = 4
+
+
 class Bail(Base):
     __tablename__ = "baux"
 
@@ -27,6 +34,12 @@ class Bail(Base):
     charges = Column(DECIMAL(10, 2), nullable=True)
     depot = Column(DECIMAL(10, 2), nullable=True)
     statut = Column(Enum(BailStatus, name="bail_status"), nullable=True)
+    frequence_paiement = Column(
+        Enum(FrequencePaiement, name="frequence_paiement"),
+        nullable=False,
+        default=FrequencePaiement.MOIS,
+        server_default="MOIS",
+    )
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted_at = Column(DateTime, nullable=True)

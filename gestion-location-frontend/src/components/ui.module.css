@@ -458,3 +458,33 @@
   font-weight: 500;
   color: var(--brand-text-muted);
 }
+
+.radioGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.radioOption {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--brand-border);
+  border-radius: var(--brand-radius-field);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--brand-text);
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.radioOption:has(input:checked) {
+  border-color: var(--brand-primary);
+  background: var(--brand-primary-soft);
+  color: var(--brand-primary-dark);
+}
+
+.radioOption input {
+  accent-color: var(--brand-primary);
+}

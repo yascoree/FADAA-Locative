@@ -1,10 +1,10 @@
 from calendar import monthrange
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
 from app.api.deps import bien_ids_with_permission, has_permission_for_bien
-from app.models.bail import Bail
+from app.models.bail import Bail, BailStatus, FrequencePaiement
 from app.models.bien import Bien
 from app.models.echeance import Echeance, EcheanceStatus
 from app.models.lot import Lot
@@ -12,8 +12,9 @@ from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.bail import BailCreate, BailUpdate
 from app.services.exceptions import BadRequest, Forbidden, NotFound
 
-# Guard-rail: beyond 10 years of monthly due-dates we let the schedule be
-# completed manually via POST /due-dates rather than generating a huge batch.
+# Guard-rail: beyond 120 due-dates we let the schedule be completed manually
+# via POST /due-dates rather than generating a huge batch (e.g. a daily
+# frequency over a multi-year lease).
 MAX_ECHEANCES_AUTO = 120
 
 
@@ -25,20 +26,32 @@ def _add_months(d: date, months: int) -> date:
     return date(year, month, day)
 
 
+def _advance(d: date, frequence: FrequencePaiement) -> date:
+    if frequence == FrequencePaiement.JOUR:
+        return d + timedelta(days=1)
+    if frequence == FrequencePaiement.SEMAINE:
+        return d + timedelta(weeks=1)
+    if frequence == FrequencePaiement.ANNEE:
+        return _add_months(d, 12)
+    return _add_months(d, 1)  # MOIS
+
+
 def _generate_echeances(bail: Bail) -> list[Echeance]:
-    """Generate a monthly schedule between date_debut and date_fin, when both are known."""
+    """Generate a due-date schedule between date_debut and date_fin, stepped
+    according to the lease's payment frequency, when both dates are known."""
     if not bail.date_debut or not bail.date_fin or bail.loyer is None:
         return []
     montant = bail.loyer + (bail.charges or 0)
+    frequence = bail.frequence_paiement or FrequencePaiement.MOIS
     echeances: list[Echeance] = []
     current = bail.date_debut
     while current <= bail.date_fin:
         if len(echeances) >= MAX_ECHEANCES_AUTO:
-            return []  # lease too long — complete manually via POST /due-dates
+            return []  # schedule too long — complete manually via POST /due-dates
         echeances.append(
             Echeance(bail_id=bail.id, date_echeance=current, montant_du=montant, statut=EcheanceStatus.IMPAYE)
         )
-        current = _add_months(current, 1)
+        current = _advance(current, frequence)
     return echeances
 
 
@@ -140,5 +153,7 @@ def delete_bail(db: Session, current_user: Utilisateur, bail_id: int) -> None:
     bien = _bien_for_bail(db, bail)
     if not has_permission_for_bien(db, current_user, bien, "DELETE_LEASE"):
         raise Forbidden("Not allowed to delete this lease")
+    if bail.statut == BailStatus.ACTIF:
+        raise BadRequest("Impossible de supprimer ce bail : il est actif. Terminez-le ou résiliez-le d'abord.")
     bail.deleted_at = datetime.utcnow()
     db.commit()

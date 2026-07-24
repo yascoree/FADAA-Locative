@@ -2,7 +2,13 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { extractErrorMessage } from "@/lib/apiClient";
-import { fetchBiens, fetchQuittances, downloadQuittance } from "@/lib/properties";
+import {
+  fetchBiens,
+  fetchQuittances,
+  downloadQuittance,
+  QUITTANCE_STATUS,
+  QUITTANCE_STATUS_LABELS,
+} from "@/lib/properties";
 import StatCard from "@/components/StatCard";
 import styles from "../locataire.module.css";
 
@@ -155,13 +161,14 @@ export default function LocataireQuittancesPage() {
                 <th>Montant</th>
                 <th>Date de paiement</th>
                 <th>Générée le</th>
+                <th>Statut</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredQuittances.length === 0 && (
                 <tr>
-                  <td colSpan={5} className={styles.empty}>
+                  <td colSpan={6} className={styles.empty}>
                     Aucune quittance pour le moment.
                   </td>
                 </tr>
@@ -172,6 +179,11 @@ export default function LocataireQuittancesPage() {
                   <td>{formatCurrency(q.paiement?.montant)}</td>
                   <td>{formatDate(q.paiement?.date_paiement)}</td>
                   <td>{formatDate(q.date_generation)}</td>
+                  <td>
+                    <span className={`${styles.badge} ${q.statut === QUITTANCE_STATUS.ANNULEE ? styles.badgeDanger : styles.badgeActive}`}>
+                      {QUITTANCE_STATUS_LABELS[q.statut] || "—"}
+                    </span>
+                  </td>
                   <td>
                     <button
                       type="button"

@@ -7,9 +7,10 @@ from app.models.bail import Bail
 from app.models.bien import Bien
 from app.models.echeance import Echeance
 from app.models.lot import Lot
+from app.models.paiement import Paiement, PaiementStatus
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.echeance import EcheanceCreate, EcheanceUpdate
-from app.services.exceptions import Forbidden, NotFound
+from app.services.exceptions import BadRequest, Forbidden, NotFound
 
 
 def _bail_and_bien(db: Session, echeance: Echeance):
@@ -142,5 +143,16 @@ def delete_echeance(db: Session, current_user: Utilisateur, echeance_id: int) ->
     _, bien = _bail_and_bien(db, echeance)
     if not has_permission_for_bien(db, current_user, bien, "DELETE_DUE_DATE"):
         raise Forbidden("Not allowed to delete this due date")
+    has_valid_paiement = (
+        db.query(Paiement)
+        .filter(
+            Paiement.echeance_id == echeance.id,
+            Paiement.deleted_at.is_(None),
+            Paiement.statut == PaiementStatus.VALIDE,
+        )
+        .first()
+    )
+    if has_valid_paiement:
+        raise BadRequest("Impossible de supprimer cette échéance : un paiement y est associé.")
     echeance.deleted_at = datetime.utcnow()
     db.commit()

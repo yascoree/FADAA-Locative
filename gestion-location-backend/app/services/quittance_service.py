@@ -8,9 +8,9 @@ from app.models.bien import Bien
 from app.models.echeance import Echeance
 from app.models.lot import Lot
 from app.models.paiement import Paiement
-from app.models.quittance import Quittance
+from app.models.quittance import Quittance, QuittanceStatus
 from app.models.utilisateur import Utilisateur, UtilisateurRole
-from app.services.exceptions import Forbidden, NotFound
+from app.services.exceptions import BadRequest, Forbidden, NotFound
 from app.services.receipt_service import generate_receipt_pdf
 
 
@@ -113,3 +113,24 @@ def get_quittance_pdf_path(db: Session, current_user: Utilisateur, quittance_id:
         quittance.fichier_pdf = generate_receipt_pdf(db, quittance)
         db.commit()
     return quittance.fichier_pdf
+
+
+def annuler_quittance(db: Session, current_user: Utilisateur, quittance_id: int) -> Quittance:
+    """Une quittance ne se supprime jamais (preuve documentaire) : on la marque
+    ANNULEE, elle reste consultable dans l'historique avec ce statut."""
+    quittance = (
+        db.query(Quittance)
+        .filter(Quittance.id == quittance_id, Quittance.deleted_at.is_(None))
+        .first()
+    )
+    if not quittance:
+        raise NotFound("Receipt not found")
+    _, bien = _bail_and_bien(db, quittance)
+    if not has_permission_for_bien(db, current_user, bien, "UPDATE_PAYMENT"):
+        raise Forbidden("Not allowed to modify this receipt")
+    if quittance.statut == QuittanceStatus.ANNULEE:
+        raise BadRequest("Impossible d'annuler cette quittance : elle est déjà annulée.")
+    quittance.statut = QuittanceStatus.ANNULEE
+    db.commit()
+    db.refresh(quittance)
+    return quittance

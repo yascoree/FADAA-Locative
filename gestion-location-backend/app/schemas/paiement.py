@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.paiement import ModePaiement
+from app.models.paiement import ModePaiement, PaiementStatus
 from app.schemas.echeance import EcheanceRead
 
 
@@ -28,4 +28,5 @@ class PaiementRead(PaiementBase):
 
     id: int
     date_paiement: datetime
+    statut: PaiementStatus
     echeance: Optional[EcheanceRead] = None

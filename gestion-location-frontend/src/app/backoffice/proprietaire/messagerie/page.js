@@ -269,62 +269,6 @@ export default function ProprietaireMessageriePage() {
         </h2>
         <p className={styles.sectionSubtitle}>Échangez directement avec vos locataires et gestionnaires.</p>
 
-        {!adminUnlocked && (
-          <div className={styles.card} style={{ marginBottom: "1.25rem" }}>
-            <h3 className={styles.cardTitle}>
-              <i className="bi bi-headset" style={{ color: "var(--primary)" }} />
-              Contacter l&apos;administration
-            </h3>
-
-            <Banner banner={reclamationBanner} />
-
-            {hasPendingReclamation ? (
-              <p className={styles.sectionSubtitle} style={{ marginTop: "0.5rem" }}>
-                Votre réclamation « {latestReclamation.sujet} » est{" "}
-                <strong>{RECLAMATION_STATUS_LABELS[latestReclamation.statut].toLowerCase()}</strong>, en attente de
-                traitement par l&apos;administration.
-              </p>
-            ) : (
-              <>
-                {latestReclamation?.statut === RECLAMATION_STATUS.REJETEE && (
-                  <p className={styles.sectionSubtitle} style={{ marginTop: "0.5rem" }}>
-                    Votre dernière réclamation («&nbsp;{latestReclamation.sujet}&nbsp;») a été{" "}
-                    <strong>{RECLAMATION_STATUS_LABELS[latestReclamation.statut].toLowerCase()}</strong>. Vous pouvez
-                    en soumettre une nouvelle ci-dessous.
-                  </p>
-                )}
-                <form onSubmit={handleSubmitReclamation} style={{ marginTop: "0.75rem" }}>
-                  <TextField
-                    label="Sujet"
-                    name="reclamation-sujet"
-                    value={reclamationForm.sujet}
-                    onChange={(e) => setReclamationForm((f) => ({ ...f, sujet: e.target.value }))}
-                    placeholder="Ex : Problème de facturation"
-                    required
-                  />
-                  <label className={uiStyles.field}>
-                    Message
-                    <textarea
-                      className={uiStyles.fieldInput}
-                      rows={3}
-                      value={reclamationForm.message}
-                      onChange={(e) => setReclamationForm((f) => ({ ...f, message: e.target.value }))}
-                      placeholder="Décrivez votre demande..."
-                      required
-                    />
-                  </label>
-                  <div className={styles.editActions} style={{ marginTop: "0.9rem" }}>
-                    <button type="submit" className={styles.btn} disabled={reclamationBusy}>
-                      <i className="bi bi-send" />
-                      {reclamationBusy ? "Envoi..." : "Envoyer la réclamation"}
-                    </button>
-                  </div>
-                </form>
-              </>
-            )}
-          </div>
-        )}
-
         <div className={styles.msgShell}>
           {/* ---- Liste des contacts ---- */}
           <div className={styles.msgContacts}>
@@ -507,6 +451,62 @@ export default function ProprietaireMessageriePage() {
             )}
           </div>
         </div>
+
+        {!adminUnlocked && (
+          <div className={styles.card} style={{ marginTop: "1.25rem" }}>
+            <h3 className={styles.cardTitle}>
+              <i className="bi bi-headset" style={{ color: "var(--primary)" }} />
+              Contacter l&apos;administration
+            </h3>
+
+            <Banner banner={reclamationBanner} />
+
+            {hasPendingReclamation ? (
+              <p className={styles.sectionSubtitle} style={{ marginTop: "0.5rem" }}>
+                Votre réclamation « {latestReclamation.sujet} » est{" "}
+                <strong>{RECLAMATION_STATUS_LABELS[latestReclamation.statut].toLowerCase()}</strong>, en attente de
+                traitement par l&apos;administration.
+              </p>
+            ) : (
+              <>
+                {latestReclamation?.statut === RECLAMATION_STATUS.REJETEE && (
+                  <p className={styles.sectionSubtitle} style={{ marginTop: "0.5rem" }}>
+                    Votre dernière réclamation («&nbsp;{latestReclamation.sujet}&nbsp;») a été{" "}
+                    <strong>{RECLAMATION_STATUS_LABELS[latestReclamation.statut].toLowerCase()}</strong>. Vous pouvez
+                    en soumettre une nouvelle ci-dessous.
+                  </p>
+                )}
+                <form onSubmit={handleSubmitReclamation} style={{ marginTop: "0.75rem" }}>
+                  <TextField
+                    label="Sujet"
+                    name="reclamation-sujet"
+                    value={reclamationForm.sujet}
+                    onChange={(e) => setReclamationForm((f) => ({ ...f, sujet: e.target.value }))}
+                    placeholder="Ex : Problème de facturation"
+                    required
+                  />
+                  <label className={uiStyles.field}>
+                    Message
+                    <textarea
+                      className={uiStyles.fieldInput}
+                      rows={3}
+                      value={reclamationForm.message}
+                      onChange={(e) => setReclamationForm((f) => ({ ...f, message: e.target.value }))}
+                      placeholder="Décrivez votre demande..."
+                      required
+                    />
+                  </label>
+                  <div className={styles.editActions} style={{ marginTop: "0.9rem" }}>
+                    <button type="submit" className={styles.btn} disabled={reclamationBusy}>
+                      <i className="bi bi-send" />
+                      {reclamationBusy ? "Envoi..." : "Envoyer la réclamation"}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

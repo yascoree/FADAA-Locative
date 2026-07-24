@@ -74,6 +74,7 @@ export default function ProprietaireEcheancesPage() {
 
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -181,13 +182,13 @@ export default function ProprietaireEcheancesPage() {
   async function handleConfirmDelete() {
     if (!deleteTarget) return;
     setDeleteBusy(true);
+    setDeleteError(null);
     try {
       await deleteEcheance(deleteTarget.id);
       setEcheances((prev) => prev.filter((e) => e.id !== deleteTarget.id));
       setDeleteTarget(null);
     } catch (err) {
-      setRowBanner({ type: "error", message: extractErrorMessage(err) });
-      setDeleteTarget(null);
+      setDeleteError(extractErrorMessage(err));
     } finally {
       setDeleteBusy(false);
     }
@@ -350,7 +351,10 @@ export default function ProprietaireEcheancesPage() {
                         <button
                           type="button"
                           className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                          onClick={() => setDeleteTarget(e)}
+                          onClick={() => {
+                            setDeleteTarget(e);
+                            setDeleteError(null);
+                          }}
                           title="Supprimer"
                         >
                           <i className="bi bi-trash" />
@@ -441,17 +445,21 @@ export default function ProprietaireEcheancesPage() {
 
       <ConfirmationDialog
         isOpen={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
+        onClose={() => {
+          setDeleteTarget(null);
+          setDeleteError(null);
+        }}
         onConfirm={handleConfirmDelete}
         title="Supprimer l'échéance"
         message={
           deleteTarget
-            ? `Supprimer définitivement cette échéance du ${formatDate(deleteTarget.date_echeance)} ? Les paiements déjà enregistrés dessus ne seront pas supprimés. Cette action est irréversible.`
+            ? `Masquer cette échéance du ${formatDate(deleteTarget.date_echeance)} ? Impossible si un paiement y est déjà associé.`
             : ""
         }
         confirmLabel="Supprimer"
         danger
         isBusy={deleteBusy}
+        error={deleteError}
       />
     </div>
   );

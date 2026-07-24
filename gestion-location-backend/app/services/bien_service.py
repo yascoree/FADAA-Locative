@@ -4,7 +4,7 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from app.api.deps import bien_ids_with_permission, has_permission, has_permission_for_bien
-from app.models.bail import Bail
+from app.models.bail import Bail, BailStatus
 from app.models.bien import Bien
 from app.models.bien_photo import BienPhoto
 from app.models.lot import Lot
@@ -128,6 +128,19 @@ def delete_bien(db: Session, current_user: Utilisateur, bien_id: int) -> None:
         raise NotFound("Property not found")
     if not has_permission_for_bien(db, current_user, bien, "DELETE_PROPERTY"):
         raise Forbidden("Not allowed to delete this property")
+    has_active_bail = (
+        db.query(Bail)
+        .join(Lot, Lot.id == Bail.lot_id)
+        .filter(
+            Lot.bien_id == bien.id,
+            Lot.deleted_at.is_(None),
+            Bail.deleted_at.is_(None),
+            Bail.statut == BailStatus.ACTIF,
+        )
+        .first()
+    )
+    if has_active_bail:
+        raise BadRequest("Impossible de supprimer ce bien : un de ses lots possède un bail actif.")
     bien.deleted_at = datetime.utcnow()
     db.commit()
     _notify_proprietaire_of_activity(

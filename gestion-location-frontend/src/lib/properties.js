@@ -9,6 +9,9 @@ export const LOT_STATUS_LABELS = { 1: "Libre", 2: "Occupé", 3: "Réservé" };
 export const BAIL_STATUS = { EN_ATTENTE: 1, ACTIF: 2, RESILIE: 3, EXPIRE: 4 };
 export const BAIL_STATUS_LABELS = { 1: "En attente", 2: "Actif", 3: "Résilié", 4: "Expiré" };
 
+export const FREQUENCE_PAIEMENT = { JOUR: 1, SEMAINE: 2, MOIS: 3, ANNEE: 4 };
+export const FREQUENCE_PAIEMENT_LABELS = { 1: "Jour", 2: "Semaine", 3: "Mois", 4: "Année" };
+
 export const ECHEANCE_STATUS = { PAYE: 1, PARTIEL: 2, IMPAYE: 3 };
 export const ECHEANCE_STATUS_LABELS = { 1: "Payé", 2: "Partiel", 3: "Impayé" };
 
@@ -153,8 +156,24 @@ export async function deletePaiement(paiementId) {
   await apiClient.delete(`/payments/${paiementId}`);
 }
 
+export const PAIEMENT_STATUS = { VALIDE: 1, ANNULE: 2 };
+export const PAIEMENT_STATUS_LABELS = { 1: "Validé", 2: "Annulé" };
+
+export async function annulerPaiement(paiementId) {
+  const { data } = await apiClient.post(`/payments/${paiementId}/annuler`);
+  return data;
+}
+
 export async function fetchQuittances() {
   const { data } = await apiClient.get("/receipts/");
+  return data;
+}
+
+export const QUITTANCE_STATUS = { EMISE: 1, ANNULEE: 2 };
+export const QUITTANCE_STATUS_LABELS = { 1: "Émise", 2: "Annulée" };
+
+export async function annulerQuittance(quittanceId) {
+  const { data } = await apiClient.post(`/receipts/${quittanceId}/annuler`);
   return data;
 }
 
@@ -170,7 +189,17 @@ export async function downloadQuittance(quittanceId) {
   window.URL.revokeObjectURL(url);
 }
 
-export async function createBail({ lotId, locataireId, dateDebut, dateFin, loyer, charges, depot, statut }) {
+export async function createBail({
+  lotId,
+  locataireId,
+  dateDebut,
+  dateFin,
+  loyer,
+  charges,
+  depot,
+  statut,
+  frequencePaiement,
+}) {
   const { data } = await apiClient.post("/leases/", {
     lot_id: lotId,
     locataire_id: locataireId,
@@ -180,6 +209,7 @@ export async function createBail({ lotId, locataireId, dateDebut, dateFin, loyer
     charges: charges || null,
     depot: depot || null,
     statut: statut || null,
+    frequence_paiement: frequencePaiement || FREQUENCE_PAIEMENT.MOIS,
   });
   return data;
 }

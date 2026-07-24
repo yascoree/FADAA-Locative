@@ -151,6 +151,7 @@ export default function ProprietaireDashboardPage() {
   const trailing = useMemo(() => {
     if (!revenue) return { points: [], max: 100, linePath: "", areaPath: "" };
     const months = revenue.trailing_12_months;
+    if (months.length === 0) return { points: [], max: 100, linePath: "", areaPath: "" };
     const stepX = INNER_WIDTH / (months.length - 1);
     const raw = months.map((m, i) => ({
       key: `${m.year}-${m.month}`,

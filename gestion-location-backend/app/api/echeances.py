@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models.utilisateur import Utilisateur
 from app.schemas.echeance import EcheanceCreate, EcheanceRead, EcheanceUpdate
 from app.services import echeance_service
-from app.services.exceptions import Forbidden, NotFound
+from app.services.exceptions import BadRequest, Forbidden, NotFound
 
 router = APIRouter(prefix="/due-dates", tags=["due-dates"])
 
@@ -78,3 +78,5 @@ def delete_echeance(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except Forbidden as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except BadRequest as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))

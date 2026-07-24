@@ -2,7 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { extractErrorMessage } from "@/lib/apiClient";
-import { fetchPaiements, fetchBiens, fetchQuittances, downloadQuittance, MODE_PAIEMENT_LABELS } from "@/lib/properties";
+import {
+  fetchPaiements,
+  fetchBiens,
+  fetchQuittances,
+  downloadQuittance,
+  MODE_PAIEMENT_LABELS,
+  PAIEMENT_STATUS,
+  PAIEMENT_STATUS_LABELS,
+} from "@/lib/properties";
 import StatCard from "@/components/StatCard";
 import styles from "../locataire.module.css";
 
@@ -190,13 +198,14 @@ export default function LocatairePaiementsPage() {
                 <th>Montant</th>
                 <th>Mode</th>
                 <th>Date de paiement</th>
+                <th>Statut</th>
                 <th>Quittance</th>
               </tr>
             </thead>
             <tbody>
               {filteredPaiements.length === 0 && (
                 <tr>
-                  <td colSpan={6} className={styles.empty}>
+                  <td colSpan={7} className={styles.empty}>
                     Aucun paiement enregistré pour le moment.
                   </td>
                 </tr>
@@ -210,6 +219,11 @@ export default function LocatairePaiementsPage() {
                     <td>{formatCurrency(p.montant)}</td>
                     <td>{MODE_PAIEMENT_LABELS[p.mode_paiement] || "—"}</td>
                     <td>{formatDate(p.date_paiement)}</td>
+                    <td>
+                      <span className={`${styles.badge} ${p.statut === PAIEMENT_STATUS.ANNULE ? styles.badgeDanger : styles.badgeActive}`}>
+                        {PAIEMENT_STATUS_LABELS[p.statut] || "—"}
+                      </span>
+                    </td>
                     <td>
                       {quittance ? (
                         <button

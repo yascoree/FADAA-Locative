@@ -7,7 +7,7 @@ from app.database import get_db
 from app.models.utilisateur import Utilisateur
 from app.schemas.quittance import QuittanceRead
 from app.services import quittance_service
-from app.services.exceptions import Forbidden, NotFound
+from app.services.exceptions import BadRequest, Forbidden, NotFound
 
 router = APIRouter(prefix="/receipts", tags=["receipts"])
 
@@ -50,3 +50,19 @@ def download_quittance(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
 
     return FileResponse(pdf_path, media_type="application/pdf", filename=f"quittance_{quittance_id}.pdf")
+
+
+@router.post("/{quittance_id}/annuler", response_model=QuittanceRead)
+def annuler_quittance(
+    quittance_id: int,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(get_current_user),
+):
+    try:
+        return quittance_service.annuler_quittance(db, current_user, quittance_id)
+    except NotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except Forbidden as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except BadRequest as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))

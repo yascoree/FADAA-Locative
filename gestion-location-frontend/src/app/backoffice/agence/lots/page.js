@@ -59,6 +59,7 @@ export default function AgenceLotsPage() {
 
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -174,13 +175,13 @@ export default function AgenceLotsPage() {
   async function handleConfirmDelete() {
     if (!deleteTarget) return;
     setDeleteBusy(true);
+    setDeleteError(null);
     try {
       await deleteLot(deleteTarget.id);
       setLots((prev) => prev.filter((l) => l.id !== deleteTarget.id));
       setDeleteTarget(null);
     } catch (err) {
-      setLoadError(extractErrorMessage(err));
-      setDeleteTarget(null);
+      setDeleteError(extractErrorMessage(err));
     } finally {
       setDeleteBusy(false);
     }
@@ -325,7 +326,10 @@ export default function AgenceLotsPage() {
                             <button
                               type="button"
                               className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                              onClick={() => setDeleteTarget(l)}
+                              onClick={() => {
+                                setDeleteTarget(l);
+                                setDeleteError(null);
+                              }}
                               title="Supprimer"
                             >
                               <i className="bi bi-trash" />
@@ -425,17 +429,21 @@ export default function AgenceLotsPage() {
       {/* ---- Confirmation de suppression ---- */}
       <ConfirmationDialog
         isOpen={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
+        onClose={() => {
+          setDeleteTarget(null);
+          setDeleteError(null);
+        }}
         onConfirm={handleConfirmDelete}
         title="Supprimer le lot"
         message={
           deleteTarget
-            ? `Supprimer définitivement "${deleteTarget.reference || `Lot #${deleteTarget.id}`}" ? Les baux associés seront aussi supprimés. Cette action est irréversible.`
+            ? `Masquer "${deleteTarget.reference || `Lot #${deleteTarget.id}`}" ? Il n'apparaîtra plus dans vos listes, mais ses baux sont conservés (non supprimés). Impossible s'il a un bail actif.`
             : ""
         }
         confirmLabel="Supprimer"
         danger
         isBusy={deleteBusy}
+        error={deleteError}
       />
     </div>
   );
