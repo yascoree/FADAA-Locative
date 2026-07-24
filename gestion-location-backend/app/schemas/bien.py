@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -40,3 +41,4 @@ class BienRead(BienBase):
 
     id: int
     photos: list[BienPhotoRead] = []
+    created_at: datetime

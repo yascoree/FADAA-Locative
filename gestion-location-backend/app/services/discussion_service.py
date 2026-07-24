@@ -1,4 +1,6 @@
+import uuid
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 from sqlalchemy import or_
@@ -14,8 +16,45 @@ from app.models.notification import NotificationType
 from app.models.reclamation import Reclamation, ReclamationStatus
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.discussion import DiscussionCreate, DiscussionUpdate
-from app.services.exceptions import Forbidden, NotFound
+from app.services.exceptions import BadRequest, Forbidden, NotFound
 from app.services.push_service import send_push_to_user
+
+UPLOAD_ROOT = Path(__file__).resolve().parents[2] / "uploads" / "discussions"
+ALLOWED_ATTACHMENT_TYPES = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+    "application/pdf": ".pdf",
+    "application/msword": ".doc",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+    "application/vnd.ms-excel": ".xls",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+    "text/plain": ".txt",
+    "application/zip": ".zip",
+}
+MAX_ATTACHMENT_SIZE = 15 * 1024 * 1024  # 15 MB
+
+
+def upload_attachment(
+    current_user: Utilisateur, file_content: bytes, content_type: str, original_filename: str
+) -> dict:
+    extension = ALLOWED_ATTACHMENT_TYPES.get(content_type)
+    if not extension:
+        raise BadRequest("Unsupported file type")
+    if len(file_content) > MAX_ATTACHMENT_SIZE:
+        raise BadRequest("File must be smaller than 15 MB")
+
+    user_dir = UPLOAD_ROOT / str(current_user.id)
+    user_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}{extension}"
+    (user_dir / filename).write_bytes(file_content)
+
+    return {
+        "piece_jointe": f"/uploads/discussions/{current_user.id}/{filename}",
+        "piece_jointe_nom": original_filename or filename,
+        "piece_jointe_type": content_type,
+    }
 
 
 def _ensure_participant_or_admin(current_user: Utilisateur, discussion: Discussion) -> None:
@@ -166,7 +205,9 @@ def create_discussion(db: Session, current_user: Utilisateur, discussion_in: Dis
         user_id=current_user.id,
         destinataire_id=discussion_in.destinataire_id,
         message=discussion_in.message,
-        pdf=discussion_in.pdf,
+        piece_jointe=discussion_in.piece_jointe,
+        piece_jointe_nom=discussion_in.piece_jointe_nom,
+        piece_jointe_type=discussion_in.piece_jointe_type,
     )
     db.add(discussion)
     db.commit()

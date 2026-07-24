@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -8,7 +8,7 @@ from app.database import get_db
 from app.models.utilisateur import Utilisateur
 from app.schemas.discussion import DiscussionCreate, DiscussionRead, DiscussionUpdate
 from app.services import discussion_service
-from app.services.exceptions import Forbidden, NotFound
+from app.services.exceptions import BadRequest, Forbidden, NotFound
 
 router = APIRouter(prefix="/discussions", tags=["discussions"])
 
@@ -36,6 +36,20 @@ def create_discussion(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except Forbidden as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+
+
+@router.post("/attachments")
+async def upload_attachment(
+    file: UploadFile = File(...),
+    current_user: Utilisateur = Depends(get_current_user),
+):
+    """Uploads a file (photo, PDF, document...) to attach to the next message sent —
+    must be declared before /{discussion_id} to avoid being caught by that route."""
+    content = await file.read()
+    try:
+        return discussion_service.upload_attachment(current_user, content, file.content_type, file.filename)
+    except BadRequest as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
 @router.get("/{discussion_id}", response_model=DiscussionRead)

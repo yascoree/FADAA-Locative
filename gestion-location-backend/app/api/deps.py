@@ -116,35 +116,45 @@ def has_permission(db: Session, user: Utilisateur, proprietaire_id: int, code: s
 
 
 def bien_ids_with_permission(db: Session, gestionnaire_id: int, code: str) -> list[int]:
-    """Ids of biens this gestionnaire can act on with this permission — via a
-    portfolio-wide Mandat (covers every bien of that proprietaire) or a Mandat
-    scoped to that one bien specifically."""
-    rows = (
-        db.query(Mandat.bien_id, Mandat.proprietaire_id)
-        .join(ManagerPermission, ManagerPermission.mandat_id == Mandat.id)
-        .join(Permission, Permission.id == ManagerPermission.permission_id)
-        .filter(
-            Mandat.gestionnaire_id == gestionnaire_id,
-            Mandat.statut == MandatStatus.ACTIF,
-            Permission.code == code,
-        )
-        .distinct()
+    """Ids of biens this gestionnaire can act on with this permission.
+
+    A Mandat scoped to one specific bien is authoritative for that bien and
+    overrides any portfolio-wide Mandat the same gestionnaire also holds for
+    that proprietaire — otherwise revoking a permission on the bien-specific
+    Mandat would have no effect as long as the blanket Mandat still grants it.
+    A portfolio-wide Mandat only fills in the biens that have no bien-specific
+    Mandat of their own."""
+    mandats = (
+        db.query(Mandat.id, Mandat.bien_id, Mandat.proprietaire_id)
+        .filter(Mandat.gestionnaire_id == gestionnaire_id, Mandat.statut == MandatStatus.ACTIF)
         .all()
     )
-    bien_ids = set()
-    blanket_proprietaire_ids = set()
-    for bien_id, proprietaire_id in rows:
-        if bien_id is None:
-            blanket_proprietaire_ids.add(proprietaire_id)
-        else:
-            bien_ids.add(bien_id)
+    if not mandats:
+        return []
+
+    mandat_ids = [m.id for m in mandats]
+    granted_mandat_ids = {
+        row[0]
+        for row in (
+            db.query(Mandat.id)
+            .join(ManagerPermission, ManagerPermission.mandat_id == Mandat.id)
+            .join(Permission, Permission.id == ManagerPermission.permission_id)
+            .filter(Mandat.id.in_(mandat_ids), Permission.code == code)
+            .all()
+        )
+    }
+
+    overridden_bien_ids = {m.bien_id for m in mandats if m.bien_id is not None}
+    blanket_proprietaire_ids = {m.proprietaire_id for m in mandats if m.bien_id is None and m.id in granted_mandat_ids}
+
+    bien_ids = {m.bien_id for m in mandats if m.bien_id is not None and m.id in granted_mandat_ids}
     if blanket_proprietaire_ids:
         extra = (
             db.query(Bien.id)
             .filter(Bien.proprietaire_id.in_(blanket_proprietaire_ids), Bien.deleted_at.is_(None))
             .all()
         )
-        bien_ids.update(row[0] for row in extra)
+        bien_ids.update(row[0] for row in extra if row[0] not in overridden_bien_ids)
     return list(bien_ids)
 
 

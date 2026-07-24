@@ -77,3 +77,12 @@ class Utilisateur(Base):
         "Historique",
         back_populates="utilisateur"
     )
+
+    @property
+    def photo(self) -> str | None:
+        """URL de la photo de profil, exposée directement sur l'utilisateur (via
+        Profil.photo) pour que les autres utilisateurs puissent l'afficher sans
+        avoir accès à /profiles/{id} (réservé à soi-même/admin)."""
+        if self.profil and self.profil.deleted_at is None:
+            return self.profil.photo
+        return None
