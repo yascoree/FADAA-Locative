@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { extractErrorMessage } from "@/lib/apiClient";
+import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import { fetchLocataires, createLocataire } from "@/lib/tenants";
 import { fetchBiens, fetchBaux, fetchEcheances, fetchPaiements, BAIL_STATUS, BAIL_STATUS_LABELS, ECHEANCE_STATUS } from "@/lib/properties";
 import { ACCOUNT_STATUS, ACCOUNT_STATUS_LABELS } from "@/lib/users";
+import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
 import TextField from "@/components/TextField";
@@ -64,6 +65,7 @@ export default function AgenceLocatairesPage() {
 
   const [search, setSearch] = useState("");
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [sortBy, setSortBy] = useState("recent");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -137,7 +139,7 @@ export default function AgenceLocatairesPage() {
 
   const filteredLocataires = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return locataires.filter((l) => {
+    const filtered = locataires.filter((l) => {
       if (term) {
         const name = `${l.prenom} ${l.nom} ${l.email}`.toLowerCase();
         if (!name.includes(term)) return false;
@@ -145,7 +147,11 @@ export default function AgenceLocatairesPage() {
       if (overdueOnly && !locataireHasOverdue.get(l.id)) return false;
       return true;
     });
-  }, [locataires, search, overdueOnly, locataireHasOverdue]);
+    return sortList(filtered, sortBy, {
+      dateOf: (l) => l.date_creation,
+      nameOf: (l) => `${l.prenom} ${l.nom}`,
+    });
+  }, [locataires, search, overdueOnly, locataireHasOverdue, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLocataires.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -243,6 +249,13 @@ export default function AgenceLocatairesPage() {
             />
             En retard uniquement
           </label>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className={styles.tableWrap}>
@@ -271,7 +284,17 @@ export default function AgenceLocatairesPage() {
                   <tr key={l.id} className={selectedId === l.id ? styles.tableRowActive : ""}>
                     <td>
                       <div className={styles.userCell}>
-                        <span className={styles.avatarSm}>{initials || "?"}</span>
+                        {l.photo ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={`${API_BASE_URL}${l.photo}`}
+                            alt=""
+                            className={styles.avatarSm}
+                            style={{ objectFit: "cover" }}
+                          />
+                        ) : (
+                          <span className={styles.avatarSm}>{initials || "?"}</span>
+                        )}
                         <span className={styles.userName}>
                           {l.prenom} {l.nom}
                         </span>

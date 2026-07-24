@@ -13,7 +13,8 @@ import {
   BIEN_STATUS,
   BIEN_STATUS_LABELS,
 } from "@/lib/properties";
-import { fetchMandates, MANDAT_STATUS } from "@/lib/mandates";
+import { fetchMandates, fetchGestionnairePermissionIndex, MANDAT_STATUS } from "@/lib/mandates";
+import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
@@ -50,11 +51,13 @@ export default function AgenceBiensPage() {
   const [biens, setBiens] = useState([]);
   const [categories, setCategories] = useState([]);
   const [proprietaires, setProprietaires] = useState([]);
+  const [permIndex, setPermIndex] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [sortBy, setSortBy] = useState("recent");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -75,16 +78,20 @@ export default function AgenceBiensPage() {
     async function init() {
       setIsLoading(true);
       try {
-        const [biensList, categoriesList, mandatesList] = await Promise.all([
+        const [biensList, categoriesList, mandatesList, permissionIndex] = await Promise.all([
           fetchBiens(),
           fetchCategories(),
           fetchMandates(),
+          fetchGestionnairePermissionIndex(),
         ]);
         setBiens(biensList);
         setCategories(categoriesList);
-        setProprietaires(
-          mandatesList.filter((m) => m.statut === MANDAT_STATUS.ACTIF && m.proprietaire).map((m) => m.proprietaire)
-        );
+        const proprietairesById = new Map();
+        mandatesList
+          .filter((m) => m.statut === MANDAT_STATUS.ACTIF && m.proprietaire)
+          .forEach((m) => proprietairesById.set(m.proprietaire.id, m.proprietaire));
+        setProprietaires([...proprietairesById.values()]);
+        setPermIndex(permissionIndex);
       } catch (err) {
         setLoadError(extractErrorMessage(err));
       } finally {
@@ -103,14 +110,20 @@ export default function AgenceBiensPage() {
     };
   }, [biens]);
 
+  const creatableProprietaires = useMemo(() => {
+    if (!permIndex) return [];
+    return proprietaires.filter((p) => permIndex.hasForProprietaire(p.id, "CREATE_PROPERTY"));
+  }, [proprietaires, permIndex]);
+
   const filteredBiens = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return biens.filter((b) => {
+    const filtered = biens.filter((b) => {
       if (term && !(b.designation || "").toLowerCase().includes(term)) return false;
       if (statusFilter && String(b.statut) !== statusFilter) return false;
       return true;
     });
-  }, [biens, search, statusFilter]);
+    return sortList(filtered, sortBy, { dateOf: (b) => b.created_at, nameOf: (b) => b.designation });
+  }, [biens, search, statusFilter, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredBiens.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -130,7 +143,7 @@ export default function AgenceBiensPage() {
     setFormTargetId(null);
     setFormDraft({
       ...EMPTY_FORM,
-      proprietaire_id: proprietaires[0] ? String(proprietaires[0].id) : "",
+      proprietaire_id: creatableProprietaires[0] ? String(creatableProprietaires[0].id) : "",
       categorie_id: categories[0] ? String(categories[0].id) : "",
     });
     setFormBanner(null);
@@ -311,10 +324,12 @@ export default function AgenceBiensPage() {
               {filteredBiens.length} bien(s) affiché(s) sur {biens.length}, tous propriétaires confondus.
             </p>
           </div>
-          <button type="button" className={styles.btn} onClick={openCreate}>
-            <i className="bi bi-plus-lg" />
-            Nouveau bien
-          </button>
+          {creatableProprietaires.length > 0 && (
+            <button type="button" className={styles.btn} onClick={openCreate}>
+              <i className="bi bi-plus-lg" />
+              Nouveau bien
+            </button>
+          )}
         </div>
 
         <div className={styles.filtersRow}>
@@ -336,6 +351,13 @@ export default function AgenceBiensPage() {
           >
             <option value="">Tous les statuts</option>
             {STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            {SORT_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
@@ -389,19 +411,30 @@ export default function AgenceBiensPage() {
                     </td>
                     <td>{b.photos?.length || 0}</td>
                     <td>
-                      <div className={styles.tableActions}>
-                        <button type="button" className={styles.iconBtn} onClick={() => openEdit(b)} title="Modifier">
-                          <i className="bi bi-pencil" />
-                        </button>
-                        <button
-                          type="button"
-                          className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                          onClick={() => setDeleteTarget(b)}
-                          title="Supprimer"
-                        >
-                          <i className="bi bi-trash" />
-                        </button>
-                      </div>
+                      {(() => {
+                        const canUpdate = permIndex?.hasForBien(b.id, b.proprietaire_id, "UPDATE_PROPERTY");
+                        const canDelete = permIndex?.hasForBien(b.id, b.proprietaire_id, "DELETE_PROPERTY");
+                        if (!canUpdate && !canDelete) return <span className={styles.empty}>—</span>;
+                        return (
+                          <div className={styles.tableActions}>
+                            {canUpdate && (
+                              <button type="button" className={styles.iconBtn} onClick={() => openEdit(b)} title="Modifier">
+                                <i className="bi bi-pencil" />
+                              </button>
+                            )}
+                            {canDelete && (
+                              <button
+                                type="button"
+                                className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                                onClick={() => setDeleteTarget(b)}
+                                title="Supprimer"
+                              >
+                                <i className="bi bi-trash" />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                   </tr>
                 );
@@ -447,7 +480,7 @@ export default function AgenceBiensPage() {
             <SelectField
               label="Propriétaire"
               name="proprietaire_id"
-              options={proprietaires.map((p) => ({ value: p.id, label: `${p.prenom} ${p.nom}` }))}
+              options={creatableProprietaires.map((p) => ({ value: p.id, label: `${p.prenom} ${p.nom}` }))}
               value={formDraft.proprietaire_id}
               onChange={(e) => setFormDraft((d) => ({ ...d, proprietaire_id: e.target.value }))}
               required

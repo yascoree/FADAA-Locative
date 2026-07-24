@@ -101,6 +101,7 @@ export default function AgenceParametresPage() {
       const updated = await uploadProfilePhoto(user.id, file);
       setProfileExists(true);
       setPhotoUrl(updated.photo ? `${API_BASE_URL}${updated.photo}` : null);
+      await refreshUser();
     } catch (err) {
       setPhotoBanner({ type: "error", message: extractErrorMessage(err) });
     } finally {
@@ -114,6 +115,7 @@ export default function AgenceParametresPage() {
     try {
       await deleteProfilePhoto(user.id);
       setPhotoUrl(null);
+      await refreshUser();
     } catch (err) {
       setPhotoBanner({ type: "error", message: extractErrorMessage(err) });
     } finally {

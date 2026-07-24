@@ -16,6 +16,7 @@ import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
+import { fetchGestionnairePermissionIndex } from "@/lib/mandates";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -55,6 +56,7 @@ export default function AgenceEcheancesPage() {
   const [echeances, setEcheances] = useState([]);
   const [baux, setBaux] = useState([]);
   const [biens, setBiens] = useState([]);
+  const [permIndex, setPermIndex] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
@@ -79,10 +81,16 @@ export default function AgenceEcheancesPage() {
     async function init() {
       setIsLoading(true);
       try {
-        const [echeancesList, bauxList, biensList] = await Promise.all([fetchEcheances(), fetchBaux(), fetchBiens()]);
+        const [echeancesList, bauxList, biensList, permissionIndex] = await Promise.all([
+          fetchEcheances(),
+          fetchBaux(),
+          fetchBiens(),
+          fetchGestionnairePermissionIndex(),
+        ]);
         setEcheances(echeancesList);
         setBaux(bauxList);
         setBiens(biensList);
+        setPermIndex(permissionIndex);
       } catch (err) {
         setLoadError(extractErrorMessage(err));
       } finally {
@@ -332,30 +340,43 @@ export default function AgenceEcheancesPage() {
                       </span>
                     </td>
                     <td>
-                      <div className={styles.tableActions}>
-                        {!isPaid && (
-                          <button
-                            type="button"
-                            className={styles.iconBtn}
-                            onClick={() => handleMarkPaid(e)}
-                            disabled={rowBusyId === e.id}
-                            title="Marquer comme payée"
-                          >
-                            <i className="bi bi-check-lg" />
-                          </button>
-                        )}
-                        <button type="button" className={styles.iconBtn} onClick={() => openEdit(e)} title="Modifier">
-                          <i className="bi bi-pencil" />
-                        </button>
-                        <button
-                          type="button"
-                          className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                          onClick={() => setDeleteTarget(e)}
-                          title="Supprimer"
-                        >
-                          <i className="bi bi-trash" />
-                        </button>
-                      </div>
+                      {(() => {
+                        const bienId = e.bail?.lot?.bien_id;
+                        const proprietaireId = biens.find((b) => b.id === bienId)?.proprietaire_id;
+                        const canUpdate = permIndex?.hasForBien(bienId, proprietaireId, "UPDATE_DUE_DATE");
+                        const canDelete = permIndex?.hasForBien(bienId, proprietaireId, "DELETE_DUE_DATE");
+                        if (!canUpdate && !canDelete) return <span className={styles.empty}>—</span>;
+                        return (
+                          <div className={styles.tableActions}>
+                            {!isPaid && canUpdate && (
+                              <button
+                                type="button"
+                                className={styles.iconBtn}
+                                onClick={() => handleMarkPaid(e)}
+                                disabled={rowBusyId === e.id}
+                                title="Marquer comme payée"
+                              >
+                                <i className="bi bi-check-lg" />
+                              </button>
+                            )}
+                            {canUpdate && (
+                              <button type="button" className={styles.iconBtn} onClick={() => openEdit(e)} title="Modifier">
+                                <i className="bi bi-pencil" />
+                              </button>
+                            )}
+                            {canDelete && (
+                              <button
+                                type="button"
+                                className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                                onClick={() => setDeleteTarget(e)}
+                                title="Supprimer"
+                              >
+                                <i className="bi bi-trash" />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                   </tr>
                 );

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { extractErrorMessage } from "@/lib/apiClient";
+import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import {
   fetchMandates,
   fetchPermissionCatalog,
@@ -295,7 +295,17 @@ export default function GestionPermissionPage() {
             <div className={styles.gestCard} key={gestionnaire.id}>
               <div className={styles.gestHeader}>
                 <div className={styles.gestIdentity}>
-                  <span className={styles.avatar}>{initials || "?"}</span>
+                  {gestionnaire.photo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`${API_BASE_URL}${gestionnaire.photo}`}
+                      alt=""
+                      className={styles.avatar}
+                      style={{ objectFit: "cover" }}
+                    />
+                  ) : (
+                    <span className={styles.avatar}>{initials || "?"}</span>
+                  )}
                   <div>
                     <div className={styles.gestName}>
                       {gestionnaire.prenom} {gestionnaire.nom}

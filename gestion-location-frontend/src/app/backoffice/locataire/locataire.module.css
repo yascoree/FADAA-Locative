@@ -165,6 +165,22 @@
   color: var(--primary);
 }
 
+.navBadge {
+  margin-left: auto;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.35rem;
+  flex-shrink: 0;
+}
+
 .sidebarFooter {
   display: flex;
   align-items: center;
@@ -331,6 +347,12 @@
   border: 1px solid rgba(181, 83, 62, 0.3);
 }
 
+.bannerSuccess {
+  background: var(--primary-soft);
+  color: #4e5738;
+  border: 1px solid rgba(136, 144, 99, 0.35);
+}
+
 .statsGrid {
   position: relative;
   display: grid;
@@ -432,4 +454,1095 @@
   font-size: 0.84rem;
   color: var(--text-muted);
   padding: 0.5rem 0;
+}
+
+/* ---------- Dashboard — tuiles pleines couleurs ---------- */
+
+.heroTilesGrid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.1rem;
+  margin-bottom: 1.5rem;
+}
+
+.heroTile {
+  border-radius: var(--radius-card);
+  padding: 1.35rem 1.5rem;
+  color: #fff;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  min-width: 0;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.heroTile:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lift);
+}
+
+.heroTilePrimary {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--tone-olive) 85%, transparent),
+    color-mix(in srgb, var(--tone-olive-dark) 88%, transparent)
+  );
+}
+.heroTileDanger {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--tone-terracotta) 85%, transparent),
+    color-mix(in srgb, var(--tone-terracotta-dark) 88%, transparent)
+  );
+}
+.heroTileGold {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--tone-charcoal) 85%, transparent),
+    color-mix(in srgb, var(--tone-charcoal-dark) 88%, transparent)
+  );
+}
+.heroTileInfo {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--tone-navy) 85%, transparent),
+    color-mix(in srgb, var(--tone-navy-dark) 88%, transparent)
+  );
+}
+
+.heroTileTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.heroTileIcon {
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.02rem;
+  flex-shrink: 0;
+}
+
+.heroTileLabel {
+  font-size: 0.76rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.85;
+}
+
+.heroTileValue {
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Dashboard — jauges radiales ---------- */
+
+.heroGrid {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: 1.5rem;
+  align-items: stretch;
+  margin-bottom: 2.5rem;
+}
+
+@media (max-width: 900px) {
+  .heroGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.metersRow {
+  display: grid;
+  gap: 1.1rem;
+  height: 100%;
+}
+
+.meterCard {
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid color-mix(in srgb, white 50%, var(--border));
+  border-radius: var(--radius-card);
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  flex: 1;
+  justify-content: center;
+}
+
+.meterWrap {
+  position: relative;
+  width: 118px;
+  height: 118px;
+  margin-bottom: 0.6rem;
+}
+
+.meterCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.meterValue {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.meterLabel {
+  font-weight: 700;
+  color: var(--secondary);
+  font-size: 0.86rem;
+}
+
+.meterSublabel {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.meterTrackNavy {
+  stroke: var(--tone-navy-soft);
+}
+.meterFillNavy {
+  stroke: var(--tone-navy);
+}
+.meterTrackOlive {
+  stroke: var(--tone-olive-soft);
+}
+.meterFillOlive {
+  stroke: var(--tone-olive);
+}
+.meterTrackTerracotta {
+  stroke: var(--tone-terracotta-soft);
+}
+.meterFillTerracotta {
+  stroke: var(--tone-terracotta);
+}
+
+/* ---------- Mon logement ---------- */
+
+.logementHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-bottom: 1.3rem;
+}
+
+.logementIcon {
+  width: 2.8rem;
+  height: 2.8rem;
+  border-radius: 12px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.logementTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--secondary);
+  margin-bottom: 0.35rem;
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+}
+
+.detailItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.85rem 1rem;
+  background: var(--bg);
+  border-radius: var(--radius-field);
+}
+
+.detailItemLabel {
+  font-size: 0.72rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.detailItemValue {
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: var(--secondary);
+}
+
+.editActions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+/* ---------- Échéances ---------- */
+
+.echeanceList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.echeanceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--bg);
+  border-radius: var(--radius-field);
+  transition: transform 0.15s ease;
+}
+
+.echeanceRow:hover {
+  transform: translateX(3px);
+}
+
+.echeanceDate {
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: var(--secondary);
+  text-transform: capitalize;
+}
+
+.echeanceMontant {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+/* ---------- État vide ---------- */
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 2.5rem 1rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.emptyState i {
+  font-size: 2.2rem;
+  color: var(--tone-navy-soft);
+}
+
+/* ---------- Boutons ---------- */
+
+.btn {
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 650;
+  font-size: 0.84rem;
+  padding: 0.6rem 1.05rem;
+  border-radius: var(--radius-field);
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  box-shadow: 0 2px 8px -2px rgba(136, 144, 99, 0.5);
+  transition: background 0.12s ease, transform 0.08s ease, box-shadow 0.12s ease;
+  text-decoration: none;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--primary-dark);
+  box-shadow: 0 6px 16px -3px rgba(136, 144, 99, 0.55);
+  transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
+}
+
+.btnOutline {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--secondary);
+  font-weight: 600;
+  font-size: 0.83rem;
+  padding: 0.55rem 0.95rem;
+  border-radius: var(--radius-field);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  text-decoration: none;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease, transform 0.12s ease;
+}
+
+.btnOutline:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-soft);
+  transform: translateY(-1px);
+}
+
+.btnOutline:active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* ---------- Mon bail — galerie photos ---------- */
+
+.photoGallery {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 0.6rem;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  height: 280px;
+}
+
+.photoGallerySingle {
+  grid-template-columns: 1fr;
+}
+
+.photoCover {
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  height: 100%;
+}
+
+.photoCover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photoStrip {
+  display: grid;
+  grid-template-rows: repeat(auto-fit, 1fr);
+  gap: 0.6rem;
+  height: 100%;
+}
+
+.photoThumbSm {
+  border-radius: var(--radius-field);
+  overflow: hidden;
+  height: 100%;
+}
+
+.photoThumbSm img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 700px) {
+  .photoGallery {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .photoCover {
+    height: 220px;
+  }
+  .photoStrip {
+    display: none;
+  }
+}
+
+/* ---------- Mon bail — méta & progression ---------- */
+
+.logementMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tagPill {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg);
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+}
+
+.progressBlock {
+  margin-top: 1.4rem;
+}
+
+.progressLabelRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.progressTrack {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--tone-navy), var(--tone-navy-dark));
+  transition: width 0.4s ease;
+}
+
+.quickActions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1.4rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ---------- Listes / tableaux ---------- */
+
+.filtersRow {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 1.2rem;
+}
+
+.filtersRow input[type="text"],
+.filtersRow select {
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field);
+  font-size: 0.84rem;
+  background: var(--surface);
+  color: var(--text);
+  color-scheme: light;
+}
+
+.filtersRow input[type="text"] {
+  flex: 1;
+  min-width: 220px;
+}
+
+.filtersRow select option {
+  color: var(--text);
+  background: var(--surface);
+}
+
+.checkFilter {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--secondary);
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.checkFilter input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--primary);
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+  background: var(--surface);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.table th {
+  text-align: left;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  font-weight: 700;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  background: var(--bg);
+}
+
+.table td {
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover {
+  background: color-mix(in srgb, var(--primary) 5%, transparent);
+}
+
+.recentEmail {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.tableActions {
+  display: flex;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.iconBtn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.88rem;
+  transition: all 0.12s ease;
+}
+
+.iconBtn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-soft);
+  transform: scale(1.08);
+}
+
+.iconBtn:active {
+  transform: scale(0.92);
+}
+
+.iconBtnDanger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.paginationRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 0.9rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.paginationButtons {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* ---------- Discussions ---------- */
+
+.msgShell {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  height: min(70vh, 620px);
+  background: var(--surface);
+}
+
+@media (max-width: 760px) {
+  .msgShell {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+}
+
+.msgContacts {
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.msgContactsHeader {
+  padding: 0.9rem 1rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.msgContactsTitle {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.msgContactItem {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  width: 100%;
+}
+
+.msgContactItem:hover {
+  background: var(--bg);
+}
+
+.msgContactItemActive {
+  background: var(--primary-soft);
+}
+
+.msgContactBody {
+  min-width: 0;
+  flex: 1;
+}
+
+.msgContactTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.msgContactName {
+  font-weight: 650;
+  color: var(--secondary);
+  font-size: 0.86rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.msgContactMeta {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.msgContactPreviewRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.msgContactPreview {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.msgContactRole {
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--primary-dark);
+  background: var(--primary-soft);
+  padding: 0.1rem 0.4rem;
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+
+.msgThread {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.msgThreadHeader {
+  padding: 0.85rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-shrink: 0;
+}
+
+.msgMessages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+@keyframes msgFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.msgBubbleRow {
+  display: flex;
+  animation: msgFadeIn 0.3s ease both;
+}
+
+.msgBubbleRowMine {
+  justify-content: flex-end;
+}
+
+.msgBubbleGroup {
+  max-width: 72%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.msgBubble {
+  padding: 0.55rem 0.85rem;
+  border-radius: 14px;
+  font-size: 0.86rem;
+  line-height: 1.42;
+  position: relative;
+  word-break: break-word;
+}
+
+.msgBubbleTheirs {
+  background: #f0e6d2;
+  color: #4a4130;
+  border-bottom-left-radius: 4px;
+  align-self: flex-start;
+}
+
+.msgBubbleMine {
+  background: var(--primary);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+  align-self: flex-end;
+}
+
+.msgBubbleTime {
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  padding: 0 0.2rem;
+}
+
+.msgBubbleTimeMine {
+  text-align: right;
+}
+
+.msgComposer {
+  border-top: 1px solid var(--border);
+  padding: 0.8rem 1rem;
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.msgComposer textarea {
+  flex: 1;
+  resize: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field);
+  padding: 0.6rem 0.8rem;
+  font-size: 0.86rem;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface);
+  max-height: 110px;
+  line-height: 1.4;
+}
+
+.msgComposer textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.msgSendBtn {
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  flex-shrink: 0;
+  transition: background 0.12s ease;
+}
+
+.msgSendBtn:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
+.msgSendBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.msgAttachBtn {
+  border: none;
+  background: var(--bg);
+  color: var(--text-muted);
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  flex-shrink: 0;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.msgAttachBtn:hover {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.msgAttachmentWrap {
+  position: relative;
+  display: inline-block;
+  border-radius: 12px;
+}
+
+.msgAttachmentImage {
+  display: block;
+  max-width: 140px;
+  max-height: 140px;
+  border-radius: 8px;
+  object-fit: cover;
+  cursor: pointer;
+  border: 4px solid #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.msgAttachmentWrap:hover .msgAttachmentImage {
+  transform: scale(1.05);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+.msgAttachmentZoomIcon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.75);
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+
+.msgAttachmentWrap:hover .msgAttachmentZoomIcon {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.msgAttachmentFile {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  max-width: 220px;
+}
+
+.msgAttachmentFile i {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.msgAttachmentFile span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msgAttachmentCaption {
+  margin-top: 0.4rem;
+}
+
+.msgEmptyState {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  flex-direction: column;
+  gap: 0.6rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+.msgEmptyState i {
+  font-size: 1.8rem;
+  opacity: 0.4;
+}
+
+/* ---------- Notifications ---------- */
+
+.notifList {
+  display: flex;
+  flex-direction: column;
+}
+
+.notifItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.12s ease;
+}
+
+.notifItem:hover {
+  background: var(--bg);
+}
+
+.notifItem:last-child {
+  border-bottom: none;
+}
+
+.notifItemUnread {
+  background: var(--primary-soft);
+}
+
+.notifIcon {
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.notifIconPrimary {
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+}
+.notifIconAccent {
+  background: var(--accent-soft);
+  color: #8a6a34;
+}
+.notifIconDanger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.notifBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.notifTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.notifTitle {
+  font-weight: 700;
+  color: var(--secondary);
+  font-size: 0.9rem;
+}
+
+.notifDate {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.notifDesc {
+  font-size: 0.83rem;
+  color: var(--text);
+  margin-top: 0.2rem;
+  line-height: 1.4;
+}
+
+.notifActions {
+  display: flex;
+  gap: 0.3rem;
+  margin-left: 0.5rem;
+  flex-shrink: 0;
+}
+
+.notifDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  flex-shrink: 0;
+  margin-top: 0.42rem;
 }

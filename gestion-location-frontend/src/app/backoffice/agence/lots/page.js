@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { extractErrorMessage } from "@/lib/apiClient";
 import { fetchBiens, fetchLots, createLot, updateLot, deleteLot, LOT_STATUS, LOT_STATUS_LABELS } from "@/lib/properties";
+import { fetchGestionnairePermissionIndex } from "@/lib/mandates";
+import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
@@ -38,12 +40,14 @@ const EMPTY_FORM = { bien_id: "", reference: "", loyer_reference: "", statut: St
 export default function AgenceLotsPage() {
   const [lots, setLots] = useState([]);
   const [biens, setBiens] = useState([]);
+  const [permIndex, setPermIndex] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
   const [search, setSearch] = useState("");
   const [bienFilter, setBienFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [sortBy, setSortBy] = useState("recent");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -60,9 +64,14 @@ export default function AgenceLotsPage() {
     async function init() {
       setIsLoading(true);
       try {
-        const [lotsList, biensList] = await Promise.all([fetchLots(), fetchBiens()]);
+        const [lotsList, biensList, permissionIndex] = await Promise.all([
+          fetchLots(),
+          fetchBiens(),
+          fetchGestionnairePermissionIndex(),
+        ]);
         setLots(lotsList);
         setBiens(biensList);
+        setPermIndex(permissionIndex);
       } catch (err) {
         setLoadError(extractErrorMessage(err));
       } finally {
@@ -81,15 +90,21 @@ export default function AgenceLotsPage() {
     };
   }, [lots]);
 
+  const creatableBiens = useMemo(() => {
+    if (!permIndex) return [];
+    return biens.filter((b) => permIndex.hasForBien(b.id, b.proprietaire_id, "CREATE_LOT"));
+  }, [biens, permIndex]);
+
   const filteredLots = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return lots.filter((l) => {
+    const filtered = lots.filter((l) => {
       if (term && !(l.reference || "").toLowerCase().includes(term)) return false;
       if (bienFilter && String(l.bien_id) !== bienFilter) return false;
       if (statusFilter && String(l.statut) !== statusFilter) return false;
       return true;
     });
-  }, [lots, search, bienFilter, statusFilter]);
+    return sortList(filtered, sortBy, { dateOf: (l) => l.created_at, nameOf: (l) => l.reference });
+  }, [lots, search, bienFilter, statusFilter, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLots.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -103,7 +118,7 @@ export default function AgenceLotsPage() {
   function openCreate() {
     setFormMode("create");
     setFormTargetId(null);
-    setFormDraft({ ...EMPTY_FORM, bien_id: biens[0] ? String(biens[0].id) : "" });
+    setFormDraft({ ...EMPTY_FORM, bien_id: creatableBiens[0] ? String(creatableBiens[0].id) : "" });
     setFormBanner(null);
     setFormOpen(true);
   }
@@ -201,16 +216,12 @@ export default function AgenceLotsPage() {
               {filteredLots.length} lot(s) affiché(s) sur {lots.length}, tous propriétaires confondus.
             </p>
           </div>
-          <button
-            type="button"
-            className={styles.btn}
-            onClick={openCreate}
-            disabled={biens.length === 0}
-            title={biens.length === 0 ? "Aucun bien disponible" : undefined}
-          >
-            <i className="bi bi-plus-lg" />
-            Nouveau lot
-          </button>
+          {creatableBiens.length > 0 && (
+            <button type="button" className={styles.btn} onClick={openCreate}>
+              <i className="bi bi-plus-lg" />
+              Nouveau lot
+            </button>
+          )}
         </div>
 
         {biens.length === 0 && (
@@ -257,6 +268,13 @@ export default function AgenceLotsPage() {
               </option>
             ))}
           </select>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className={styles.tableWrap}>
@@ -291,19 +309,31 @@ export default function AgenceLotsPage() {
                     </span>
                   </td>
                   <td>
-                    <div className={styles.tableActions}>
-                      <button type="button" className={styles.iconBtn} onClick={() => openEdit(l)} title="Modifier">
-                        <i className="bi bi-pencil" />
-                      </button>
-                      <button
-                        type="button"
-                        className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                        onClick={() => setDeleteTarget(l)}
-                        title="Supprimer"
-                      >
-                        <i className="bi bi-trash" />
-                      </button>
-                    </div>
+                    {(() => {
+                      const proprietaireId = biens.find((b) => b.id === l.bien_id)?.proprietaire_id;
+                      const canUpdate = permIndex?.hasForBien(l.bien_id, proprietaireId, "UPDATE_LOT");
+                      const canDelete = permIndex?.hasForBien(l.bien_id, proprietaireId, "DELETE_LOT");
+                      if (!canUpdate && !canDelete) return <span className={styles.empty}>—</span>;
+                      return (
+                        <div className={styles.tableActions}>
+                          {canUpdate && (
+                            <button type="button" className={styles.iconBtn} onClick={() => openEdit(l)} title="Modifier">
+                              <i className="bi bi-pencil" />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              type="button"
+                              className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                              onClick={() => setDeleteTarget(l)}
+                              title="Supprimer"
+                            >
+                              <i className="bi bi-trash" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}
@@ -347,7 +377,10 @@ export default function AgenceLotsPage() {
           <SelectField
             label="Bien"
             name="bien_id"
-            options={biens.map((b) => ({ value: b.id, label: b.designation || `Bien #${b.id}` }))}
+            options={(formMode === "create" ? creatableBiens : biens).map((b) => ({
+              value: b.id,
+              label: b.designation || `Bien #${b.id}`,
+            }))}
             value={formDraft.bien_id}
             onChange={(e) => setFormDraft((d) => ({ ...d, bien_id: e.target.value }))}
             required

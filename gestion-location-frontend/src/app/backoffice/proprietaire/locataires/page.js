@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { extractErrorMessage } from "@/lib/apiClient";
+import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import { fetchLocataires, createLocataire } from "@/lib/tenants";
 import { fetchBiens, fetchBaux, fetchEcheances, fetchPaiements, BAIL_STATUS, BAIL_STATUS_LABELS, ECHEANCE_STATUS } from "@/lib/properties";
 import { ACCOUNT_STATUS, ACCOUNT_STATUS_LABELS } from "@/lib/users";
@@ -270,7 +270,17 @@ export default function ProprietaireLocatairesPage() {
                   <tr key={l.id} className={selectedId === l.id ? styles.tableRowActive : ""}>
                     <td>
                       <div className={styles.userCell}>
-                        <span className={styles.avatarSm}>{initials || "?"}</span>
+                        {l.photo ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={`${API_BASE_URL}${l.photo}`}
+                            alt=""
+                            className={styles.avatarSm}
+                            style={{ objectFit: "cover" }}
+                          />
+                        ) : (
+                          <span className={styles.avatarSm}>{initials || "?"}</span>
+                        )}
                         <span className={styles.userName}>
                           {l.prenom} {l.nom}
                         </span>

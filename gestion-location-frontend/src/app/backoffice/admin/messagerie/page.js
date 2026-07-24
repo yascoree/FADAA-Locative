@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { extractErrorMessage } from "@/lib/apiClient";
+import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import { useAuth } from "@/context/AuthContext";
 import { fetchUsers } from "@/lib/subscriptions";
-import { fetchDiscussions, sendMessage, deleteDiscussion } from "@/lib/discussions";
+import { fetchDiscussions, sendMessage, deleteDiscussion, uploadDiscussionAttachment } from "@/lib/discussions";
+import { fetchNotifications, markNotificationRead, NOTIFICATION_STATUS, NOTIFICATION_TYPE } from "@/lib/notifications";
 import {
   fetchReclamations,
   updateReclamationStatut,
@@ -29,6 +30,12 @@ function formatTime(value) {
 
 function formatDate(value) {
   return new Date(value).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+}
+
+function previewText(message) {
+  if (message.message) return message.message;
+  if (message.piece_jointe) return message.piece_jointe_type?.startsWith("image/") ? "📷 Photo" : "📎 Fichier";
+  return "";
 }
 
 function formatDayLabel(value) {
@@ -72,6 +79,7 @@ export default function AdminMessageriePage() {
   const [draft, setDraft] = useState("");
   const [sendBusy, setSendBusy] = useState(false);
   const [sendError, setSendError] = useState(null);
+  const [attachBusy, setAttachBusy] = useState(false);
 
   const messagesEndRef = useRef(null);
 
@@ -94,6 +102,24 @@ export default function AdminMessageriePage() {
       }
     }
     init();
+  }, []);
+
+  useEffect(() => {
+    // Ouvrir la messagerie vaut lecture : on marque les notifications de type
+    // Discussion comme lues pour que le badge de la sidebar se vide, faute de
+    // bouton "marquer comme lu" par message dans ce fil.
+    async function markDiscussionsRead() {
+      try {
+        const notifications = await fetchNotifications();
+        const unread = notifications.filter(
+          (n) => n.type === NOTIFICATION_TYPE.DISCUSSION && n.statut === NOTIFICATION_STATUS.NON_LUE
+        );
+        await Promise.all(unread.map((n) => markNotificationRead(n.id)));
+      } catch {
+        // Best-effort : ne doit jamais bloquer l'affichage des conversations.
+      }
+    }
+    markDiscussionsRead();
   }, []);
 
   useEffect(() => {
@@ -129,7 +155,7 @@ export default function AdminMessageriePage() {
     );
     return allProprietaires
       .filter((u) => acceptedIds.has(u.id))
-      .map((u) => ({ id: u.id, nom: u.nom, prenom: u.prenom, email: u.email, role: "Propriétaire" }));
+      .map((u) => ({ id: u.id, nom: u.nom, prenom: u.prenom, email: u.email, photo: u.photo, role: "Propriétaire" }));
   }, [allProprietaires, reclamations]);
 
   function otherPartyId(msg) {
@@ -190,6 +216,24 @@ export default function AdminMessageriePage() {
       setSendError(extractErrorMessage(err));
     } finally {
       setSendBusy(false);
+    }
+  }
+
+  async function handleAttachmentChange(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !selectedId) return;
+    setAttachBusy(true);
+    setSendError(null);
+    try {
+      const uploaded = await uploadDiscussionAttachment(file);
+      const created = await sendMessage({ destinataireId: selectedId, message: draft.trim(), attachment: uploaded });
+      setMessages((prev) => [...prev, created]);
+      setDraft("");
+    } catch (err) {
+      setSendError(extractErrorMessage(err));
+    } finally {
+      setAttachBusy(false);
     }
   }
 
@@ -332,9 +376,19 @@ export default function AdminMessageriePage() {
                     className={`${styles.msgContactItem} ${selectedId === contact.id ? styles.msgContactItemActive : ""}`}
                     onClick={() => setSelectedId(contact.id)}
                   >
-                    <span className={styles.avatar} style={{ width: "2.2rem", height: "2.2rem", fontSize: "0.78rem" }}>
-                      {initials || "?"}
-                    </span>
+                    {contact.photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`${API_BASE_URL}${contact.photo}`}
+                        alt=""
+                        className={styles.avatar}
+                        style={{ width: "2.2rem", height: "2.2rem", objectFit: "cover" }}
+                      />
+                    ) : (
+                      <span className={styles.avatar} style={{ width: "2.2rem", height: "2.2rem", fontSize: "0.78rem" }}>
+                        {initials || "?"}
+                      </span>
+                    )}
                     <div className={styles.msgContactBody}>
                       <div className={styles.msgContactTop}>
                         <span className={styles.msgContactName}>
@@ -344,7 +398,7 @@ export default function AdminMessageriePage() {
                       </div>
                       <div className={styles.msgContactPreviewRow}>
                         <span className={styles.msgContactPreview}>
-                          {last ? `${last.user_id === user?.id ? "Vous : " : ""}${last.message}` : "Aucun message"}
+                          {last ? `${last.user_id === user?.id ? "Vous : " : ""}${previewText(last)}` : "Aucun message"}
                         </span>
                         <span className={styles.msgContactRole}>{contact.role}</span>
                       </div>
@@ -364,9 +418,19 @@ export default function AdminMessageriePage() {
               ) : (
                 <>
                   <div className={styles.msgThreadHeader}>
-                    <span className={styles.avatar} style={{ width: "2.1rem", height: "2.1rem", fontSize: "0.76rem" }}>
-                      {`${selectedConversation.contact.prenom?.[0] || ""}${selectedConversation.contact.nom?.[0] || ""}`.toUpperCase()}
-                    </span>
+                    {selectedConversation.contact.photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`${API_BASE_URL}${selectedConversation.contact.photo}`}
+                        alt=""
+                        className={styles.avatar}
+                        style={{ width: "2.1rem", height: "2.1rem", objectFit: "cover" }}
+                      />
+                    ) : (
+                      <span className={styles.avatar} style={{ width: "2.1rem", height: "2.1rem", fontSize: "0.76rem" }}>
+                        {`${selectedConversation.contact.prenom?.[0] || ""}${selectedConversation.contact.nom?.[0] || ""}`.toUpperCase()}
+                      </span>
+                    )}
                     <div>
                       <div className={styles.userName}>
                         {selectedConversation.contact.prenom} {selectedConversation.contact.nom}
@@ -400,7 +464,39 @@ export default function AdminMessageriePage() {
                                 onDoubleClick={() => mine && handleDeleteMessage(m.id)}
                                 title={mine ? "Double-clic pour supprimer" : undefined}
                               >
-                                {m.message}
+                                {m.piece_jointe &&
+                                  (m.piece_jointe_type?.startsWith("image/") ? (
+                                    <a
+                                      href={`${API_BASE_URL}${m.piece_jointe}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className={styles.msgAttachmentWrap}
+                                    >
+                                      <img
+                                        src={`${API_BASE_URL}${m.piece_jointe}`}
+                                        alt={m.piece_jointe_nom || ""}
+                                        className={styles.msgAttachmentImage}
+                                      />
+                                      <span className={styles.msgAttachmentZoomIcon}>
+                                        <i className="bi bi-zoom-in" />
+                                      </span>
+                                    </a>
+                                  ) : (
+                                    <a
+                                      href={`${API_BASE_URL}${m.piece_jointe}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className={styles.msgAttachmentFile}
+                                    >
+                                      <i className="bi bi-file-earmark-arrow-down" />
+                                      <span>{m.piece_jointe_nom || "Fichier"}</span>
+                                    </a>
+                                  ))}
+                                {m.message && (
+                                  <div className={m.piece_jointe ? styles.msgAttachmentCaption : undefined}>
+                                    {m.message}
+                                  </div>
+                                )}
                               </div>
                               <span className={`${styles.msgBubbleTime} ${mine ? styles.msgBubbleTimeMine : ""}`}>
                                 {formatTime(m.date_sent)}
@@ -416,6 +512,15 @@ export default function AdminMessageriePage() {
                   {sendError && <div className={`${styles.banner} ${styles.bannerError}`} style={{ margin: "0 1rem" }}>{sendError}</div>}
 
                   <form className={styles.msgComposer} onSubmit={handleSend}>
+                    <label className={styles.msgAttachBtn} title="Joindre un fichier">
+                      <i className={`bi ${attachBusy ? "bi-hourglass-split" : "bi-paperclip"}`} />
+                      <input
+                        type="file"
+                        onChange={handleAttachmentChange}
+                        disabled={attachBusy || sendBusy}
+                        style={{ display: "none" }}
+                      />
+                    </label>
                     <textarea
                       rows={1}
                       placeholder="Écrivez un message... (Entrée pour envoyer, Maj+Entrée pour un saut de ligne)"

@@ -7,8 +7,23 @@ export async function fetchDiscussions(withUserId) {
   return data;
 }
 
-export async function sendMessage({ destinataireId, message }) {
-  const { data } = await apiClient.post("/discussions/", { destinataire_id: destinataireId, message });
+export async function uploadDiscussionAttachment(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const { data } = await apiClient.post("/discussions/attachments", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+export async function sendMessage({ destinataireId, message, attachment }) {
+  const { data } = await apiClient.post("/discussions/", {
+    destinataire_id: destinataireId,
+    message: message || "",
+    piece_jointe: attachment?.piece_jointe || null,
+    piece_jointe_nom: attachment?.piece_jointe_nom || null,
+    piece_jointe_type: attachment?.piece_jointe_type || null,
+  });
   return data;
 }
 

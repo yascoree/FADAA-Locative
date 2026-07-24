@@ -13,6 +13,8 @@ import {
   BAIL_STATUS_LABELS,
 } from "@/lib/properties";
 import { fetchLocataires } from "@/lib/tenants";
+import { fetchGestionnairePermissionIndex } from "@/lib/mandates";
+import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
@@ -65,12 +67,14 @@ export default function AgenceBauxPage() {
   const [lots, setLots] = useState([]);
   const [biens, setBiens] = useState([]);
   const [locataires, setLocataires] = useState([]);
+  const [permIndex, setPermIndex] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
   const [search, setSearch] = useState("");
   const [lotFilter, setLotFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [sortBy, setSortBy] = useState("recent");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -90,16 +94,18 @@ export default function AgenceBauxPage() {
     async function init() {
       setIsLoading(true);
       try {
-        const [bauxList, lotsList, biensList, locatairesList] = await Promise.all([
+        const [bauxList, lotsList, biensList, locatairesList, permissionIndex] = await Promise.all([
           fetchBaux(),
           fetchLots(),
           fetchBiens(),
           fetchLocataires(),
+          fetchGestionnairePermissionIndex(),
         ]);
         setBaux(bauxList);
         setLots(lotsList);
         setBiens(biensList);
         setLocataires(locatairesList);
+        setPermIndex(permissionIndex);
       } catch (err) {
         setLoadError(extractErrorMessage(err));
       } finally {
@@ -125,9 +131,17 @@ export default function AgenceBauxPage() {
     return `${bienName} — ${lot.reference || `Lot #${lot.id}`}`;
   }
 
+  const creatableLots = useMemo(() => {
+    if (!permIndex) return [];
+    return lots.filter((l) => {
+      const proprietaireId = biens.find((b) => b.id === l.bien_id)?.proprietaire_id;
+      return permIndex.hasForBien(l.bien_id, proprietaireId, "CREATE_LEASE");
+    });
+  }, [lots, biens, permIndex]);
+
   const filteredBaux = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return baux.filter((b) => {
+    const filtered = baux.filter((b) => {
       if (term) {
         const name = `${b.locataire?.prenom || ""} ${b.locataire?.nom || ""} ${b.locataire?.email || ""}`.toLowerCase();
         if (!name.includes(term)) return false;
@@ -136,7 +150,11 @@ export default function AgenceBauxPage() {
       if (statusFilter && String(b.statut) !== statusFilter) return false;
       return true;
     });
-  }, [baux, search, lotFilter, statusFilter]);
+    return sortList(filtered, sortBy, {
+      dateOf: (b) => b.date_debut,
+      nameOf: (b) => `${b.locataire?.prenom || ""} ${b.locataire?.nom || ""}`,
+    });
+  }, [baux, search, lotFilter, statusFilter, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredBaux.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -145,7 +163,7 @@ export default function AgenceBauxPage() {
   function openCreate() {
     setCreateDraft({
       ...EMPTY_CREATE_FORM,
-      lot_id: lots[0] ? String(lots[0].id) : "",
+      lot_id: creatableLots[0] ? String(creatableLots[0].id) : "",
       locataire_id: locataires[0] ? String(locataires[0].id) : "",
     });
     setCreateBanner(null);
@@ -269,22 +287,12 @@ export default function AgenceBauxPage() {
               {filteredBaux.length} bail(aux) affiché(s) sur {baux.length}, tous propriétaires confondus.
             </p>
           </div>
-          <button
-            type="button"
-            className={styles.btn}
-            onClick={openCreate}
-            disabled={lots.length === 0 || locataires.length === 0}
-            title={
-              lots.length === 0
-                ? "Aucun lot disponible"
-                : locataires.length === 0
-                  ? "Aucun locataire disponible"
-                  : undefined
-            }
-          >
-            <i className="bi bi-plus-lg" />
-            Nouveau bail
-          </button>
+          {creatableLots.length > 0 && locataires.length > 0 && (
+            <button type="button" className={styles.btn} onClick={openCreate}>
+              <i className="bi bi-plus-lg" />
+              Nouveau bail
+            </button>
+          )}
         </div>
 
         {lots.length === 0 && (
@@ -327,6 +335,13 @@ export default function AgenceBauxPage() {
           >
             <option value="">Tous les statuts</option>
             {STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            {SORT_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
@@ -387,19 +402,32 @@ export default function AgenceBauxPage() {
                     </span>
                   </td>
                   <td>
-                    <div className={styles.tableActions}>
-                      <button type="button" className={styles.iconBtn} onClick={() => openEdit(b)} title="Modifier">
-                        <i className="bi bi-pencil" />
-                      </button>
-                      <button
-                        type="button"
-                        className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                        onClick={() => setDeleteTarget(b)}
-                        title="Supprimer"
-                      >
-                        <i className="bi bi-trash" />
-                      </button>
-                    </div>
+                    {(() => {
+                      const bienId = b.lot?.bien_id ?? lots.find((l) => l.id === b.lot_id)?.bien_id;
+                      const proprietaireId = biens.find((bi) => bi.id === bienId)?.proprietaire_id;
+                      const canUpdate = permIndex?.hasForBien(bienId, proprietaireId, "UPDATE_LEASE");
+                      const canDelete = permIndex?.hasForBien(bienId, proprietaireId, "DELETE_LEASE");
+                      if (!canUpdate && !canDelete) return <span className={styles.empty}>—</span>;
+                      return (
+                        <div className={styles.tableActions}>
+                          {canUpdate && (
+                            <button type="button" className={styles.iconBtn} onClick={() => openEdit(b)} title="Modifier">
+                              <i className="bi bi-pencil" />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              type="button"
+                              className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                              onClick={() => setDeleteTarget(b)}
+                              title="Supprimer"
+                            >
+                              <i className="bi bi-trash" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}
@@ -443,7 +471,7 @@ export default function AgenceBauxPage() {
           <SelectField
             label="Lot"
             name="lot_id"
-            options={lots.map((l) => ({ value: l.id, label: lotLabel(l) }))}
+            options={creatableLots.map((l) => ({ value: l.id, label: lotLabel(l) }))}
             value={createDraft.lot_id}
             onChange={(e) => setCreateDraft((d) => ({ ...d, lot_id: e.target.value }))}
             required

@@ -15,6 +15,7 @@ import {
   MODE_PAIEMENT_LABELS,
 } from "@/lib/properties";
 import { fetchLocataires } from "@/lib/tenants";
+import { fetchGestionnairePermissionIndex } from "@/lib/mandates";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
@@ -56,6 +57,7 @@ export default function AgencePaiementsPage() {
   const [echeances, setEcheances] = useState([]);
   const [biens, setBiens] = useState([]);
   const [locataires, setLocataires] = useState([]);
+  const [permIndex, setPermIndex] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
@@ -82,16 +84,18 @@ export default function AgencePaiementsPage() {
     async function init() {
       setIsLoading(true);
       try {
-        const [paiementsList, echeancesList, biensList, locatairesList] = await Promise.all([
+        const [paiementsList, echeancesList, biensList, locatairesList, permissionIndex] = await Promise.all([
           fetchPaiements(),
           fetchEcheances(),
           fetchBiens(),
           fetchLocataires(),
+          fetchGestionnairePermissionIndex(),
         ]);
         setPaiements(paiementsList);
         setEcheances(echeancesList);
         setBiens(biensList);
         setLocataires(locatairesList);
+        setPermIndex(permissionIndex);
       } catch (err) {
         setLoadError(extractErrorMessage(err));
       } finally {
@@ -138,10 +142,18 @@ export default function AgencePaiementsPage() {
     return `${label} · reste ${formatCurrency(Math.max(0, reste))}`;
   }
 
+  function canCreatePaymentForEcheance(echeance) {
+    if (!permIndex) return false;
+    const bienId = echeance?.bail?.lot?.bien_id;
+    const bien = biens.find((b) => b.id === bienId);
+    if (!bien) return false;
+    return permIndex.hasForBien(bienId, bien.proprietaire_id, "CREATE_PAYMENT");
+  }
+
   function echeancesForLocataire(locataireId) {
     if (!locataireId) return [];
     return echeances
-      .filter((e) => e.bail?.locataire_id === Number(locataireId))
+      .filter((e) => e.bail?.locataire_id === Number(locataireId) && canCreatePaymentForEcheance(e))
       .sort((a, b) => {
         if (a.statut !== b.statut) return a.statut === ECHEANCE_STATUS.PAYE ? 1 : -1;
         return new Date(a.date_echeance || 0) - new Date(b.date_echeance || 0);
@@ -149,8 +161,9 @@ export default function AgencePaiementsPage() {
   }
 
   const locatairesWithEcheances = useMemo(
-    () => locataires.filter((l) => echeances.some((e) => e.bail?.locataire_id === l.id)),
-    [locataires, echeances]
+    () => locataires.filter((l) => echeances.some((e) => e.bail?.locataire_id === l.id && canCreatePaymentForEcheance(e))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [locataires, echeances, permIndex, biens]
   );
 
   const createEcheanceOptions = useMemo(
@@ -344,16 +357,12 @@ export default function AgencePaiementsPage() {
               {filteredPaiements.length} paiement(s) affiché(s) sur {paiements.length}, tous propriétaires confondus.
             </p>
           </div>
-          <button
-            type="button"
-            className={styles.btn}
-            onClick={openCreate}
-            disabled={locatairesWithEcheances.length === 0}
-            title={locatairesWithEcheances.length === 0 ? "Aucun locataire avec une échéance à régler" : undefined}
-          >
-            <i className="bi bi-plus-lg" />
-            Enregistrer un paiement
-          </button>
+          {locatairesWithEcheances.length > 0 && (
+            <button type="button" className={styles.btn} onClick={openCreate}>
+              <i className="bi bi-plus-lg" />
+              Enregistrer un paiement
+            </button>
+          )}
         </div>
 
         <div className={styles.filtersRow}>
@@ -434,19 +443,33 @@ export default function AgencePaiementsPage() {
                   <td>{MODE_PAIEMENT_LABELS[p.mode_paiement] || "—"}</td>
                   <td>{formatDate(p.date_paiement)}</td>
                   <td>
-                    <div className={styles.tableActions}>
-                      <button type="button" className={styles.iconBtn} onClick={() => openEdit(p)} title="Modifier">
-                        <i className="bi bi-pencil" />
-                      </button>
-                      <button
-                        type="button"
-                        className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                        onClick={() => setDeleteTarget(p)}
-                        title="Supprimer"
-                      >
-                        <i className="bi bi-trash" />
-                      </button>
-                    </div>
+                    {(() => {
+                      const bienId = p.echeance?.bail?.lot?.bien_id;
+                      const bien = biens.find((b) => b.id === bienId);
+                      const proprietaireId = bien?.proprietaire_id;
+                      const canUpdate = permIndex?.hasForBien(bienId, proprietaireId, "UPDATE_PAYMENT");
+                      const canDelete = permIndex?.hasForBien(bienId, proprietaireId, "DELETE_PAYMENT");
+                      if (!canUpdate && !canDelete) return <span className={styles.empty}>—</span>;
+                      return (
+                        <div className={styles.tableActions}>
+                          {canUpdate && (
+                            <button type="button" className={styles.iconBtn} onClick={() => openEdit(p)} title="Modifier">
+                              <i className="bi bi-pencil" />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              type="button"
+                              className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                              onClick={() => setDeleteTarget(p)}
+                              title="Supprimer"
+                            >
+                              <i className="bi bi-trash" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}

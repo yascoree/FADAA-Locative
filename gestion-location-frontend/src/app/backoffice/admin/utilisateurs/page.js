@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { extractErrorMessage } from "@/lib/apiClient";
+import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import { fetchUsers } from "@/lib/subscriptions";
 import {
   ACCOUNT_STATUS,
@@ -352,7 +352,17 @@ export default function AdminUtilisateursPage() {
                   <tr key={u.id}>
                     <td>
                       <div className={styles.userCell}>
-                        <span className={styles.avatarSm}>{initials || "?"}</span>
+                        {u.photo ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={`${API_BASE_URL}${u.photo}`}
+                            alt=""
+                            className={styles.avatarSm}
+                            style={{ objectFit: "cover" }}
+                          />
+                        ) : (
+                          <span className={styles.avatarSm}>{initials || "?"}</span>
+                        )}
                         <span className={styles.userName}>
                           {u.prenom} {u.nom}
                         </span>
