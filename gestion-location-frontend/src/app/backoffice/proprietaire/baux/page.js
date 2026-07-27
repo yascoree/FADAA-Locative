@@ -135,14 +135,30 @@ export default function ProprietaireBauxPage() {
     const term = search.trim().toLowerCase();
     return baux.filter((b) => {
       if (term) {
-        const name = `${b.locataire?.prenom || ""} ${b.locataire?.nom || ""} ${b.locataire?.email || ""}`.toLowerCase();
-        if (!name.includes(term)) return false;
+        const bien = biens.find((bi) => bi.id === b.lot?.bien_id);
+        const haystack = [
+          b.locataire?.prenom,
+          b.locataire?.nom,
+          b.locataire?.email,
+          bien?.designation,
+          b.lot?.reference,
+          b.loyer,
+          b.charges,
+          b.depot,
+          formatDate(b.date_debut),
+          formatDate(b.date_fin),
+          BAIL_STATUS_LABELS[b.statut],
+        ]
+          .filter((v) => v !== null && v !== undefined && v !== "")
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(term)) return false;
       }
       if (lotFilter && String(b.lot_id) !== lotFilter) return false;
       if (statusFilter && String(b.statut) !== statusFilter) return false;
       return true;
     });
-  }, [baux, search, lotFilter, statusFilter]);
+  }, [baux, search, lotFilter, statusFilter, biens]);
 
   const totalPages = Math.max(1, Math.ceil(filteredBaux.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -306,7 +322,7 @@ export default function ProprietaireBauxPage() {
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher par locataire..."
+            placeholder="Rechercher (locataire, bien, lot, loyer, date...)"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);

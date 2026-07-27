@@ -149,8 +149,24 @@ export default function AgenceBauxPage() {
     const term = search.trim().toLowerCase();
     const filtered = baux.filter((b) => {
       if (term) {
-        const name = `${b.locataire?.prenom || ""} ${b.locataire?.nom || ""} ${b.locataire?.email || ""}`.toLowerCase();
-        if (!name.includes(term)) return false;
+        const bien = biens.find((bi) => bi.id === b.lot?.bien_id);
+        const haystack = [
+          b.locataire?.prenom,
+          b.locataire?.nom,
+          b.locataire?.email,
+          bien?.designation,
+          b.lot?.reference,
+          b.loyer,
+          b.charges,
+          b.depot,
+          formatDate(b.date_debut),
+          formatDate(b.date_fin),
+          BAIL_STATUS_LABELS[b.statut],
+        ]
+          .filter((v) => v !== null && v !== undefined && v !== "")
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(term)) return false;
       }
       if (lotFilter && String(b.lot_id) !== lotFilter) return false;
       if (statusFilter && String(b.statut) !== statusFilter) return false;
@@ -160,7 +176,7 @@ export default function AgenceBauxPage() {
       dateOf: (b) => b.date_debut,
       nameOf: (b) => `${b.locataire?.prenom || ""} ${b.locataire?.nom || ""}`,
     });
-  }, [baux, search, lotFilter, statusFilter, sortBy]);
+  }, [baux, search, lotFilter, statusFilter, sortBy, biens]);
 
   const totalPages = Math.max(1, Math.ceil(filteredBaux.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -294,12 +310,22 @@ export default function AgenceBauxPage() {
               {filteredBaux.length} bail(aux) affiché(s) sur {baux.length}, tous propriétaires confondus.
             </p>
           </div>
-          {creatableLots.length > 0 && locataires.length > 0 && (
-            <button type="button" className={styles.btn} onClick={openCreate}>
-              <i className="bi bi-plus-lg" />
-              Nouveau bail
-            </button>
-          )}
+          <button
+            type="button"
+            className={styles.btn}
+            onClick={openCreate}
+            disabled={creatableLots.length === 0 || locataires.length === 0}
+            title={
+              creatableLots.length === 0
+                ? "Aucun lot disponible (mandat manquant ou aucun lot enregistré)"
+                : locataires.length === 0
+                  ? "Aucun locataire disponible pour créer un bail"
+                  : undefined
+            }
+          >
+            <i className="bi bi-plus-lg" />
+            Nouveau bail
+          </button>
         </div>
 
         {lots.length === 0 && (
@@ -312,7 +338,7 @@ export default function AgenceBauxPage() {
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher par locataire..."
+            placeholder="Rechercher (locataire, bien, lot, loyer, date...)"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
