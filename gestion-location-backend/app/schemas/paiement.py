@@ -5,6 +5,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.paiement import ModePaiement, PaiementStatus
+from app.models.quittance import QuittanceStatus
 from app.schemas.echeance import EcheanceRead
 
 
@@ -23,6 +24,14 @@ class PaiementCreate(PaiementBase):
 ##    mode_paiement: Optional[ModePaiement] = None
 
 
+class QuittanceMini(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    statut: QuittanceStatus
+    fichier_pdf: Optional[str] = None
+
+
 class PaiementRead(PaiementBase):
     model_config = ConfigDict(from_attributes=True)
 
@@ -30,3 +39,4 @@ class PaiementRead(PaiementBase):
     date_paiement: datetime
     statut: PaiementStatus
     echeance: Optional[EcheanceRead] = None
+    quittance: Optional[QuittanceMini] = None
