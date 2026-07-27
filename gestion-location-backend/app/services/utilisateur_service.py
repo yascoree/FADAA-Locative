@@ -24,6 +24,16 @@ def list_utilisateurs(db: Session, skip: int = 0, limit: int = 100) -> list[Util
     )
 
 
+def list_gestionnaires(db: Session, skip: int = 0, limit: int = 100) -> list[Utilisateur]:
+    return (
+        db.query(Utilisateur)
+        .filter(Utilisateur.deleted_at.is_(None), Utilisateur.role == UtilisateurRole.GESTIONNAIRE)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+
 def get_utilisateur(db: Session, current_user: Utilisateur, utilisateur_id: int) -> Utilisateur:
     if current_user.role != UtilisateurRole.ADMINISTRATEUR and current_user.id != utilisateur_id:
         raise Forbidden("Insufficient permissions")
