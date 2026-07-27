@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { extractErrorMessage } from "@/lib/apiClient";
+import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import {
   SUBSCRIPTION_STATUS,
   SUBSCRIPTION_STATUS_LABELS,
@@ -824,7 +824,17 @@ export default function AdminAbonnementsPage() {
                   >
                     <td>
                       <div className={styles.userCell}>
-                        <span className={styles.avatarSm}>{initials || "?"}</span>
+                        {user.photo ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={`${API_BASE_URL}${user.photo}`}
+                            alt=""
+                            className={styles.avatarSm}
+                            style={{ objectFit: "cover" }}
+                          />
+                        ) : (
+                          <span className={styles.avatarSm}>{initials || "?"}</span>
+                        )}
                         <span className={styles.userName}>
                           {user.prenom} {user.nom}
                         </span>

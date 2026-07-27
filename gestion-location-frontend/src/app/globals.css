@@ -16,7 +16,7 @@
   --brand-accent: #cfbb99;
   --brand-accent-soft: rgba(207, 187, 153, 0.28);
   --brand-secondary: #3a3826;
-  --brand-bg: #f5f1ea;
+  --brand-bg: #fafafa;
   --brand-border: #e3ddd0;
   --brand-surface: #ffffff;
   --brand-text: #2a2820;
@@ -33,19 +33,25 @@
   --brand-shadow-md: 0 6px 20px -8px rgba(58, 56, 38, 0.18), 0 2px 6px rgba(58, 56, 38, 0.06);
   --brand-shadow-lift: 0 10px 28px -10px rgba(58, 56, 38, 0.24), 0 3px 8px rgba(58, 56, 38, 0.07);
 
-  /* Palette dashboard (tuiles/jauges/courbes) : Terracotta / Charcoal / Navy / Olive. */
-  --brand-tone-terracotta: #a8522e;
-  --brand-tone-terracotta-dark: #7a3a1f;
-  --brand-tone-terracotta-soft: rgba(168, 82, 46, 0.14);
-  --brand-tone-charcoal: #34302c;
-  --brand-tone-charcoal-dark: #1c1a17;
-  --brand-tone-charcoal-soft: rgba(52, 48, 44, 0.12);
-  --brand-tone-navy: #1b2a44;
-  --brand-tone-navy-dark: #0f1830;
-  --brand-tone-navy-soft: rgba(27, 42, 68, 0.14);
-  --brand-tone-olive: #5f6b3a;
-  --brand-tone-olive-dark: #3f4726;
-  --brand-tone-olive-soft: rgba(95, 107, 58, 0.16);
+  /* Palette dashboard (tuiles/jauges/courbes) : dérivée de la palette "feuille"
+     (Dark Forest / Sage / Pale Lime / Pastel Mint). Pale Lime et Pastel Mint étant
+     trop clairs pour un fond plein avec texte blanc, leur teinte "-soft" garde la
+     couleur donnée telle quelle, et une version plus foncée de la même teinte sert
+     de fond plein aux tuiles. Terracotta -> dérivé de Pastel Mint, Navy -> dérivé
+     de Pale Lime, Charcoal -> Dark Forest, Olive -> Sage (déjà proche de l'ancienne
+     valeur, mêmes usages inchangés). */
+  --brand-tone-terracotta: #7fb06b;
+  --brand-tone-terracotta-dark: #4f7a42;
+  --brand-tone-terracotta-soft: #ebfadc;
+  --brand-tone-charcoal: #102f15;
+  --brand-tone-charcoal-dark: #081b0b;
+  --brand-tone-charcoal-soft: rgba(16, 47, 21, 0.14);
+  --brand-tone-navy: #a3b457;
+  --brand-tone-navy-dark: #6b7a38;
+  --brand-tone-navy-soft: #eaf1b1;
+  --brand-tone-olive: #728c5a;
+  --brand-tone-olive-dark: #4f6540;
+  --brand-tone-olive-soft: rgba(114, 140, 90, 0.16);
 
   /* Accent ponctuel pour les badges/rubans mis en avant (ex. "Populaire"). */
   --brand-gold: #d9ac3d;

@@ -77,6 +77,7 @@ export default function ProprietaireRevenusPage() {
   // ---- Vue "12 derniers mois" (une seule série glissante) ----
   const trailing = useMemo(() => {
     if (!revenue) return { points: [], max: 100, linePath: "", areaPath: "" };
+    if (revenue.trailing_12_months.length === 0) return { points: [], max: 100, linePath: "", areaPath: "" };
     const stepX = INNER_WIDTH / (revenue.trailing_12_months.length - 1);
     const raw = revenue.trailing_12_months.map((m, i) => ({
       key: `${m.year}-${m.month}`,

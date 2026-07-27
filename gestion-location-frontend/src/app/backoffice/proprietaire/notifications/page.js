@@ -30,6 +30,7 @@ const TYPE_ICON = {
   [NOTIFICATION_TYPE.MANDAT]: "bi-person-badge-fill",
   [NOTIFICATION_TYPE.DISCUSSION]: "bi-chat-dots-fill",
   [NOTIFICATION_TYPE.RELANCE]: "bi-exclamation-octagon-fill",
+  [NOTIFICATION_TYPE.GESTION]: "bi-person-gear",
 };
 
 const TYPE_TONE_CLASS = {
@@ -39,6 +40,7 @@ const TYPE_TONE_CLASS = {
   [NOTIFICATION_TYPE.MANDAT]: "notifIconAccent",
   [NOTIFICATION_TYPE.DISCUSSION]: "notifIconPrimary",
   [NOTIFICATION_TYPE.RELANCE]: "notifIconDanger",
+  [NOTIFICATION_TYPE.GESTION]: "notifIconAccent",
 };
 
 const TYPE_TARGET = {
@@ -48,6 +50,7 @@ const TYPE_TARGET = {
   [NOTIFICATION_TYPE.MANDAT]: "/backoffice/proprietaire/permissions",
   [NOTIFICATION_TYPE.DISCUSSION]: "/backoffice/proprietaire/messagerie",
   [NOTIFICATION_TYPE.RELANCE]: "/backoffice/proprietaire/echeances",
+  [NOTIFICATION_TYPE.GESTION]: "/backoffice/proprietaire/biens",
 };
 
 const TYPE_OPTIONS = Object.entries(NOTIFICATION_TYPE_LABELS).map(([value, label]) => ({ value, label }));

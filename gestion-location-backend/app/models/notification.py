@@ -19,6 +19,7 @@ class NotificationType(int, enum.Enum):
     MANDAT = 4
     DISCUSSION = 5
     RELANCE = 6
+    GESTION = 7
 
 
 class Notification(Base):

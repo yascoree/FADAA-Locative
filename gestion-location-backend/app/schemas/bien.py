@@ -1,9 +1,20 @@
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.bien import BienStatus
 from app.schemas.bien_photo import BienPhotoRead
+
+
+class BienMini(BaseModel):
+    """Identité minimale d'un bien, pour l'afficher en tant que portée d'un
+    Mandat (voir MandatRead) sans exposer toute la ressource /properties/{id}."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    designation: Optional[str] = None
 
 
 class BienBase(BaseModel):
@@ -30,3 +41,4 @@ class BienRead(BienBase):
 
     id: int
     photos: list[BienPhotoRead] = []
+    created_at: datetime

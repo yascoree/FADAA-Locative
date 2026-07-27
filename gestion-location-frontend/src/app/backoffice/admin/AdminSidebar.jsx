@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { API_BASE_URL } from "@/lib/apiClient";
+import { fetchNotifications, NOTIFICATION_STATUS, NOTIFICATION_TYPE } from "@/lib/notifications";
 import styles from "./admin.module.css";
 
 const NAV_SECTIONS = [
@@ -11,19 +13,24 @@ const NAV_SECTIONS = [
     items: [
       { href: "/backoffice/admin", label: "Dashboard", icon: "bi-grid", exact: true },
       { href: "/backoffice/admin/utilisateurs", label: "Utilisateurs", icon: "bi-people" },
-      { href: "/backoffice/admin/messagerie", label: "Messagerie", icon: "bi-chat-dots" },
+      { href: "/backoffice/admin/messagerie", label: "Messagerie", icon: "bi-chat-dots", badgeKey: "discussions" },
     ],
   },
   {
-    label: "Abonnements",
+    label: "Plateforme",
     items: [
       { href: "/backoffice/admin/abonnements", label: "Abonnements", icon: "bi-credit-card" },
-      { href: "/backoffice/admin/architecture", label: "Architecture", icon: "bi-diagram-3" },
+      { href: "/backoffice/admin/architecture", label: "Catégories", icon: "bi-diagram-3" },
+      { href: "/backoffice/admin/avis", label: "Avis", icon: "bi-chat-square-quote" },
+      { href: "/backoffice/admin/partenaires", label: "Partenaires", icon: "bi-handshake" },
     ],
   },
   {
     label: "Système",
-    items: [{ href: "/backoffice/admin/parametres", label: "Paramètres", icon: "bi-gear" }],
+    items: [
+      { href: "/backoffice/admin/historique", label: "Journal d'activité", icon: "bi-clock-history" },
+      { href: "/backoffice/admin/parametres", label: "Paramètres", icon: "bi-gear" },
+    ],
   },
 ];
 
@@ -32,6 +39,27 @@ export default function AdminSidebar({ user, onLogout }) {
   const initial = `${user?.prenom?.[0] || ""}${user?.nom?.[0] || ""}`.toUpperCase();
   const itemRefs = useRef({});
   const [bubble, setBubble] = useState(null);
+  const [badges, setBadges] = useState({ discussions: 0 });
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const list = await fetchNotifications();
+        if (cancelled) return;
+        const unread = list.filter((n) => n.statut === NOTIFICATION_STATUS.NON_LUE);
+        setBadges({ discussions: unread.filter((n) => n.type === NOTIFICATION_TYPE.DISCUSSION).length });
+      } catch {
+        // Les badges sont un simple confort d'UX : une erreur ne doit jamais casser la sidebar.
+      }
+    }
+    load();
+    const interval = setInterval(load, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   const activeHref = useMemo(() => {
     let found = null;
@@ -77,6 +105,9 @@ export default function AdminSidebar({ user, onLogout }) {
                   >
                     <i className={`bi ${item.icon} ${styles.navIcon}`} />
                     {item.label}
+                    {item.badgeKey && badges[item.badgeKey] > 0 && (
+                      <span className={styles.navBadge}>{badges[item.badgeKey] > 9 ? "9+" : badges[item.badgeKey]}</span>
+                    )}
                   </Link>
                 );
               })}
@@ -86,7 +117,12 @@ export default function AdminSidebar({ user, onLogout }) {
       </div>
 
       <div className={styles.sidebarFooter}>
-        <span className={styles.avatar}>{initial || "?"}</span>
+        {user?.photo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={`${API_BASE_URL}${user.photo}`} alt="" className={styles.avatar} style={{ objectFit: "cover" }} />
+        ) : (
+          <span className={styles.avatar}>{initial || "?"}</span>
+        )}
         <div className={styles.userInfo}>
           <span className={styles.userName}>
             {user?.prenom} {user?.nom}

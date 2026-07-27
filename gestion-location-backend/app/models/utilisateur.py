@@ -59,8 +59,8 @@ class Utilisateur(Base):
 
     received_discussions = relationship(
         "Discussion",
-        foreign_keys="Discussion.receiver_id",
-        back_populates="receiver"
+        foreign_keys="Discussion.destinataire_id",
+        back_populates="destinataire"
     )
     avis = relationship("Avis", back_populates="user")
     notifications = relationship("Notification", back_populates="user")
@@ -77,3 +77,12 @@ class Utilisateur(Base):
         "Historique",
         back_populates="utilisateur"
     )
+
+    @property
+    def photo(self) -> str | None:
+        """URL de la photo de profil, exposée directement sur l'utilisateur (via
+        Profil.photo) pour que les autres utilisateurs puissent l'afficher sans
+        avoir accès à /profiles/{id} (réservé à soi-même/admin)."""
+        if self.profil and self.profil.deleted_at is None:
+            return self.profil.photo
+        return None

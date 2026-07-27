@@ -65,10 +65,13 @@ class GestionnaireDashboardStats(BaseModel):
     proprietaires_geres: int
     total_biens: int
     total_lots: int
+    lots_occupes: int
     baux_actifs: int
     echeances_en_retard: int
     montant_en_retard: float
     revenu_mois: float
+    lots_by_status: list[StatusCount] = []
+    baux_by_status: list[StatusCount] = []
 
 
 class LocataireDashboardStats(BaseModel):

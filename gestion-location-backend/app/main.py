@@ -13,6 +13,7 @@ from app.api import (
     discussions,
     echeances,
     fcm_tokens,
+    historique,
     locataires,
     lots,
     mandats,
@@ -28,17 +29,22 @@ from app.api import (
     subscriptions,
     utilisateurs,
 )
+from app.middleware.historique import HistoriqueMiddleware
 from app.scheduler import shutdown_scheduler, start_scheduler
 
 app = FastAPI(title="Gestion Location API")
+
+# Journalise chaque action authentifiée (créer/modifier/supprimer/consulter une
+# ressource précise) dans la table `historiques` — voir app/middleware/historique.py.
+app.add_middleware(HistoriqueMiddleware)
 
 # Dev/test uniquement : les pages de test HTML statiques (fichier local ou autre
 # origine) doivent pouvoir appeler l'API. Bearer token, pas de cookies -> pas
 # besoin d'allow_credentials.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -69,6 +75,7 @@ app.include_router(avis.router)
 app.include_router(partenaires.router)
 app.include_router(reclamations.router)
 app.include_router(stats.router)
+app.include_router(historique.router)
 
 
 @app.on_event("startup")

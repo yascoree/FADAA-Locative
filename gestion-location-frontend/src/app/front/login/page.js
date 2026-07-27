@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { ROLE_DASHBOARD_PATH, ROLE_LABELS, PUBLIC_REGISTER_ROLES } from "@/lib/roles";
 import { extractErrorMessage } from "@/lib/apiClient";
+import Modal from "@/components/Modal";
 import styles from "./login.module.css";
 
 function EyeIcon() {
@@ -110,6 +111,11 @@ export default function LoginPage() {
   const [loginBusy, setLoginBusy] = useState(false);
   const [loginBanner, setLoginBanner] = useState(null);
 
+  // ---- Forgot password modal state ----
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSubmitted, setForgotSubmitted] = useState(false);
+
   // ---- Register form state ----
   const [role, setRole] = useState(PUBLIC_REGISTER_ROLES[0].value);
   const [firstName, setFirstName] = useState("");
@@ -171,6 +177,24 @@ export default function LoginPage() {
 
   function switchTab(tab) {
     setActiveTab(tab);
+  }
+
+  function openForgotPassword() {
+    setForgotEmail(loginEmail);
+    setForgotSubmitted(false);
+    setForgotOpen(true);
+  }
+
+  function closeForgotPassword() {
+    setForgotOpen(false);
+  }
+
+  function handleSubmitForgotPassword(e) {
+    e.preventDefault();
+    // La vérification par email n'est pas encore branchée côté serveur (aucune
+    // infrastructure d'envoi n'existe pour l'instant) : on affiche juste un message
+    // honnête plutôt que de faire semblant d'avoir envoyé quoi que ce soit.
+    setForgotSubmitted(true);
   }
 
   return (
@@ -244,7 +268,7 @@ export default function LoginPage() {
                   <input type="checkbox" className={styles.checkbox} checked={remember} onChange={(e) => setRemember(e.target.checked)} />
                   Se souvenir de moi
                 </label>
-                <button type="button" className={styles.forgotLink}>
+                <button type="button" className={styles.forgotLink} onClick={openForgotPassword}>
                   Mot de passe oublié ?
                 </button>
               </div>
@@ -379,6 +403,42 @@ export default function LoginPage() {
           </p>
         </div>
       </main>
+
+      <Modal isOpen={forgotOpen} onClose={closeForgotPassword} title="Mot de passe oublié ?">
+        {forgotSubmitted ? (
+          <div>
+            <p className={styles.formSubtext} style={{ margin: 0 }}>
+              La réinitialisation par e-mail arrive bientôt. En attendant, contactez la personne qui vous a invité sur
+              la plateforme (propriétaire ou gestionnaire) ou l&apos;administrateur pour réinitialiser votre mot de
+              passe.
+            </p>
+            <button type="button" className={styles.btnSubmit} style={{ marginTop: "1.2rem" }} onClick={closeForgotPassword}>
+              Fermer
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmitForgotPassword}>
+            <p className={styles.formSubtext} style={{ margin: "0 0 1rem" }}>
+              Indiquez l&apos;adresse e-mail de votre compte, nous vous enverrons les instructions.
+            </p>
+            <div className={styles.field}>
+              <label htmlFor="forgot-email">Adresse e-mail</label>
+              <input
+                type="email"
+                id="forgot-email"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                placeholder="vous@exemple.com"
+                autoComplete="email"
+                required
+              />
+            </div>
+            <button type="submit" className={styles.btnSubmit}>
+              Envoyer les instructions
+            </button>
+          </form>
+        )}
+      </Modal>
     </div>
   );
 }

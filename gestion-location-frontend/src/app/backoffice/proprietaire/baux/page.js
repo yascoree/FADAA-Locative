@@ -11,6 +11,8 @@ import {
   deleteBail,
   BAIL_STATUS,
   BAIL_STATUS_LABELS,
+  FREQUENCE_PAIEMENT,
+  FREQUENCE_PAIEMENT_LABELS,
 } from "@/lib/properties";
 import { fetchLocataires } from "@/lib/tenants";
 import StatCard from "@/components/StatCard";
@@ -18,6 +20,7 @@ import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
+import RadioGroupField from "@/components/RadioGroupField";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -47,6 +50,7 @@ function formatCurrency(value) {
 }
 
 const STATUS_OPTIONS = Object.entries(BAIL_STATUS_LABELS).map(([value, label]) => ({ value, label }));
+const FREQUENCE_OPTIONS = Object.entries(FREQUENCE_PAIEMENT_LABELS).map(([value, label]) => ({ value, label }));
 const PAGE_SIZE = 10;
 
 const EMPTY_CREATE_FORM = {
@@ -58,6 +62,7 @@ const EMPTY_CREATE_FORM = {
   charges: "",
   depot: "",
   statut: String(BAIL_STATUS.EN_ATTENTE),
+  frequence_paiement: String(FREQUENCE_PAIEMENT.MOIS),
 };
 
 export default function ProprietaireBauxPage() {
@@ -85,6 +90,7 @@ export default function ProprietaireBauxPage() {
 
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -172,6 +178,7 @@ export default function ProprietaireBauxPage() {
         charges: createDraft.charges === "" ? null : Number(createDraft.charges),
         depot: createDraft.depot === "" ? null : Number(createDraft.depot),
         statut: Number(createDraft.statut),
+        frequencePaiement: Number(createDraft.frequence_paiement),
       });
       const lot = lots.find((l) => l.id === created.lot_id);
       setBaux((prev) => [...prev, { ...created, locataire, lot }]);
@@ -227,13 +234,13 @@ export default function ProprietaireBauxPage() {
   async function handleConfirmDelete() {
     if (!deleteTarget) return;
     setDeleteBusy(true);
+    setDeleteError(null);
     try {
       await deleteBail(deleteTarget.id);
       setBaux((prev) => prev.filter((b) => b.id !== deleteTarget.id));
       setDeleteTarget(null);
     } catch (err) {
-      setLoadError(extractErrorMessage(err));
-      setDeleteTarget(null);
+      setDeleteError(extractErrorMessage(err));
     } finally {
       setDeleteBusy(false);
     }
@@ -379,6 +386,7 @@ export default function ProprietaireBauxPage() {
                   <td>
                     {formatCurrency(b.loyer)}
                     {b.charges ? ` + ${formatCurrency(b.charges)} charges` : ""}
+                    <div className={styles.recentEmail}>/ {FREQUENCE_PAIEMENT_LABELS[b.frequence_paiement] || "—"}</div>
                   </td>
                   <td>
                     {formatDate(b.date_debut)} → {formatDate(b.date_fin)}
@@ -396,7 +404,10 @@ export default function ProprietaireBauxPage() {
                       <button
                         type="button"
                         className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                        onClick={() => setDeleteTarget(b)}
+                        onClick={() => {
+                          setDeleteTarget(b);
+                          setDeleteError(null);
+                        }}
                         title="Supprimer"
                       >
                         <i className="bi bi-trash" />
@@ -500,6 +511,14 @@ export default function ProprietaireBauxPage() {
             value={createDraft.depot}
             onChange={(e) => setCreateDraft((d) => ({ ...d, depot: e.target.value }))}
           />
+          <RadioGroupField
+            label="Fréquence de paiement"
+            name="frequence_paiement"
+            options={FREQUENCE_OPTIONS}
+            value={createDraft.frequence_paiement}
+            onChange={(e) => setCreateDraft((d) => ({ ...d, frequence_paiement: e.target.value }))}
+            hint="Détermine l'espacement des échéances générées automatiquement."
+          />
           <SelectField
             label="Statut"
             name="statut"
@@ -588,17 +607,21 @@ export default function ProprietaireBauxPage() {
       {/* ---- Confirmation de suppression ---- */}
       <ConfirmationDialog
         isOpen={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
+        onClose={() => {
+          setDeleteTarget(null);
+          setDeleteError(null);
+        }}
         onConfirm={handleConfirmDelete}
         title="Supprimer le bail"
         message={
           deleteTarget
-            ? `Supprimer définitivement ce bail (${deleteTarget.locataire?.prenom || ""} ${deleteTarget.locataire?.nom || ""}) ? Les échéances associées seront aussi supprimées. Cette action est irréversible.`
+            ? `Masquer ce bail (${deleteTarget.locataire?.prenom || ""} ${deleteTarget.locataire?.nom || ""}) ? Ses échéances, paiements et quittances sont conservés (non supprimés). Impossible tant que le bail est actif : terminez-le ou résiliez-le d'abord.`
             : ""
         }
         confirmLabel="Supprimer"
         danger
         isBusy={deleteBusy}
+        error={deleteError}
       />
     </div>
   );

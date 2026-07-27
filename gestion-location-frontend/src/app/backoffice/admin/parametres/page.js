@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { extractErrorMessage } from "@/lib/apiClient";
+import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import { useAuth } from "@/context/AuthContext";
 import { updateUser } from "@/lib/users";
-import { fetchProfile, createProfile, updateProfile } from "@/lib/profile";
+import { fetchProfile, createProfile, updateProfile, uploadProfilePhoto, deleteProfilePhoto } from "@/lib/profile";
 import TextField from "@/components/TextField";
+import PasswordChangeCard from "@/components/PasswordChangeCard";
 import styles from "../admin.module.css";
 
 function Banner({ banner }) {
@@ -28,13 +29,15 @@ export default function AdminParametresPage() {
   const [profileBusy, setProfileBusy] = useState(false);
   const [profileBanner, setProfileBanner] = useState(null);
 
+  const [photoUrl, setPhotoUrl] = useState(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoBanner, setPhotoBanner] = useState(null);
+
   const [accountDraft, setAccountDraft] = useState({ prenom: "", nom: "", email: "" });
   const [accountBusy, setAccountBusy] = useState(false);
   const [accountBanner, setAccountBanner] = useState(null);
 
-  const [passwordDraft, setPasswordDraft] = useState({ mot_de_passe: "", confirmation: "" });
-  const [passwordBusy, setPasswordBusy] = useState(false);
-  const [passwordBanner, setPasswordBanner] = useState(null);
+  const [passwordSuccessBanner, setPasswordSuccessBanner] = useState(null);
 
   useEffect(() => {
     if (!user) return;
@@ -51,6 +54,7 @@ export default function AdminParametresPage() {
           date_naissance: profile.date_naissance || "",
           piece_identite: profile.piece_identite || "",
         });
+        setPhotoUrl(profile.photo ? `${API_BASE_URL}${profile.photo}` : null);
       } catch {
         // Pas encore de profil créé pour ce compte : le formulaire reste vide, la
         // première sauvegarde le créera (POST) plutôt que de le mettre à jour (PUT).
@@ -87,6 +91,38 @@ export default function AdminParametresPage() {
     }
   }
 
+  async function handlePhotoChange(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setPhotoBusy(true);
+    setPhotoBanner(null);
+    try {
+      const updated = await uploadProfilePhoto(user.id, file);
+      setProfileExists(true);
+      setPhotoUrl(updated.photo ? `${API_BASE_URL}${updated.photo}` : null);
+      await refreshUser();
+    } catch (err) {
+      setPhotoBanner({ type: "error", message: extractErrorMessage(err) });
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
+  async function handlePhotoRemove() {
+    setPhotoBusy(true);
+    setPhotoBanner(null);
+    try {
+      await deleteProfilePhoto(user.id);
+      setPhotoUrl(null);
+      await refreshUser();
+    } catch (err) {
+      setPhotoBanner({ type: "error", message: extractErrorMessage(err) });
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
   async function handleSubmitAccount(e) {
     e.preventDefault();
     setAccountBusy(true);
@@ -103,25 +139,6 @@ export default function AdminParametresPage() {
       setAccountBanner({ type: "error", message: extractErrorMessage(err) });
     } finally {
       setAccountBusy(false);
-    }
-  }
-
-  async function handleSubmitPassword(e) {
-    e.preventDefault();
-    setPasswordBanner(null);
-    if (passwordDraft.mot_de_passe !== passwordDraft.confirmation) {
-      setPasswordBanner({ type: "error", message: "Les deux mots de passe ne correspondent pas." });
-      return;
-    }
-    setPasswordBusy(true);
-    try {
-      await updateUser(user.id, { mot_de_passe: passwordDraft.mot_de_passe });
-      setPasswordDraft({ mot_de_passe: "", confirmation: "" });
-      setPasswordBanner({ type: "success", message: "Mot de passe mis à jour." });
-    } catch (err) {
-      setPasswordBanner({ type: "error", message: extractErrorMessage(err) });
-    } finally {
-      setPasswordBusy(false);
     }
   }
 
@@ -146,6 +163,47 @@ export default function AdminParametresPage() {
             <i className="bi bi-person-fill" style={{ color: "var(--primary)" }} />
             Compte
           </h3>
+
+          <Banner banner={photoBanner} />
+          <div style={{ display: "flex", alignItems: "center", gap: "1.1rem", marginBottom: "1.3rem" }}>
+            {photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={photoUrl}
+                alt=""
+                style={{ width: "4.2rem", height: "4.2rem", borderRadius: "50%", objectFit: "cover" }}
+              />
+            ) : (
+              <span className={styles.avatar} style={{ width: "4.2rem", height: "4.2rem", fontSize: "1.3rem" }}>
+                {`${user.prenom?.[0] || ""}${user.nom?.[0] || ""}`.toUpperCase() || "?"}
+              </span>
+            )}
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <label className={styles.btnOutline} style={{ cursor: photoBusy ? "not-allowed" : "pointer" }}>
+                <i className="bi bi-camera-fill" />
+                {photoBusy ? "..." : "Changer la photo"}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  disabled={photoBusy}
+                  onChange={handlePhotoChange}
+                  style={{ display: "none" }}
+                />
+              </label>
+              {photoUrl && (
+                <button
+                  type="button"
+                  className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                  onClick={handlePhotoRemove}
+                  disabled={photoBusy}
+                  title="Retirer la photo"
+                >
+                  <i className="bi bi-trash" />
+                </button>
+              )}
+            </div>
+          </div>
+
           <form onSubmit={handleSubmitAccount}>
             <Banner banner={accountBanner} />
             <TextField
@@ -228,42 +286,12 @@ export default function AdminParametresPage() {
       </div>
 
       {/* ---- Sécurité ---- */}
-      <div className={styles.section} style={{ marginBottom: 0 }}>
-        <div className={styles.card}>
-          <h3 className={styles.cardTitle}>
-            <i className="bi bi-shield-lock-fill" style={{ color: "var(--primary)" }} />
-            Sécurité
-          </h3>
-          <form onSubmit={handleSubmitPassword}>
-            <Banner banner={passwordBanner} />
-            <TextField
-              label="Nouveau mot de passe"
-              name="mot_de_passe"
-              type="password"
-              value={passwordDraft.mot_de_passe}
-              onChange={(e) => setPasswordDraft((d) => ({ ...d, mot_de_passe: e.target.value }))}
-              hint="8 caractères minimum"
-              minLength={8}
-              required
-            />
-            <TextField
-              label="Confirmer le mot de passe"
-              name="confirmation"
-              type="password"
-              value={passwordDraft.confirmation}
-              onChange={(e) => setPasswordDraft((d) => ({ ...d, confirmation: e.target.value }))}
-              minLength={8}
-              required
-            />
-            <div className={styles.editActions} style={{ marginTop: "1rem" }}>
-              <button type="submit" className={styles.btn} disabled={passwordBusy}>
-                <i className="bi bi-check-lg" />
-                {passwordBusy ? "Enregistrement..." : "Mettre à jour le mot de passe"}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+      <Banner banner={passwordSuccessBanner} />
+      <PasswordChangeCard
+        styles={styles}
+        userId={user.id}
+        onSuccess={() => setPasswordSuccessBanner({ type: "success", message: "Mot de passe mis à jour." })}
+      />
     </div>
   );
 }

@@ -15,6 +15,11 @@ class ModePaiement(int, enum.Enum):
     MOBILE_MONEY = 5
 
 
+class PaiementStatus(int, enum.Enum):
+    VALIDE = 1
+    ANNULE = 2
+
+
 class Paiement(Base):
     __tablename__ = "paiements"
 
@@ -23,6 +28,12 @@ class Paiement(Base):
     montant = Column(DECIMAL(10, 2), nullable=True)
     date_paiement = Column(DateTime, nullable=False, default=datetime.utcnow)
     mode_paiement = Column(Enum(ModePaiement, name="mode_paiement"), nullable=True)
+    statut = Column(
+        Enum(PaiementStatus, name="paiement_status"),
+        nullable=False,
+        default=PaiementStatus.VALIDE,
+        server_default="VALIDE",
+    )
     encaisse_par = Column(Integer, ForeignKey("utilisateurs.id"), nullable=False)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)

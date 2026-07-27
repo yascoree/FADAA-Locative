@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.models.bail import BailStatus
+from app.models.bail import BailStatus, FrequencePaiement
 from app.schemas.lot import LotRead
 from app.schemas.utilisateur import UtilisateurMini
 
@@ -18,6 +18,7 @@ class BailBase(BaseModel):
     charges: Optional[Decimal] = Field(default=None, ge=0, max_digits=10, decimal_places=2)
     depot: Optional[Decimal] = Field(default=None, ge=0, max_digits=10, decimal_places=2)
     statut: Optional[BailStatus] = None
+    frequence_paiement: FrequencePaiement = FrequencePaiement.MOIS
 
     @model_validator(mode="after")
     def check_dates(self):

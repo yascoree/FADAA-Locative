@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { extractErrorMessage } from "@/lib/apiClient";
+import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import { useAuth } from "@/context/AuthContext";
 import { fetchLocataires } from "@/lib/tenants";
 import { fetchMandates, MANDAT_STATUS } from "@/lib/mandates";
-import { fetchDiscussions, sendMessage, deleteDiscussion } from "@/lib/discussions";
+import { fetchDiscussions, sendMessage, deleteDiscussion, uploadDiscussionAttachment } from "@/lib/discussions";
+import { fetchNotifications, markNotificationRead, NOTIFICATION_STATUS, NOTIFICATION_TYPE } from "@/lib/notifications";
 import { fetchReclamations, createReclamation, RECLAMATION_STATUS, RECLAMATION_STATUS_LABELS } from "@/lib/reclamations";
 import TextField from "@/components/TextField";
 import uiStyles from "@/components/ui.module.css";
@@ -22,6 +23,12 @@ function Banner({ banner }) {
 
 function formatTime(value) {
   return new Date(value).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function previewText(message) {
+  if (message.message) return message.message;
+  if (message.piece_jointe) return message.piece_jointe_type?.startsWith("image/") ? "📷 Photo" : "📎 Fichier";
+  return "";
 }
 
 function formatDayLabel(value) {
@@ -49,6 +56,8 @@ export default function ProprietaireMessageriePage() {
   const [draft, setDraft] = useState("");
   const [sendBusy, setSendBusy] = useState(false);
   const [sendError, setSendError] = useState(null);
+  const [attachBusy, setAttachBusy] = useState(false);
+  const [stagedAttachment, setStagedAttachment] = useState(null);
 
   const [reclamationForm, setReclamationForm] = useState(EMPTY_RECLAMATION_FORM);
   const [reclamationBusy, setReclamationBusy] = useState(false);
@@ -71,6 +80,7 @@ export default function ProprietaireMessageriePage() {
           nom: l.nom,
           prenom: l.prenom,
           email: l.email,
+          photo: l.photo,
           role: "Locataire",
         }));
         const managerContacts = mandates
@@ -80,6 +90,7 @@ export default function ProprietaireMessageriePage() {
             nom: m.gestionnaire.nom,
             prenom: m.gestionnaire.prenom,
             email: m.gestionnaire.email,
+            photo: m.gestionnaire.photo,
             role: "Gestionnaire",
           }));
         const acceptedReclamation = reclamationsList.find(
@@ -92,6 +103,7 @@ export default function ProprietaireMessageriePage() {
                 nom: acceptedReclamation.traite_par.nom,
                 prenom: acceptedReclamation.traite_par.prenom,
                 email: acceptedReclamation.traite_par.email,
+                photo: acceptedReclamation.traite_par.photo,
                 role: "Administration",
               },
             ]
@@ -109,6 +121,38 @@ export default function ProprietaireMessageriePage() {
       }
     }
     init();
+  }, []);
+
+  useEffect(() => {
+    // Ouvrir la messagerie vaut lecture : on marque les notifications de type
+    // Discussion comme lues pour que le badge de la sidebar se vide, faute de
+    // bouton "marquer comme lu" par message dans ce fil.
+    async function markDiscussionsRead() {
+      try {
+        const notifications = await fetchNotifications();
+        const unread = notifications.filter(
+          (n) => n.type === NOTIFICATION_TYPE.DISCUSSION && n.statut === NOTIFICATION_STATUS.NON_LUE
+        );
+        await Promise.all(unread.map((n) => markNotificationRead(n.id)));
+      } catch {
+        // Best-effort : ne doit jamais bloquer l'affichage des conversations.
+      }
+    }
+    markDiscussionsRead();
+  }, []);
+
+  useEffect(() => {
+    // Rafraîchit le fil en tâche de fond pour afficher les messages reçus sans
+    // avoir à recharger la page (le backend ne pousse pas les nouveaux messages).
+    const interval = setInterval(async () => {
+      try {
+        const discussions = await fetchDiscussions();
+        setMessages(discussions);
+      } catch {
+        // Silencieux : un échec de polling ne doit pas perturber la conversation en cours.
+      }
+    }, 6000);
+    return () => clearInterval(interval);
   }, []);
 
   const latestReclamation = reclamations[0] || null;
@@ -163,17 +207,34 @@ export default function ProprietaireMessageriePage() {
 
   async function handleSend(e) {
     e.preventDefault();
-    if (!draft.trim() || !selectedId) return;
+    if ((!draft.trim() && !stagedAttachment) || !selectedId) return;
     setSendBusy(true);
     setSendError(null);
     try {
-      const created = await sendMessage({ destinataireId: selectedId, message: draft.trim() });
+      const created = await sendMessage({ destinataireId: selectedId, message: draft.trim(), attachment: stagedAttachment });
       setMessages((prev) => [...prev, created]);
       setDraft("");
+      setStagedAttachment(null);
     } catch (err) {
       setSendError(extractErrorMessage(err));
     } finally {
       setSendBusy(false);
+    }
+  }
+
+  async function handleAttachmentChange(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !selectedId) return;
+    setAttachBusy(true);
+    setSendError(null);
+    try {
+      const uploaded = await uploadDiscussionAttachment(file);
+      setStagedAttachment(uploaded);
+    } catch (err) {
+      setSendError(extractErrorMessage(err));
+    } finally {
+      setAttachBusy(false);
     }
   }
 
@@ -208,8 +269,223 @@ export default function ProprietaireMessageriePage() {
         </h2>
         <p className={styles.sectionSubtitle}>Échangez directement avec vos locataires et gestionnaires.</p>
 
+        <div className={styles.msgShell}>
+          {/* ---- Liste des contacts ---- */}
+          <div className={styles.msgContacts}>
+            <div className={styles.msgContactsHeader}>
+              <span className={styles.msgContactsTitle}>Contacts ({contacts.length})</span>
+            </div>
+            {contacts.length === 0 && (
+              <div className={styles.msgEmptyState}>
+                <i className="bi bi-people" />
+                Aucun contact. Vos locataires et gestionnaires apparaîtront ici.
+              </div>
+            )}
+            {conversations.map(({ contact, last }) => {
+              const initials = `${contact.prenom?.[0] || ""}${contact.nom?.[0] || ""}`.toUpperCase();
+              return (
+                <button
+                  type="button"
+                  key={contact.id}
+                  className={`${styles.msgContactItem} ${selectedId === contact.id ? styles.msgContactItemActive : ""}`}
+                  onClick={() => setSelectedId(contact.id)}
+                >
+                  {contact.photo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`${API_BASE_URL}${contact.photo}`}
+                      alt=""
+                      className={styles.avatar}
+                      style={{ width: "2.2rem", height: "2.2rem", objectFit: "cover" }}
+                    />
+                  ) : (
+                    <span className={styles.avatar} style={{ width: "2.2rem", height: "2.2rem", fontSize: "0.78rem" }}>
+                      {initials || "?"}
+                    </span>
+                  )}
+                  <div className={styles.msgContactBody}>
+                    <div className={styles.msgContactTop}>
+                      <span className={styles.msgContactName}>
+                        {contact.prenom} {contact.nom}
+                      </span>
+                      {last && <span className={styles.msgContactMeta}>{formatTime(last.date_sent)}</span>}
+                    </div>
+                    <div className={styles.msgContactPreviewRow}>
+                      <span className={styles.msgContactPreview}>
+                        {last ? `${last.user_id === user?.id ? "Vous : " : ""}${previewText(last)}` : "Aucun message"}
+                      </span>
+                      <span className={styles.msgContactRole}>{contact.role}</span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* ---- Fil de discussion ---- */}
+          <div className={styles.msgThread}>
+            {!selectedConversation ? (
+              <div className={styles.msgEmptyState}>
+                <i className="bi bi-chat-square-text" />
+                Sélectionnez un contact pour démarrer une conversation.
+              </div>
+            ) : (
+              <>
+                <div className={styles.msgThreadHeader}>
+                  {selectedConversation.contact.photo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`${API_BASE_URL}${selectedConversation.contact.photo}`}
+                      alt=""
+                      className={styles.avatar}
+                      style={{ width: "2.1rem", height: "2.1rem", objectFit: "cover" }}
+                    />
+                  ) : (
+                    <span className={styles.avatar} style={{ width: "2.1rem", height: "2.1rem", fontSize: "0.76rem" }}>
+                      {`${selectedConversation.contact.prenom?.[0] || ""}${selectedConversation.contact.nom?.[0] || ""}`.toUpperCase()}
+                    </span>
+                  )}
+                  <div>
+                    <div className={styles.userName}>
+                      {selectedConversation.contact.prenom} {selectedConversation.contact.nom}
+                    </div>
+                    <div className={styles.recentEmail}>{selectedConversation.contact.email}</div>
+                  </div>
+                </div>
+
+                <div className={styles.msgMessages}>
+                  {selectedConversation.thread.length === 0 && (
+                    <div className={styles.msgEmptyState}>
+                      <i className="bi bi-chat-dots" />
+                      Aucun message pour l&apos;instant. Dites bonjour !
+                    </div>
+                  )}
+                  {selectedConversation.thread.map((m, i) => {
+                    const mine = m.user_id === user?.id;
+                    const prev = selectedConversation.thread[i - 1];
+                    const showDaySeparator = !prev || formatDayLabel(prev.date_sent) !== formatDayLabel(m.date_sent);
+                    return (
+                      <div key={m.id}>
+                        {showDaySeparator && (
+                          <div style={{ textAlign: "center", margin: "0.8rem 0" }}>
+                            <span className={styles.msgContactMeta}>{formatDayLabel(m.date_sent)}</span>
+                          </div>
+                        )}
+                        <div className={`${styles.msgBubbleRow} ${mine ? styles.msgBubbleRowMine : ""}`}>
+                          <div className={styles.msgBubbleGroup}>
+                            <div
+                              className={`${styles.msgBubble} ${mine ? styles.msgBubbleMine : styles.msgBubbleTheirs}`}
+                              onDoubleClick={() => mine && handleDeleteMessage(m.id)}
+                              title={mine ? "Double-clic pour supprimer" : undefined}
+                            >
+                              {m.piece_jointe &&
+                                (m.piece_jointe_type?.startsWith("image/") ? (
+                                  <a
+                                    href={`${API_BASE_URL}${m.piece_jointe}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={styles.msgAttachmentWrap}
+                                  >
+                                    <img
+                                      src={`${API_BASE_URL}${m.piece_jointe}`}
+                                      alt={m.piece_jointe_nom || ""}
+                                      className={styles.msgAttachmentImage}
+                                    />
+                                    <span className={styles.msgAttachmentZoomIcon}>
+                                      <i className="bi bi-zoom-in" />
+                                    </span>
+                                  </a>
+                                ) : (
+                                  <a
+                                    href={`${API_BASE_URL}${m.piece_jointe}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={styles.msgAttachmentFile}
+                                  >
+                                    <i className="bi bi-file-earmark-arrow-down" />
+                                    <span>{m.piece_jointe_nom || "Fichier"}</span>
+                                  </a>
+                                ))}
+                              {m.message && (
+                                <div className={m.piece_jointe ? styles.msgAttachmentCaption : undefined}>
+                                  {m.message}
+                                </div>
+                              )}
+                            </div>
+                            <span className={`${styles.msgBubbleTime} ${mine ? styles.msgBubbleTimeMine : ""}`}>
+                              {formatTime(m.date_sent)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {sendError && <div className={`${styles.banner} ${styles.bannerError}`} style={{ margin: "0 1rem" }}>{sendError}</div>}
+
+                <form className={styles.msgComposer} onSubmit={handleSend}>
+                  {stagedAttachment && (
+                    <div className={styles.msgStagedPreview}>
+                      {stagedAttachment.piece_jointe_type?.startsWith("image/") ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={`${API_BASE_URL}${stagedAttachment.piece_jointe}`}
+                          alt=""
+                          className={styles.msgStagedThumb}
+                        />
+                      ) : (
+                        <span className={styles.msgStagedFileIcon}>
+                          <i className="bi bi-file-earmark" />
+                        </span>
+                      )}
+                      <span className={styles.msgStagedName}>{stagedAttachment.piece_jointe_nom}</span>
+                      <button
+                        type="button"
+                        className={styles.msgStagedRemove}
+                        onClick={() => setStagedAttachment(null)}
+                        title="Retirer"
+                      >
+                        <i className="bi bi-x-lg" />
+                      </button>
+                    </div>
+                  )}
+                  <div className={styles.msgComposerRow}>
+                    <label className={styles.msgAttachBtn} title="Joindre un fichier">
+                      <i className={`bi ${attachBusy ? "bi-hourglass-split" : "bi-paperclip"}`} />
+                      <input
+                        type="file"
+                        onChange={handleAttachmentChange}
+                        disabled={attachBusy || sendBusy}
+                        style={{ display: "none" }}
+                      />
+                    </label>
+                    <textarea
+                      rows={1}
+                      placeholder="Écrivez un message... (Entrée pour envoyer, Maj+Entrée pour un saut de ligne)"
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      disabled={sendBusy}
+                    />
+                    <button
+                      type="submit"
+                      className={styles.msgSendBtn}
+                      disabled={sendBusy || (!draft.trim() && !stagedAttachment)}
+                      title="Envoyer"
+                    >
+                      <i className="bi bi-send-fill" />
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+
         {!adminUnlocked && (
-          <div className={styles.card} style={{ marginBottom: "1.25rem" }}>
+          <div className={styles.card} style={{ marginTop: "1.25rem" }}>
             <h3 className={styles.cardTitle}>
               <i className="bi bi-headset" style={{ color: "var(--primary)" }} />
               Contacter l&apos;administration
@@ -263,128 +539,6 @@ export default function ProprietaireMessageriePage() {
             )}
           </div>
         )}
-
-        <div className={styles.msgShell}>
-          {/* ---- Liste des contacts ---- */}
-          <div className={styles.msgContacts}>
-            <div className={styles.msgContactsHeader}>
-              <span className={styles.msgContactsTitle}>Contacts ({contacts.length})</span>
-            </div>
-            {contacts.length === 0 && (
-              <div className={styles.msgEmptyState}>
-                <i className="bi bi-people" />
-                Aucun contact. Vos locataires et gestionnaires apparaîtront ici.
-              </div>
-            )}
-            {conversations.map(({ contact, last }) => {
-              const initials = `${contact.prenom?.[0] || ""}${contact.nom?.[0] || ""}`.toUpperCase();
-              return (
-                <button
-                  type="button"
-                  key={contact.id}
-                  className={`${styles.msgContactItem} ${selectedId === contact.id ? styles.msgContactItemActive : ""}`}
-                  onClick={() => setSelectedId(contact.id)}
-                >
-                  <span className={styles.avatar} style={{ width: "2.2rem", height: "2.2rem", fontSize: "0.78rem" }}>
-                    {initials || "?"}
-                  </span>
-                  <div className={styles.msgContactBody}>
-                    <div className={styles.msgContactTop}>
-                      <span className={styles.msgContactName}>
-                        {contact.prenom} {contact.nom}
-                      </span>
-                      {last && <span className={styles.msgContactMeta}>{formatTime(last.date_sent)}</span>}
-                    </div>
-                    <div className={styles.msgContactPreviewRow}>
-                      <span className={styles.msgContactPreview}>
-                        {last ? `${last.user_id === user?.id ? "Vous : " : ""}${last.message}` : "Aucun message"}
-                      </span>
-                      <span className={styles.msgContactRole}>{contact.role}</span>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* ---- Fil de discussion ---- */}
-          <div className={styles.msgThread}>
-            {!selectedConversation ? (
-              <div className={styles.msgEmptyState}>
-                <i className="bi bi-chat-square-text" />
-                Sélectionnez un contact pour démarrer une conversation.
-              </div>
-            ) : (
-              <>
-                <div className={styles.msgThreadHeader}>
-                  <span className={styles.avatar} style={{ width: "2.1rem", height: "2.1rem", fontSize: "0.76rem" }}>
-                    {`${selectedConversation.contact.prenom?.[0] || ""}${selectedConversation.contact.nom?.[0] || ""}`.toUpperCase()}
-                  </span>
-                  <div>
-                    <div className={styles.userName}>
-                      {selectedConversation.contact.prenom} {selectedConversation.contact.nom}
-                    </div>
-                    <div className={styles.recentEmail}>{selectedConversation.contact.email}</div>
-                  </div>
-                </div>
-
-                <div className={styles.msgMessages}>
-                  {selectedConversation.thread.length === 0 && (
-                    <div className={styles.msgEmptyState}>
-                      <i className="bi bi-chat-dots" />
-                      Aucun message pour l&apos;instant. Dites bonjour !
-                    </div>
-                  )}
-                  {selectedConversation.thread.map((m, i) => {
-                    const mine = m.user_id === user?.id;
-                    const prev = selectedConversation.thread[i - 1];
-                    const showDaySeparator = !prev || formatDayLabel(prev.date_sent) !== formatDayLabel(m.date_sent);
-                    return (
-                      <div key={m.id}>
-                        {showDaySeparator && (
-                          <div style={{ textAlign: "center", margin: "0.8rem 0" }}>
-                            <span className={styles.msgContactMeta}>{formatDayLabel(m.date_sent)}</span>
-                          </div>
-                        )}
-                        <div className={`${styles.msgBubbleRow} ${mine ? styles.msgBubbleRowMine : ""}`}>
-                          <div className={styles.msgBubbleGroup}>
-                            <div
-                              className={`${styles.msgBubble} ${mine ? styles.msgBubbleMine : styles.msgBubbleTheirs}`}
-                              onDoubleClick={() => mine && handleDeleteMessage(m.id)}
-                              title={mine ? "Double-clic pour supprimer" : undefined}
-                            >
-                              {m.message}
-                            </div>
-                            <span className={`${styles.msgBubbleTime} ${mine ? styles.msgBubbleTimeMine : ""}`}>
-                              {formatTime(m.date_sent)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <div ref={messagesEndRef} />
-                </div>
-
-                {sendError && <div className={`${styles.banner} ${styles.bannerError}`} style={{ margin: "0 1rem" }}>{sendError}</div>}
-
-                <form className={styles.msgComposer} onSubmit={handleSend}>
-                  <textarea
-                    rows={1}
-                    placeholder="Écrivez un message... (Entrée pour envoyer, Maj+Entrée pour un saut de ligne)"
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    disabled={sendBusy}
-                  />
-                  <button type="submit" className={styles.msgSendBtn} disabled={sendBusy || !draft.trim()} title="Envoyer">
-                    <i className="bi bi-send-fill" />
-                  </button>
-                </form>
-              </>
-            )}
-          </div>
-        </div>
       </div>
     </div>
   );

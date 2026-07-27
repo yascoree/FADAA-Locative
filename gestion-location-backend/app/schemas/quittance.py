@@ -3,6 +3,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.models.quittance import QuittanceStatus
 from app.schemas.paiement import PaiementRead
 
 
@@ -16,4 +17,5 @@ class QuittanceRead(QuittanceBase):
 
     id: int
     date_generation: datetime
+    statut: QuittanceStatus
     paiement: Optional[PaiementRead] = None

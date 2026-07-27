@@ -33,11 +33,14 @@ class UtilisateurRead(UtilisateurBase):
 
     id: int
     date_creation: datetime
+    photo: Optional[str] = None
 
 
 class UtilisateurMini(BaseModel):
     """Identité minimale d'un utilisateur, pour l'afficher en tant que partie d'un
-    Mandat (voir MandatRead) sans exposer /users/{id} (réservé à soi-même/admin)."""
+    Mandat (voir MandatRead) sans exposer /users/{id} (réservé à soi-même/admin).
+    Inclut la photo (déjà publique via Utilisateur.photo) pour que les avatars des
+    contacts (discussions, listes de locataires...) puissent l'afficher."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -45,3 +48,4 @@ class UtilisateurMini(BaseModel):
     nom: str
     prenom: str
     email: EmailStr
+    photo: Optional[str] = None

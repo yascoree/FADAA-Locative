@@ -15,3 +15,11 @@ class TokenData(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class PasswordVerifyRequest(BaseModel):
+    password: str
+
+
+class PasswordVerifyResponse(BaseModel):
+    valid: bool

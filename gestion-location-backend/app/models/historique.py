@@ -10,7 +10,9 @@ class Historique(Base):
     user_id = Column(Integer, ForeignKey("utilisateurs.id"), nullable=False)
     module = Column(String(255), nullable=False)
     action = Column(String(255), nullable=False)
-    element_id = Column(Integer, nullable=False)
+    # NULL pour les actions qui ne portent pas sur une ressource précise (liste,
+    # upload sans identifiant retourné...) — voir HistoriqueMiddleware.
+    element_id = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 

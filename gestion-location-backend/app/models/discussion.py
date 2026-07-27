@@ -16,7 +16,12 @@ class Discussion(Base):
     destinataire_id = Column(Integer, ForeignKey("utilisateurs.id"), nullable=True)
     message = Column(Text, nullable=False)
     date_sent = Column(DateTime, nullable=False, default=datetime.utcnow)
-    pdf = Column(String(255), nullable=True)
+    # Pièce jointe optionnelle (photo, PDF, document...) : URL de stockage, nom
+    # d'origine (le fichier stocké porte un nom aléatoire) et type MIME (pour
+    # savoir si on affiche une vignette image ou une carte "document").
+    piece_jointe = Column(String(255), nullable=True)
+    piece_jointe_nom = Column(String(255), nullable=True)
+    piece_jointe_type = Column(String(100), nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted_at = Column(DateTime, nullable=True)

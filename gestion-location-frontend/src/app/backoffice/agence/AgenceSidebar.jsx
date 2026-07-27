@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { API_BASE_URL } from "@/lib/apiClient";
+import { fetchNotifications, NOTIFICATION_STATUS, NOTIFICATION_TYPE } from "@/lib/notifications";
 import styles from "./agence.module.css";
 
 const NAV_SECTIONS = [
@@ -17,10 +19,18 @@ const NAV_SECTIONS = [
     ],
   },
   {
+    label: "Finances",
+    items: [
+      { href: "/backoffice/agence/echeances", label: "Échéances", icon: "bi-calendar-check" },
+      { href: "/backoffice/agence/paiements", label: "Paiements", icon: "bi-receipt" },
+      { href: "/backoffice/agence/quittances", label: "Quittances", icon: "bi-file-earmark-pdf" },
+    ],
+  },
+  {
     label: "Échanges",
     items: [
-      { href: "/backoffice/agence/discussions", label: "Discussions", icon: "bi-chat-dots" },
-      { href: "/backoffice/agence/notifications", label: "Notifications", icon: "bi-bell" },
+      { href: "/backoffice/agence/discussions", label: "Discussions", icon: "bi-chat-dots", badgeKey: "discussions" },
+      { href: "/backoffice/agence/notifications", label: "Notifications", icon: "bi-bell", badgeKey: "notifications" },
     ],
   },
   {
@@ -34,6 +44,30 @@ export default function AgenceSidebar({ user, onLogout }) {
   const initial = `${user?.prenom?.[0] || ""}${user?.nom?.[0] || ""}`.toUpperCase();
   const itemRefs = useRef({});
   const [bubble, setBubble] = useState(null);
+  const [badges, setBadges] = useState({ discussions: 0, notifications: 0 });
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const list = await fetchNotifications();
+        if (cancelled) return;
+        const unread = list.filter((n) => n.statut === NOTIFICATION_STATUS.NON_LUE);
+        setBadges({
+          discussions: unread.filter((n) => n.type === NOTIFICATION_TYPE.DISCUSSION).length,
+          notifications: unread.filter((n) => n.type !== NOTIFICATION_TYPE.DISCUSSION).length,
+        });
+      } catch {
+        // Les badges sont un simple confort d'UX : une erreur ne doit jamais casser la sidebar.
+      }
+    }
+    load();
+    const interval = setInterval(load, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   const activeHref = useMemo(() => {
     let found = null;
@@ -79,6 +113,9 @@ export default function AgenceSidebar({ user, onLogout }) {
                   >
                     <i className={`bi ${item.icon} ${styles.navIcon}`} />
                     {item.label}
+                    {item.badgeKey && badges[item.badgeKey] > 0 && (
+                      <span className={styles.navBadge}>{badges[item.badgeKey] > 9 ? "9+" : badges[item.badgeKey]}</span>
+                    )}
                   </Link>
                 );
               })}
@@ -88,7 +125,12 @@ export default function AgenceSidebar({ user, onLogout }) {
       </div>
 
       <div className={styles.sidebarFooter}>
-        <span className={styles.avatar}>{initial || "?"}</span>
+        {user?.photo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={`${API_BASE_URL}${user.photo}`} alt="" className={styles.avatar} style={{ objectFit: "cover" }} />
+        ) : (
+          <span className={styles.avatar}>{initial || "?"}</span>
+        )}
         <div className={styles.userInfo}>
           <span className={styles.userName}>
             {user?.prenom} {user?.nom}

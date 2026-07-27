@@ -8,14 +8,18 @@ import {
   fetchPaiements,
   createPaiement,
   updatePaiement,
+  annulerPaiement,
   updateEcheance,
   ECHEANCE_STATUS,
   MODE_PAIEMENT,
   MODE_PAIEMENT_LABELS,
+  PAIEMENT_STATUS,
+  PAIEMENT_STATUS_LABELS,
 } from "@/lib/properties";
 import { fetchLocataires } from "@/lib/tenants";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
+import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import styles from "../proprietaire.module.css";
@@ -71,6 +75,11 @@ export default function ProprietairePaiementsPage() {
   const [editDraft, setEditDraft] = useState(null);
   const [editBusy, setEditBusy] = useState(false);
   const [editBanner, setEditBanner] = useState(null);
+
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelError, setCancelError] = useState(null);
+  const [listBanner, setListBanner] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -289,6 +298,24 @@ export default function ProprietairePaiementsPage() {
     }
   }
 
+  async function handleConfirmCancel() {
+    if (!cancelTarget) return;
+    setCancelBusy(true);
+    setCancelError(null);
+    try {
+      const updated = await annulerPaiement(cancelTarget.id);
+      setPaiements((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
+      // Un paiement annulé ne doit plus compter pour l'échéance : son statut
+      // (payée/partielle/impayée) est recalculé comme si ce paiement n'existait plus.
+      await reconcileEcheance(cancelTarget.echeance_id, cancelTarget.id, 0);
+      setCancelTarget(null);
+    } catch (err) {
+      setCancelError(extractErrorMessage(err));
+    } finally {
+      setCancelBusy(false);
+    }
+  }
+
   if (isLoading) {
     return <p>Chargement...</p>;
   }
@@ -296,6 +323,7 @@ export default function ProprietairePaiementsPage() {
   return (
     <div>
       <Banner banner={loadError ? { type: "error", message: loadError } : null} />
+      <Banner banner={listBanner} />
 
       {/* ---- Stats ---- */}
       <div className={styles.section}>
@@ -378,13 +406,14 @@ export default function ProprietairePaiementsPage() {
                 <th>Montant</th>
                 <th>Mode</th>
                 <th>Date de paiement</th>
+                <th>Statut</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredPaiements.length === 0 && (
                 <tr>
-                  <td colSpan={7} className={styles.empty}>
+                  <td colSpan={8} className={styles.empty}>
                     Aucun paiement ne correspond à ces critères.
                   </td>
                 </tr>
@@ -409,11 +438,31 @@ export default function ProprietairePaiementsPage() {
                   <td>{MODE_PAIEMENT_LABELS[p.mode_paiement] || "—"}</td>
                   <td>{formatDate(p.date_paiement)}</td>
                   <td>
-                    <div className={styles.tableActions}>
-                      <button type="button" className={styles.iconBtn} onClick={() => openEdit(p)} title="Modifier">
-                        <i className="bi bi-pencil" />
-                      </button>
-                    </div>
+                    <span className={`${styles.badge} ${p.statut === PAIEMENT_STATUS.ANNULE ? styles.badgeDanger : styles.badgeActive}`}>
+                      {PAIEMENT_STATUS_LABELS[p.statut] || "—"}
+                    </span>
+                  </td>
+                  <td>
+                    {p.statut === PAIEMENT_STATUS.ANNULE ? (
+                      <span className={styles.empty}>—</span>
+                    ) : (
+                      <div className={styles.tableActions}>
+                        <button type="button" className={styles.iconBtn} onClick={() => openEdit(p)} title="Modifier">
+                          <i className="bi bi-pencil" />
+                        </button>
+                        <button
+                          type="button"
+                          className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                          onClick={() => {
+                            setCancelTarget(p);
+                            setCancelError(null);
+                          }}
+                          title="Annuler ce paiement"
+                        >
+                          <i className="bi bi-x-circle" />
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -493,7 +542,7 @@ export default function ProprietairePaiementsPage() {
             onChange={(e) => setCreateDraft((d) => ({ ...d, mode_paiement: e.target.value }))}
           />
           <p className={styles.sectionSubtitle} style={{ marginTop: "0.5rem" }}>
-            <i className="bi bi-info-circle" /> Le statut de l&apos;échéance sera mis à jour automatiquement
+            <i className="bi bi-info-circle" />  Le statut de l&apos;échéance sera mis à jour automatiquement
             (payée/partielle) selon le montant total encaissé.
           </p>
 
@@ -550,6 +599,25 @@ export default function ProprietairePaiementsPage() {
           </form>
         )}
       </Modal>
+
+      <ConfirmationDialog
+        isOpen={!!cancelTarget}
+        onClose={() => {
+          setCancelTarget(null);
+          setCancelError(null);
+        }}
+        onConfirm={handleConfirmCancel}
+        title="Annuler le paiement"
+        message={
+          cancelTarget
+            ? `Annuler ce paiement de ${formatCurrency(cancelTarget.montant)}, lié à l'échéance du ${formatDate(cancelTarget.echeance?.date_echeance)} pour ${bienLotLabel(cancelTarget.echeance)} ? Le statut de cette échéance sera recalculé et la quittance associée sera aussi annulée. Le paiement reste visible dans l'historique avec le statut "Annulé".`
+            : ""
+        }
+        confirmLabel="Annuler le paiement"
+        danger
+        isBusy={cancelBusy}
+        error={cancelError}
+      />
     </div>
   );
 }

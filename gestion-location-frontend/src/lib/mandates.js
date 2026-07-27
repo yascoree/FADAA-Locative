@@ -26,10 +26,11 @@ export async function lookupLocataireByEmail(email) {
   return data;
 }
 
-export async function createMandate({ gestionnaireId, proprietaireId }) {
+export async function createMandate({ gestionnaireId, proprietaireId, bienId }) {
   const { data } = await apiClient.post("/mandates/", {
     gestionnaire_id: gestionnaireId,
     proprietaire_id: proprietaireId,
+    bien_id: bienId || null,
     statut: MANDAT_STATUS.ACTIF,
     date_debut: new Date().toISOString().slice(0, 10),
   });
@@ -72,21 +73,65 @@ const RESOURCE_LABELS = {
   PAYMENT: "Paiements",
 };
 
+const ACTION_ORDER = { VIEW: 0, CREATE: 1, UPDATE: 2, DELETE: 3 };
+
 export function groupPermissionCatalog(catalog) {
   const groups = new Map();
   catalog.forEach((permission) => {
-    const [, ...rest] = permission.code.split("_");
+    const [action, ...rest] = permission.code.split("_");
     const resource = rest.join("_");
     if (!groups.has(resource)) {
       groups.set(resource, { resource, label: RESOURCE_LABELS[resource] || resource, permissions: [] });
     }
-    groups.get(resource).permissions.push(permission);
+    groups.get(resource).permissions.push({ ...permission, _action: action });
+  });
+  groups.forEach((group) => {
+    group.permissions.sort((a, b) => (ACTION_ORDER[a._action] ?? 9) - (ACTION_ORDER[b._action] ?? 9));
   });
   return Array.from(groups.values());
 }
 
 export function isGestionnaire(user) {
   return user?.role === ROLES.GESTIONNAIRE;
+}
+
+/** Construit un vérificateur de droits pour le gestionnaire connecté, à partir de
+    ses propres mandats et des permissions accordées sur chacun. Reflète côté
+    interface exactement ce que le backend vérifie (bien_ids_with_permission /
+    has_permission_for_bien dans deps.py) : un mandat "tous mes biens" (bien_id
+    null) couvre tout le portefeuille du propriétaire, un mandat scopé à un bien
+    ne couvre que celui-là. Sert à cacher les boutons d'action que le gestionnaire
+    n'a pas le droit d'utiliser, plutôt que de les laisser échouer côté serveur. */
+export async function fetchGestionnairePermissionIndex() {
+  const mandates = (await fetchMandates()).filter((m) => m.statut === MANDAT_STATUS.ACTIF);
+  const permsByMandat = new Map(
+    await Promise.all(
+      mandates.map(async (m) => [m.id, new Set((await fetchMandatePermissions(m.id)).map((p) => p.permission.code))])
+    )
+  );
+
+  function mandateHasCode(mandat, code) {
+    return permsByMandat.get(mandat.id)?.has(code) ?? false;
+  }
+
+  function hasForProprietaire(proprietaireId, code) {
+    return mandates.some((m) => m.proprietaire_id === proprietaireId && m.bien_id == null && mandateHasCode(m, code));
+  }
+
+  function hasForBien(bienId, proprietaireId, code) {
+    // Un mandat scopé à ce bien précis fait autorité et prime sur un mandat
+    // "tous mes biens" du même gestionnaire — sinon révoquer un droit sur le
+    // mandat scopé n'aurait aucun effet tant que le mandat global l'accorde.
+    const bienSpecific = mandates.find((m) => m.bien_id === bienId);
+    if (bienSpecific) return mandateHasCode(bienSpecific, code);
+    return hasForProprietaire(proprietaireId, code);
+  }
+
+  function proprietairesWithCode(code) {
+    return [...new Set(mandates.filter((m) => m.bien_id == null && mandateHasCode(m, code)).map((m) => m.proprietaire_id))];
+  }
+
+  return { mandates, hasForProprietaire, hasForBien, proprietairesWithCode };
 }
 
 export function formatMandateStatusLine(mandat) {

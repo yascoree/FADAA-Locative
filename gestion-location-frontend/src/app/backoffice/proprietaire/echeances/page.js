@@ -7,11 +7,13 @@ import {
   fetchBaux,
   fetchEcheances,
   updateEcheance,
+  deleteEcheance,
   ECHEANCE_STATUS,
   ECHEANCE_STATUS_LABELS,
 } from "@/lib/properties";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
+import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import styles from "../proprietaire.module.css";
@@ -69,6 +71,10 @@ export default function ProprietaireEcheancesPage() {
 
   const [rowBusyId, setRowBusyId] = useState(null);
   const [rowBanner, setRowBanner] = useState(null);
+
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -170,6 +176,21 @@ export default function ProprietaireEcheancesPage() {
       setRowBanner({ type: "error", message: extractErrorMessage(err) });
     } finally {
       setRowBusyId(null);
+    }
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    setDeleteError(null);
+    try {
+      await deleteEcheance(deleteTarget.id);
+      setEcheances((prev) => prev.filter((e) => e.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      setDeleteError(extractErrorMessage(err));
+    } finally {
+      setDeleteBusy(false);
     }
   }
 
@@ -327,6 +348,17 @@ export default function ProprietaireEcheancesPage() {
                         <button type="button" className={styles.iconBtn} onClick={() => openEdit(e)} title="Modifier">
                           <i className="bi bi-pencil" />
                         </button>
+                        <button
+                          type="button"
+                          className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                          onClick={() => {
+                            setDeleteTarget(e);
+                            setDeleteError(null);
+                          }}
+                          title="Supprimer"
+                        >
+                          <i className="bi bi-trash" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -410,6 +442,25 @@ export default function ProprietaireEcheancesPage() {
           </form>
         )}
       </Modal>
+
+      <ConfirmationDialog
+        isOpen={!!deleteTarget}
+        onClose={() => {
+          setDeleteTarget(null);
+          setDeleteError(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Supprimer l'échéance"
+        message={
+          deleteTarget
+            ? `Masquer cette échéance du ${formatDate(deleteTarget.date_echeance)} ? Impossible si un paiement y est déjà associé.`
+            : ""
+        }
+        confirmLabel="Supprimer"
+        danger
+        isBusy={deleteBusy}
+        error={deleteError}
+      />
     </div>
   );
 }

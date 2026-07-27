@@ -2,8 +2,16 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { extractErrorMessage } from "@/lib/apiClient";
-import { fetchBiens, fetchQuittances, downloadQuittance } from "@/lib/properties";
+import {
+  fetchBiens,
+  fetchQuittances,
+  downloadQuittance,
+  annulerQuittance,
+  QUITTANCE_STATUS,
+  QUITTANCE_STATUS_LABELS,
+} from "@/lib/properties";
 import StatCard from "@/components/StatCard";
+import ConfirmationDialog from "@/components/ConfirmationDialog";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -39,6 +47,10 @@ export default function ProprietaireQuittancesPage() {
 
   const [downloadingId, setDownloadingId] = useState(null);
   const [downloadError, setDownloadError] = useState(null);
+
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelError, setCancelError] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -109,6 +121,21 @@ export default function ProprietaireQuittancesPage() {
     }
   }
 
+  async function handleConfirmCancel() {
+    if (!cancelTarget) return;
+    setCancelBusy(true);
+    setCancelError(null);
+    try {
+      const updated = await annulerQuittance(cancelTarget.id);
+      setQuittances((prev) => prev.map((q) => (q.id === updated.id ? { ...q, ...updated } : q)));
+      setCancelTarget(null);
+    } catch (err) {
+      setCancelError(extractErrorMessage(err));
+    } finally {
+      setCancelBusy(false);
+    }
+  }
+
   if (isLoading) {
     return <p>Chargement...</p>;
   }
@@ -170,13 +197,14 @@ export default function ProprietaireQuittancesPage() {
                 <th>Montant</th>
                 <th>Date de paiement</th>
                 <th>Générée le</th>
+                <th>Statut</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredQuittances.length === 0 && (
                 <tr>
-                  <td colSpan={6} className={styles.empty}>
+                  <td colSpan={7} className={styles.empty}>
                     Aucune quittance ne correspond à ces critères.
                   </td>
                 </tr>
@@ -202,15 +230,35 @@ export default function ProprietaireQuittancesPage() {
                     <td>{formatDate(q.paiement?.date_paiement)}</td>
                     <td>{formatDate(q.date_generation)}</td>
                     <td>
-                      <button
-                        type="button"
-                        className={styles.btnOutline}
-                        onClick={() => handleDownload(q)}
-                        disabled={downloadingId === q.id}
-                      >
-                        <i className="bi bi-download" />
-                        {downloadingId === q.id ? "..." : "PDF"}
-                      </button>
+                      <span className={`${styles.badge} ${q.statut === QUITTANCE_STATUS.ANNULEE ? styles.badgeDanger : styles.badgeActive}`}>
+                        {QUITTANCE_STATUS_LABELS[q.statut] || "—"}
+                      </span>
+                    </td>
+                    <td>
+                      <div className={styles.tableActions}>
+                        <button
+                          type="button"
+                          className={styles.btnOutline}
+                          onClick={() => handleDownload(q)}
+                          disabled={downloadingId === q.id}
+                        >
+                          <i className="bi bi-download" />
+                          {downloadingId === q.id ? "..." : "PDF"}
+                        </button>
+                        {q.statut !== QUITTANCE_STATUS.ANNULEE && (
+                          <button
+                            type="button"
+                            className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                            onClick={() => {
+                              setCancelTarget(q);
+                              setCancelError(null);
+                            }}
+                            title="Annuler cette quittance"
+                          >
+                            <i className="bi bi-x-circle" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -247,6 +295,25 @@ export default function ProprietaireQuittancesPage() {
           )}
         </div>
       </div>
+
+      <ConfirmationDialog
+        isOpen={!!cancelTarget}
+        onClose={() => {
+          setCancelTarget(null);
+          setCancelError(null);
+        }}
+        onConfirm={handleConfirmCancel}
+        title="Annuler la quittance"
+        message={
+          cancelTarget
+            ? `Annuler cette quittance de ${formatCurrency(cancelTarget.paiement?.montant)} ? Elle reste consultable dans l'historique avec le statut "Annulée".`
+            : ""
+        }
+        confirmLabel="Annuler la quittance"
+        danger
+        isBusy={cancelBusy}
+        error={cancelError}
+      />
     </div>
   );
 }

@@ -166,17 +166,18 @@
 
 .navBadge {
   margin-left: auto;
-  background: var(--secondary);
+  background: var(--danger);
   color: #fff;
   font-size: 0.68rem;
   font-weight: 700;
-  min-width: 1.1rem;
-  height: 1.1rem;
+  min-width: 1.15rem;
+  height: 1.15rem;
   border-radius: 999px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 0.3rem;
+  padding: 0 0.35rem;
+  flex-shrink: 0;
 }
 
 .sidebarFooter {
@@ -252,9 +253,17 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.75rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid transparent;
   background: var(--surface);
   flex-shrink: 0;
+  box-shadow: none;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  z-index: 1;
+}
+
+.topbarScrolled {
+  border-bottom-color: var(--border);
+  box-shadow: 0 4px 12px -8px rgba(0, 0, 0, 0.18);
 }
 
 .pageTitle {
@@ -319,11 +328,19 @@
 }
 
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid color-mix(in srgb, white 50%, var(--border));
   border-radius: var(--radius-card);
   padding: 1.4rem 1.5rem;
   box-shadow: var(--shadow-sm);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lift);
 }
 
 .cardTitle {
@@ -367,15 +384,8 @@
 }
 
 .btn {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--primary-dark) 85%, black 15%);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--primary) 100%, white 22%) 0%,
-    var(--primary) 55%,
-    var(--primary-dark) 100%
-  );
+  border: none;
+  background: var(--primary);
   color: #fff;
   font-weight: 650;
   font-size: 0.84rem;
@@ -386,39 +396,24 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.55), inset 0 -3px 5px rgba(0, 0, 0, 0.18),
-    0 2px 8px -2px rgba(136, 144, 99, 0.5);
-  transition: filter 0.12s ease, transform 0.08s ease, box-shadow 0.12s ease;
+  box-shadow: 0 2px 8px -2px rgba(136, 144, 99, 0.5);
+  transition: background 0.12s ease, transform 0.08s ease, box-shadow 0.12s ease;
   text-decoration: none;
 }
 
-.btn::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.12) 45%, rgba(255, 255, 255, 0) 55%);
-  pointer-events: none;
-}
-
 .btn:hover:not(:disabled) {
-  filter: brightness(1.06);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.55), inset 0 -3px 5px rgba(0, 0, 0, 0.18),
-    0 6px 16px -3px rgba(136, 144, 99, 0.55);
+  background: var(--primary-dark);
+  box-shadow: 0 6px 16px -3px rgba(136, 144, 99, 0.55);
   transform: translateY(-1px);
 }
 
 .btn:active:not(:disabled) {
-  filter: brightness(0.94);
   transform: translateY(0) scale(0.97);
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.28), inset 0 1px 1px rgba(255, 255, 255, 0.3);
 }
 
 .btnOutline {
-  position: relative;
-  overflow: hidden;
   border: 1px solid var(--border);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 100%, white 10%), var(--surface));
+  background: var(--surface);
   color: var(--secondary);
   font-weight: 600;
   font-size: 0.83rem;
@@ -429,17 +424,7 @@
   align-items: center;
   gap: 0.4rem;
   text-decoration: none;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7);
   transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease, transform 0.12s ease;
-}
-
-.btnOutline::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 55%);
-  pointer-events: none;
 }
 
 .btnOutline:hover {
@@ -498,21 +483,6 @@
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 1.1rem;
   margin-bottom: 1.5rem;
-}
-
-.statsGrid::before {
-  content: "";
-  position: absolute;
-  top: -20px;
-  left: 0;
-  right: 0;
-  height: 240px;
-  background: radial-gradient(circle at 15% 30%, color-mix(in srgb, var(--tone-olive) 60%, transparent), transparent 60%),
-    radial-gradient(circle at 55% 65%, color-mix(in srgb, var(--tone-navy) 55%, transparent), transparent 60%),
-    radial-gradient(circle at 88% 25%, color-mix(in srgb, var(--tone-terracotta) 50%, transparent), transparent 60%);
-  filter: blur(45px);
-  z-index: -1;
-  pointer-events: none;
 }
 
 /* ---------- Distribution bars ---------- */
@@ -836,8 +806,10 @@
 /* ---------- Detail panel ---------- */
 
 .detailCard {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid color-mix(in srgb, white 50%, var(--border));
   border-left: 4px solid var(--primary);
   border-radius: var(--radius-card);
   padding: 1.5rem 1.6rem;
@@ -1014,6 +986,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
 }
 
 .msgThreadHeader {
@@ -1027,16 +1000,29 @@
 
 .msgMessages {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 1.2rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
+@keyframes msgFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .msgBubbleRow {
   display: flex;
-  group: message;
+  animation: msgFadeIn 0.3s ease both;
 }
 
 .msgBubbleRowMine {
@@ -1060,8 +1046,8 @@
 }
 
 .msgBubbleTheirs {
-  background: var(--bg);
-  color: var(--text);
+  background: #f0e6d2;
+  color: #4a4130;
   border-bottom-left-radius: 4px;
   align-self: flex-start;
 }
@@ -1087,9 +1073,69 @@
   border-top: 1px solid var(--border);
   padding: 0.8rem 1rem;
   display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.msgComposerRow {
+  display: flex;
   gap: 0.6rem;
   align-items: flex-end;
+}
+
+.msgStagedPreview {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--bg);
+  border-radius: var(--radius-field);
+}
+
+.msgStagedThumb {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 6px;
+  object-fit: cover;
   flex-shrink: 0;
+}
+
+.msgStagedFileIcon {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 6px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.msgStagedName {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msgStagedRemove {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0.2rem;
+  flex-shrink: 0;
+}
+
+.msgStagedRemove:hover {
+  color: var(--danger);
 }
 
 .msgComposer textarea {
@@ -1134,6 +1180,103 @@
 .msgSendBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.msgAttachBtn {
+  border: none;
+  background: var(--bg);
+  color: var(--text-muted);
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  flex-shrink: 0;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.msgAttachBtn:hover {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.msgAttachmentWrap {
+  position: relative;
+  display: inline-block;
+  border-radius: 12px;
+}
+
+.msgAttachmentImage {
+  display: block;
+  max-width: 140px;
+  max-height: 140px;
+  border-radius: 8px;
+  object-fit: cover;
+  cursor: pointer;
+  border: 4px solid #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.msgAttachmentWrap:hover .msgAttachmentImage {
+  transform: scale(1.05);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+.msgAttachmentZoomIcon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.75);
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+
+.msgAttachmentWrap:hover .msgAttachmentZoomIcon {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.msgAttachmentFile {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  max-width: 220px;
+}
+
+.msgAttachmentFile i {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.msgAttachmentFile span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msgAttachmentCaption {
+  margin-top: 0.4rem;
 }
 
 .msgEmptyState {
@@ -1266,25 +1409,12 @@
   margin-bottom: 1.5rem;
 }
 
-.heroTilesGrid::before {
-  content: "";
-  position: absolute;
-  top: -20px;
-  left: 0;
-  right: 0;
-  height: 240px;
-  background: radial-gradient(circle at 15% 30%, color-mix(in srgb, var(--tone-olive) 60%, transparent), transparent 60%),
-    radial-gradient(circle at 55% 65%, color-mix(in srgb, var(--tone-navy) 55%, transparent), transparent 60%),
-    radial-gradient(circle at 88% 25%, color-mix(in srgb, var(--tone-terracotta) 50%, transparent), transparent 60%);
-  filter: blur(45px);
-  z-index: -1;
-  pointer-events: none;
-}
-
 .heroTile {
   border-radius: var(--radius-card);
   padding: 1.35rem 1.5rem;
   color: #fff;
+  text-decoration: none;
+  cursor: pointer;
   box-shadow: var(--shadow-md);
   backdrop-filter: blur(14px) saturate(160%);
   -webkit-backdrop-filter: blur(14px) saturate(160%);
@@ -1373,8 +1503,10 @@
 }
 
 .meterCard {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid color-mix(in srgb, white 50%, var(--border));
   border-radius: var(--radius-card);
   padding: 1.2rem;
   display: flex;

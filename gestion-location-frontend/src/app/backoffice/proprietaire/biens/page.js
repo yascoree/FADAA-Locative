@@ -71,6 +71,7 @@ export default function ProprietaireBiensPage() {
 
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -117,7 +118,7 @@ export default function ProprietaireBiensPage() {
   function openCreate() {
     setFormMode("create");
     setFormTargetId(null);
-    setFormDraft(EMPTY_FORM);
+    setFormDraft({ ...EMPTY_FORM, categorie_id: categories[0] ? String(categories[0].id) : "" });
     setFormBanner(null);
     setStagedFiles([]);
     setEditingPhotos([]);
@@ -241,13 +242,13 @@ export default function ProprietaireBiensPage() {
   async function handleConfirmDelete() {
     if (!deleteTarget) return;
     setDeleteBusy(true);
+    setDeleteError(null);
     try {
       await deleteBien(deleteTarget.id);
       setBiens((prev) => prev.filter((b) => b.id !== deleteTarget.id));
       setDeleteTarget(null);
     } catch (err) {
-      setLoadError(extractErrorMessage(err));
-      setDeleteTarget(null);
+      setDeleteError(extractErrorMessage(err));
     } finally {
       setDeleteBusy(false);
     }
@@ -365,7 +366,10 @@ export default function ProprietaireBiensPage() {
                         <button
                           type="button"
                           className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                          onClick={() => setDeleteTarget(b)}
+                          onClick={() => {
+                            setDeleteTarget(b);
+                            setDeleteError(null);
+                          }}
                           title="Supprimer"
                         >
                           <i className="bi bi-trash" />
@@ -497,17 +501,21 @@ export default function ProprietaireBiensPage() {
       {/* ---- Confirmation de suppression ---- */}
       <ConfirmationDialog
         isOpen={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
+        onClose={() => {
+          setDeleteTarget(null);
+          setDeleteError(null);
+        }}
         onConfirm={handleConfirmDelete}
         title="Supprimer le bien"
         message={
           deleteTarget
-            ? `Supprimer définitivement "${deleteTarget.designation || `Bien #${deleteTarget.id}`}" ? Les lots et baux associés seront aussi supprimés. Cette action est irréversible.`
+            ? `Masquer "${deleteTarget.designation || `Bien #${deleteTarget.id}`}" ? Il n'apparaîtra plus dans vos listes, mais ses lots et baux sont conservés (non supprimés). Impossible si l'un de ses lots a un bail actif.`
             : ""
         }
         confirmLabel="Supprimer"
         danger
         isBusy={deleteBusy}
+        error={deleteError}
       />
     </div>
   );

@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.database import get_db
-from app.models.fcm_token import FCMToken
 from app.models.utilisateur import Utilisateur
 from app.schemas.fcm_token import FCMTokenCreate, FCMTokenRead
+from app.services import fcm_token_service
 
 router = APIRouter(prefix="/fcm-tokens", tags=["fcm-tokens"])
 
@@ -16,21 +16,10 @@ def register_token(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    """Enregistre le jeton d'appareil de l'utilisateur courant (appelé par le
-    frontend juste après l'obtention du jeton FCM côté navigateur/mobile).
-    Idempotent : renvoyer un jeton déjà connu le réattribue à l'appelant."""
-    existing = db.query(FCMToken).filter(FCMToken.token == token_in.token).first()
-    if existing:
-        existing.user_id = current_user.id
-        db.commit()
-        db.refresh(existing)
-        return existing
-
-    fcm_token = FCMToken(user_id=current_user.id, token=token_in.token)
-    db.add(fcm_token)
-    db.commit()
-    db.refresh(fcm_token)
-    return fcm_token
+    """Register the current user's device token (called by the frontend right after
+    obtaining the FCM token on the browser/mobile side). Idempotent: re-registering
+    a known token reassigns it to the caller."""
+    return fcm_token_service.register_token(db, current_user, token_in)
 
 
 @router.delete("/{token}", status_code=status.HTTP_204_NO_CONTENT)
@@ -39,5 +28,4 @@ def unregister_token(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    db.query(FCMToken).filter(FCMToken.token == token, FCMToken.user_id == current_user.id).delete()
-    db.commit()
+    fcm_token_service.unregister_token(db, current_user, token)

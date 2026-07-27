@@ -12,6 +12,7 @@ export const NOTIFICATION_TYPE = {
   MANDAT: 4,
   DISCUSSION: 5,
   RELANCE: 6,
+  GESTION: 7,
 };
 
 export const NOTIFICATION_TYPE_LABELS = {
@@ -21,6 +22,7 @@ export const NOTIFICATION_TYPE_LABELS = {
   4: "Mandat",
   5: "Discussion",
   6: "Relance",
+  7: "Activité gestionnaire",
 };
 
 export async function fetchNotifications() {
