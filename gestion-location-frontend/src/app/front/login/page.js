@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { ROLE_DASHBOARD_PATH, ROLE_LABELS, PUBLIC_REGISTER_ROLES } from "@/lib/roles";
 import { extractErrorMessage } from "@/lib/apiClient";
@@ -101,8 +101,9 @@ function PasswordField({ id, label, value, onChange, placeholder, autoComplete, 
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, register } = useAuth();
-  const [activeTab, setActiveTab] = useState("login");
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") === "register" ? "register" : "login");
 
   // ---- Login form state ----
   const [loginEmail, setLoginEmail] = useState("");

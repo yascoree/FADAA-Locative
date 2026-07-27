@@ -12,6 +12,28 @@ from app.models.permission import Permission
 from app.models.utilisateur import StatutCompte, Utilisateur, UtilisateurRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="auth/login", auto_error=False)
+
+
+def get_optional_user(
+    token: str | None = Depends(oauth2_scheme_optional), db: Session = Depends(get_db)
+) -> Utilisateur | None:
+    """Like get_current_user, but returns None instead of raising when there's no
+    (or an invalid) token — for endpoints reachable by anonymous visitors (e.g. the
+    public landing page) that also behave differently for a logged-in user."""
+    if not token:
+        return None
+    try:
+        payload = decode_access_token(token)
+        user_id = payload.get("sub")
+        if user_id is None:
+            return None
+    except JWTError:
+        return None
+    user = db.get(Utilisateur, int(user_id))
+    if user is None or user.statut_compte != StatutCompte.ACTIF:
+        return None
+    return user
 
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> Utilisateur:
