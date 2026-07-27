@@ -1546,6 +1546,8 @@
   border-radius: var(--radius-card);
   padding: 1.35rem 1.5rem;
   color: #fff;
+  text-decoration: none;
+  cursor: pointer;
   box-shadow: var(--shadow-md);
   backdrop-filter: blur(14px) saturate(160%);
   -webkit-backdrop-filter: blur(14px) saturate(160%);
@@ -2314,9 +2316,69 @@
   border-top: 1px solid var(--border);
   padding: 0.8rem 1rem;
   display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.msgComposerRow {
+  display: flex;
   gap: 0.6rem;
   align-items: flex-end;
+}
+
+.msgStagedPreview {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--bg);
+  border-radius: var(--radius-field);
+}
+
+.msgStagedThumb {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 6px;
+  object-fit: cover;
   flex-shrink: 0;
+}
+
+.msgStagedFileIcon {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 6px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.msgStagedName {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msgStagedRemove {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0.2rem;
+  flex-shrink: 0;
+}
+
+.msgStagedRemove:hover {
+  color: var(--danger);
 }
 
 .msgComposer textarea {

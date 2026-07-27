@@ -16,6 +16,7 @@ const PAGE_TITLES = {
   "/backoffice/admin/architecture": "Catégories",
   "/backoffice/admin/avis": "Avis",
   "/backoffice/admin/partenaires": "Partenaires",
+  "/backoffice/admin/historique": "Journal d'activité",
   "/backoffice/admin/parametres": "Paramètres",
 };
 

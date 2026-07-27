@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { extractErrorMessage } from "@/lib/apiClient";
 import { useAuth } from "@/context/AuthContext";
 import { fetchDashboardStats } from "@/lib/stats";
@@ -221,7 +222,7 @@ export default function AdminDashboardPage() {
 
       {/* ---- Tuiles ---- */}
       <div className={styles.heroTilesGrid}>
-        <div className={`${styles.heroTile} ${styles.heroTilePrimary}`}>
+        <Link href="/backoffice/admin/abonnements" className={`${styles.heroTile} ${styles.heroTilePrimary}`}>
           <div className={styles.heroTileTop}>
             <span className={styles.heroTileIcon}>
               <i className="bi bi-cash-stack" />
@@ -233,9 +234,9 @@ export default function AdminDashboardPage() {
               <CountUp value={stats.mrr} formatter={formatCurrency} />
             </div>
           </div>
-        </div>
+        </Link>
 
-        <div className={`${styles.heroTile} ${styles.heroTileGold}`}>
+        <Link href="/backoffice/admin/utilisateurs" className={`${styles.heroTile} ${styles.heroTileGold}`}>
           <div className={styles.heroTileTop}>
             <span className={styles.heroTileIcon}>
               <i className="bi bi-people-fill" />
@@ -247,9 +248,9 @@ export default function AdminDashboardPage() {
               <CountUp value={stats.total_users} />
             </div>
           </div>
-        </div>
+        </Link>
 
-        <div className={`${styles.heroTile} ${styles.heroTileInfo}`}>
+        <Link href="/backoffice/admin/abonnements" className={`${styles.heroTile} ${styles.heroTileInfo}`}>
           <div className={styles.heroTileTop}>
             <span className={styles.heroTileIcon}>
               <i className="bi bi-credit-card-fill" />
@@ -261,9 +262,9 @@ export default function AdminDashboardPage() {
               <CountUp value={stats.active_subscriptions} />
             </div>
           </div>
-        </div>
+        </Link>
 
-        <div className={`${styles.heroTile} ${styles.heroTileDanger}`}>
+        <Link href="/backoffice/admin/abonnements" className={`${styles.heroTile} ${styles.heroTileDanger}`}>
           <div className={styles.heroTileTop}>
             <span className={styles.heroTileIcon}>
               <i className="bi bi-graph-up-arrow" />
@@ -275,7 +276,7 @@ export default function AdminDashboardPage() {
               <CountUp value={stats.arpu} formatter={formatCurrency} />
             </div>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* ---- Courbe + jauges ---- */}

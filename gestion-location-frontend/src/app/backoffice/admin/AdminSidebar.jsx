@@ -27,7 +27,10 @@ const NAV_SECTIONS = [
   },
   {
     label: "Système",
-    items: [{ href: "/backoffice/admin/parametres", label: "Paramètres", icon: "bi-gear" }],
+    items: [
+      { href: "/backoffice/admin/historique", label: "Journal d'activité", icon: "bi-clock-history" },
+      { href: "/backoffice/admin/parametres", label: "Paramètres", icon: "bi-gear" },
+    ],
   },
 ];
 

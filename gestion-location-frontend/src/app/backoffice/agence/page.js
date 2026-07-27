@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { extractErrorMessage } from "@/lib/apiClient";
 import { useAuth } from "@/context/AuthContext";
 import { LOT_STATUS_LABELS, BAIL_STATUS_LABELS } from "@/lib/properties";
@@ -177,7 +178,7 @@ export default function AgenceDashboardPage() {
         <>
           {/* ---- Tuiles ---- */}
           <div className={styles.heroTilesGrid}>
-            <div className={`${styles.heroTile} ${styles.heroTilePrimary}`}>
+            <Link href="/backoffice/agence/paiements" className={`${styles.heroTile} ${styles.heroTilePrimary}`}>
               <div className={styles.heroTileTop}>
                 <span className={styles.heroTileIcon}>
                   <i className="bi bi-cash-stack" />
@@ -189,9 +190,9 @@ export default function AgenceDashboardPage() {
                   <CountUp value={stats.revenu_mois} formatter={formatCurrency} />
                 </div>
               </div>
-            </div>
+            </Link>
 
-            <div className={`${styles.heroTile} ${styles.heroTileDanger}`}>
+            <Link href="/backoffice/agence/echeances" className={`${styles.heroTile} ${styles.heroTileDanger}`}>
               <div className={styles.heroTileTop}>
                 <span className={styles.heroTileIcon}>
                   <i className="bi bi-exclamation-octagon-fill" />
@@ -203,9 +204,9 @@ export default function AgenceDashboardPage() {
                   <CountUp value={stats.montant_en_retard} formatter={formatCurrency} />
                 </div>
               </div>
-            </div>
+            </Link>
 
-            <div className={`${styles.heroTile} ${styles.heroTileGold}`}>
+            <Link href="/backoffice/agence/biens" className={`${styles.heroTile} ${styles.heroTileGold}`}>
               <div className={styles.heroTileTop}>
                 <span className={styles.heroTileIcon}>
                   <i className="bi bi-person-badge-fill" />
@@ -217,9 +218,9 @@ export default function AgenceDashboardPage() {
                   <CountUp value={stats.proprietaires_geres} />
                 </div>
               </div>
-            </div>
+            </Link>
 
-            <div className={`${styles.heroTile} ${styles.heroTileInfo}`}>
+            <Link href="/backoffice/agence/baux" className={`${styles.heroTile} ${styles.heroTileInfo}`}>
               <div className={styles.heroTileTop}>
                 <span className={styles.heroTileIcon}>
                   <i className="bi bi-file-earmark-text-fill" />
@@ -231,7 +232,7 @@ export default function AgenceDashboardPage() {
                   <CountUp value={stats.baux_actifs} />
                 </div>
               </div>
-            </div>
+            </Link>
           </div>
 
           {/* ---- Courbe + jauges ---- */}

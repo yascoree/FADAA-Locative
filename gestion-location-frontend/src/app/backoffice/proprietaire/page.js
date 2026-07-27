@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { extractErrorMessage } from "@/lib/apiClient";
 import { useAuth } from "@/context/AuthContext";
 import { LOT_STATUS_LABELS, BAIL_STATUS_LABELS } from "@/lib/properties";
@@ -212,7 +213,7 @@ export default function ProprietaireDashboardPage() {
 
       {/* ---- Tuiles ---- */}
       <div className={styles.heroTilesGrid}>
-        <div className={`${styles.heroTile} ${styles.heroTilePrimary}`}>
+        <Link href="/backoffice/proprietaire/paiements" className={`${styles.heroTile} ${styles.heroTilePrimary}`}>
           <div className={styles.heroTileTop}>
             <span className={styles.heroTileIcon}>
               <i className="bi bi-cash-stack" />
@@ -224,9 +225,9 @@ export default function ProprietaireDashboardPage() {
               <CountUp value={stats.revenu_mois} formatter={formatCurrency} />
             </div>
           </div>
-        </div>
+        </Link>
 
-        <div className={`${styles.heroTile} ${styles.heroTileDanger}`}>
+        <Link href="/backoffice/proprietaire/echeances" className={`${styles.heroTile} ${styles.heroTileDanger}`}>
           <div className={styles.heroTileTop}>
             <span className={styles.heroTileIcon}>
               <i className="bi bi-exclamation-octagon-fill" />
@@ -238,9 +239,9 @@ export default function ProprietaireDashboardPage() {
               <CountUp value={stats.montant_en_retard} formatter={formatCurrency} />
             </div>
           </div>
-        </div>
+        </Link>
 
-        <div className={`${styles.heroTile} ${styles.heroTileGold}`}>
+        <Link href="/backoffice/proprietaire/biens" className={`${styles.heroTile} ${styles.heroTileGold}`}>
           <div className={styles.heroTileTop}>
             <span className={styles.heroTileIcon}>
               <i className="bi bi-house-door-fill" />
@@ -252,9 +253,9 @@ export default function ProprietaireDashboardPage() {
               <CountUp value={stats.total_biens} />
             </div>
           </div>
-        </div>
+        </Link>
 
-        <div className={`${styles.heroTile} ${styles.heroTileInfo}`}>
+        <Link href="/backoffice/proprietaire/baux" className={`${styles.heroTile} ${styles.heroTileInfo}`}>
           <div className={styles.heroTileTop}>
             <span className={styles.heroTileIcon}>
               <i className="bi bi-file-earmark-text-fill" />
@@ -266,7 +267,7 @@ export default function ProprietaireDashboardPage() {
               <CountUp value={stats.baux_actifs} />
             </div>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* ---- Courbe + jauges ---- */}

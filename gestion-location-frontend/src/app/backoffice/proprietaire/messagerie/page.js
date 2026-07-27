@@ -57,6 +57,7 @@ export default function ProprietaireMessageriePage() {
   const [sendBusy, setSendBusy] = useState(false);
   const [sendError, setSendError] = useState(null);
   const [attachBusy, setAttachBusy] = useState(false);
+  const [stagedAttachment, setStagedAttachment] = useState(null);
 
   const [reclamationForm, setReclamationForm] = useState(EMPTY_RECLAMATION_FORM);
   const [reclamationBusy, setReclamationBusy] = useState(false);
@@ -206,13 +207,14 @@ export default function ProprietaireMessageriePage() {
 
   async function handleSend(e) {
     e.preventDefault();
-    if (!draft.trim() || !selectedId) return;
+    if ((!draft.trim() && !stagedAttachment) || !selectedId) return;
     setSendBusy(true);
     setSendError(null);
     try {
-      const created = await sendMessage({ destinataireId: selectedId, message: draft.trim() });
+      const created = await sendMessage({ destinataireId: selectedId, message: draft.trim(), attachment: stagedAttachment });
       setMessages((prev) => [...prev, created]);
       setDraft("");
+      setStagedAttachment(null);
     } catch (err) {
       setSendError(extractErrorMessage(err));
     } finally {
@@ -228,9 +230,7 @@ export default function ProprietaireMessageriePage() {
     setSendError(null);
     try {
       const uploaded = await uploadDiscussionAttachment(file);
-      const created = await sendMessage({ destinataireId: selectedId, message: draft.trim(), attachment: uploaded });
-      setMessages((prev) => [...prev, created]);
-      setDraft("");
+      setStagedAttachment(uploaded);
     } catch (err) {
       setSendError(extractErrorMessage(err));
     } finally {
@@ -426,26 +426,58 @@ export default function ProprietaireMessageriePage() {
                 {sendError && <div className={`${styles.banner} ${styles.bannerError}`} style={{ margin: "0 1rem" }}>{sendError}</div>}
 
                 <form className={styles.msgComposer} onSubmit={handleSend}>
-                  <label className={styles.msgAttachBtn} title="Joindre un fichier">
-                    <i className={`bi ${attachBusy ? "bi-hourglass-split" : "bi-paperclip"}`} />
-                    <input
-                      type="file"
-                      onChange={handleAttachmentChange}
-                      disabled={attachBusy || sendBusy}
-                      style={{ display: "none" }}
+                  {stagedAttachment && (
+                    <div className={styles.msgStagedPreview}>
+                      {stagedAttachment.piece_jointe_type?.startsWith("image/") ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={`${API_BASE_URL}${stagedAttachment.piece_jointe}`}
+                          alt=""
+                          className={styles.msgStagedThumb}
+                        />
+                      ) : (
+                        <span className={styles.msgStagedFileIcon}>
+                          <i className="bi bi-file-earmark" />
+                        </span>
+                      )}
+                      <span className={styles.msgStagedName}>{stagedAttachment.piece_jointe_nom}</span>
+                      <button
+                        type="button"
+                        className={styles.msgStagedRemove}
+                        onClick={() => setStagedAttachment(null)}
+                        title="Retirer"
+                      >
+                        <i className="bi bi-x-lg" />
+                      </button>
+                    </div>
+                  )}
+                  <div className={styles.msgComposerRow}>
+                    <label className={styles.msgAttachBtn} title="Joindre un fichier">
+                      <i className={`bi ${attachBusy ? "bi-hourglass-split" : "bi-paperclip"}`} />
+                      <input
+                        type="file"
+                        onChange={handleAttachmentChange}
+                        disabled={attachBusy || sendBusy}
+                        style={{ display: "none" }}
+                      />
+                    </label>
+                    <textarea
+                      rows={1}
+                      placeholder="Écrivez un message... (Entrée pour envoyer, Maj+Entrée pour un saut de ligne)"
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      disabled={sendBusy}
                     />
-                  </label>
-                  <textarea
-                    rows={1}
-                    placeholder="Écrivez un message... (Entrée pour envoyer, Maj+Entrée pour un saut de ligne)"
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    disabled={sendBusy}
-                  />
-                  <button type="submit" className={styles.msgSendBtn} disabled={sendBusy || !draft.trim()} title="Envoyer">
-                    <i className="bi bi-send-fill" />
-                  </button>
+                    <button
+                      type="submit"
+                      className={styles.msgSendBtn}
+                      disabled={sendBusy || (!draft.trim() && !stagedAttachment)}
+                      title="Envoyer"
+                    >
+                      <i className="bi bi-send-fill" />
+                    </button>
+                  </div>
                 </form>
               </>
             )}
