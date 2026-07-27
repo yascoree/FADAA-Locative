@@ -4,9 +4,11 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models.avis import Avis, AvisStatus
+from app.models.notification import NotificationType
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.avis import AvisCreate, AvisUpdate
 from app.services.exceptions import Forbidden, NotFound
+from app.services.push_service import notify_admins
 
 
 def list_avis(db: Session, current_user: Utilisateur | None, skip: int = 0, limit: int = 100) -> list[Avis]:
@@ -41,6 +43,15 @@ def create_avis(db: Session, current_user: Utilisateur | None, avis_in: AvisCrea
     db.add(avis)
     db.commit()
     db.refresh(avis)
+
+    notify_admins(
+        db,
+        title="Nouvel avis reçu",
+        body=f"{avis.prenom} {avis.nom} a laissé un avis ({avis.note}/5).",
+        notif_type=NotificationType.AVIS,
+        reference_id=avis.id,
+    )
+
     return avis
 
 

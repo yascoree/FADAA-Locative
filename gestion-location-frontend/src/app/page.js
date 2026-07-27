@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { ROLE_DASHBOARD_PATH } from "@/lib/roles";
 import { createAvis, fetchAvis } from "@/lib/avis";
-import { extractErrorMessage } from "@/lib/apiClient";
+import { createDemandeDemo } from "@/lib/demandesDemo";
+import { fetchPartenaires, PARTENAIRE_STATUS } from "@/lib/partenaires";
+import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import styles from "./landing.module.css";
 
 const FEATURES = [
@@ -158,14 +160,15 @@ function NavBar() {
     <header className={styles.nav}>
       <div className={styles.navInner}>
         <div className={styles.logoLockup}>
-          <span className={styles.logoMark} />
-          <span className={styles.logoWord}>FADAA Locative</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/fadaa-logo-full-dark.png" alt="FADAA Locative" className={styles.brandLogoFull} />
         </div>
         <nav className={styles.navLinks}>
           <a href="#fonctionnalites">Fonctionnalités</a>
           <a href="#roles">Solutions</a>
           <a href="#apropos">À propos</a>
           <a href="#contact">Contact</a>
+          <a href="#partenaires">Partenaires</a>
         </nav>
         <div className={styles.navActions}>
           <button type="button" className={styles.langSwitch}>
@@ -184,6 +187,8 @@ function NavBar() {
 }
 
 function Hero() {
+  const [showDemoModal, setShowDemoModal] = useState(false);
+
   return (
     <section className={styles.hero}>
       <div className={styles.heroText}>
@@ -200,10 +205,11 @@ function Hero() {
           <Link href="/front/login?tab=register" className={styles.btnPrimary}>
             Commencer
           </Link>
-          <Link href="/front/login?tab=register" className={styles.btnSecondary}>
-            Créer un compte
-          </Link>
+          <button type="button" className={styles.btnSecondary} onClick={() => setShowDemoModal(true)}>
+            Demander une démo
+          </button>
         </div>
+        {showDemoModal && <DemoRequestModal onClose={() => setShowDemoModal(false)} />}
         <div className={styles.statRow}>
           <span>
             <strong>500+</strong> agences
@@ -266,22 +272,49 @@ function Hero() {
 }
 
 function TrustBar() {
-  const logos = ["Urbanest", "KeyHome", "Kanda Capital", "Atlas Residences", "Noor Immo"];
+  const [partenaires, setPartenaires] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchPartenaires()
+      .then((list) => {
+        if (!cancelled) setPartenaires(list.filter((p) => p.statut === PARTENAIRE_STATUS.ACTIF));
+      })
+      .catch(() => {
+        // Section purement vitrine : un échec de chargement ne doit pas casser la landing page.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (partenaires.length === 0) return null;
+
   return (
-    <section className={styles.trust}>
+    <section id="partenaires" className={styles.trust}>
       <div className={styles.sectionHead}>
-        <span className={styles.eyebrow}>Confiance</span>
+        <span className={styles.eyebrow}>Partenaires</span>
         <h2 className={styles.sectionTitle}>Ils nous font confiance</h2>
         <p className={styles.sectionSub}>
           Agences et propriétaires à travers le Maroc gèrent déjà leur portefeuille avec FADAA Locative.
         </p>
       </div>
       <div className={styles.logosRow}>
-        {logos.map((l) => (
-          <span key={l} className={styles.logoItem}>
-            {l}
-          </span>
-        ))}
+        {partenaires.map((p) =>
+          p.logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={p.id}
+              src={p.logo.startsWith("http") ? p.logo : `${API_BASE_URL}${p.logo}`}
+              alt={p.nom}
+              className={styles.partnerLogoItem}
+            />
+          ) : (
+            <span key={p.id} className={styles.logoItem}>
+              {p.nom}
+            </span>
+          )
+        )}
       </div>
     </section>
   );
@@ -684,7 +717,253 @@ function AvisSection() {
   );
 }
 
+const CALENDAR_WEEKDAYS = ["L", "M", "M", "J", "V", "S", "D"];
+const CALENDAR_MONTHS = [
+  "Janvier",
+  "Février",
+  "Mars",
+  "Avril",
+  "Mai",
+  "Juin",
+  "Juillet",
+  "Août",
+  "Septembre",
+  "Octobre",
+  "Novembre",
+  "Décembre",
+];
+
+function toISODate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function isSameDay(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function MiniDatePicker({ value, onChange }) {
+  const selectedDate = value ? new Date(`${value}T00:00:00`) : null;
+  const [open, setOpen] = useState(false);
+  const [viewDate, setViewDate] = useState(() => selectedDate || new Date());
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    function handleClickOutside(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    }
+    function handleKeyDown(e) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const firstOfMonth = new Date(year, month, 1);
+  const startOffset = (firstOfMonth.getDay() + 6) % 7; // grille lundi -> dimanche
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const cells = [];
+  for (let i = 0; i < startOffset; i += 1) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d += 1) cells.push(new Date(year, month, d));
+
+  return (
+    <div className={styles.miniCalendarWrap} ref={wrapRef}>
+      <button type="button" className={styles.miniCalendarTrigger} onClick={() => setOpen((o) => !o)}>
+        <i className="bi bi-calendar3" />
+        <span className={selectedDate ? undefined : styles.miniCalendarPlaceholder}>
+          {selectedDate
+            ? selectedDate.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
+            : "Choisir une date"}
+        </span>
+      </button>
+
+      {open && (
+        <div className={styles.miniCalendarPanel}>
+          <div className={styles.miniCalendarHeader}>
+            <button type="button" onClick={() => setViewDate(new Date(year, month - 1, 1))} aria-label="Mois précédent">
+              <i className="bi bi-chevron-left" />
+            </button>
+            <span>
+              {CALENDAR_MONTHS[month]} {year}
+            </span>
+            <button type="button" onClick={() => setViewDate(new Date(year, month + 1, 1))} aria-label="Mois suivant">
+              <i className="bi bi-chevron-right" />
+            </button>
+          </div>
+
+          <div className={styles.miniCalendarWeekdays}>
+            {CALENDAR_WEEKDAYS.map((w, i) => (
+              <span key={i}>{w}</span>
+            ))}
+          </div>
+
+          <div className={styles.miniCalendarGrid}>
+            {cells.map((d, i) => {
+              if (!d) return <span key={`empty-${i}`} />;
+              const isPast = d < today;
+              const isSelected = selectedDate && isSameDay(d, selectedDate);
+              const isToday = isSameDay(d, today);
+              return (
+                <button
+                  key={d.getTime()}
+                  type="button"
+                  disabled={isPast}
+                  className={`${styles.miniCalendarDay} ${isSelected ? styles.miniCalendarDaySelected : ""} ${
+                    isToday ? styles.miniCalendarDayToday : ""
+                  }`}
+                  onClick={() => {
+                    onChange(toISODate(d));
+                    setOpen(false);
+                  }}
+                >
+                  {d.getDate()}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DemoRequestModal({ onClose }) {
+  const [nom, setNom] = useState("");
+  const [email, setEmail] = useState("");
+  const [telephone, setTelephone] = useState("+212 ");
+  const [dateSouhaitee, setDateSouhaitee] = useState("");
+  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState("idle");
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!nom.trim() || !email.trim() || !telephone.trim() || status === "busy") return;
+    setStatus("busy");
+    setError(null);
+    try {
+      await createDemandeDemo({
+        nom: nom.trim(),
+        email: email.trim(),
+        telephone: telephone.trim(),
+        dateSouhaitee: dateSouhaitee || null,
+        message: message.trim() || null,
+      });
+      setStatus("sent");
+    } catch (err) {
+      setStatus("error");
+      setError(extractErrorMessage(err));
+    }
+  }
+
+  return (
+    <div className={styles.demoOverlay} onClick={onClose}>
+      <div className={styles.demoModalCard} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className={styles.demoModalClose} onClick={onClose} aria-label="Fermer">
+          <i className="bi bi-x-lg" />
+        </button>
+
+        {status === "sent" ? (
+          <div className={styles.avisFormSentMsg}>
+            <i className="bi bi-check-circle-fill" /> Merci ! Votre demande a été transmise, notre équipe vous
+            recontactera rapidement.
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <h3 className={styles.demoModalTitle}>Demander une démo</h3>
+            <p className={styles.demoModalSub}>
+              Laissez-nous vos coordonnées et vos disponibilités, un membre de notre équipe vous recontactera pour
+              organiser une démonstration.
+            </p>
+
+            <label className={styles.demoFieldGroup}>
+              <span className={styles.demoFieldLabel}>Nom</span>
+              <input
+                type="text"
+                value={nom}
+                onChange={(e) => setNom(e.target.value)}
+                placeholder="Votre nom"
+                className={styles.avisFormInput}
+                required
+              />
+            </label>
+
+            <label className={styles.demoFieldGroup}>
+              <span className={styles.demoFieldLabel}>E-mail</span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Votre e-mail"
+                className={styles.avisFormInput}
+                required
+              />
+            </label>
+
+            <label className={styles.demoFieldGroup}>
+              <span className={styles.demoFieldLabel}>Téléphone</span>
+              <input
+                type="tel"
+                value={telephone}
+                onChange={(e) => setTelephone(e.target.value)}
+                placeholder="+212 6XX XXX XXX"
+                className={styles.avisFormInput}
+                required
+              />
+            </label>
+
+            <label className={styles.demoFieldGroup}>
+              <span className={styles.demoFieldLabel}>Date souhaitée pour la démo</span>
+              <MiniDatePicker value={dateSouhaitee} onChange={setDateSouhaitee} />
+            </label>
+
+            <label className={styles.demoFieldGroup}>
+              <span className={styles.demoFieldLabel}>Message (optionnel)</span>
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Précisez votre besoin"
+                className={styles.avisFormTextarea}
+                rows={3}
+              />
+            </label>
+
+            {status === "error" && <p className={styles.avisFormError}>{error}</p>}
+
+            <button type="submit" className={styles.avisFormSubmit} disabled={status === "busy"}>
+              {status === "busy" ? "Envoi..." : "Envoyer ma demande"}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function CtaBanner() {
+  const [showDemoModal, setShowDemoModal] = useState(false);
+
   return (
     <section className={styles.section} style={{ paddingBottom: "1.5rem" }}>
       <div className={styles.ctaCard}>
@@ -697,11 +976,12 @@ function CtaBanner() {
           <Link href="/front/login?tab=register" className={styles.btnPrimaryLight}>
             Essai gratuit
           </Link>
-          <Link href="/front/login" className={styles.btnCtaGhost}>
+          <button type="button" className={styles.btnCtaGhost} onClick={() => setShowDemoModal(true)}>
             Demander une démo
-          </Link>
+          </button>
         </div>
       </div>
+      {showDemoModal && <DemoRequestModal onClose={() => setShowDemoModal(false)} />}
     </section>
   );
 }
@@ -712,8 +992,8 @@ function Footer() {
       <div className={styles.footerInner}>
         <div className={styles.footerBrandCol}>
           <div className={styles.logoLockup}>
-            <span className={styles.logoMark} />
-            <span className={styles.logoWord}>FADAA Locative</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/fadaa-logo-full-light.png" alt="FADAA Locative" className={styles.brandLogoFull} />
           </div>
           <p className={styles.footerTagline}>
             La plateforme tout-en-un de gestion locative pour agences, propriétaires et locataires.

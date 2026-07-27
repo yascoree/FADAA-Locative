@@ -38,11 +38,21 @@
   gap: 0.6rem;
 }
 
+.brandLogoFull {
+  height: 50px;
+  width: auto;
+  display: block;
+}
+
 .logoMark {
-  width: 1.4rem;
-  height: 1.4rem;
-  border-radius: 6px;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 7px;
   background: var(--primary-dark);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
@@ -449,6 +459,21 @@
   text-transform: uppercase;
   color: var(--text-muted);
   opacity: 0.75;
+}
+
+.partnerLogoItem {
+  height: 2.1rem;
+  max-width: 140px;
+  width: auto;
+  object-fit: contain;
+  opacity: 0.8;
+  filter: grayscale(1);
+  transition: opacity 0.15s ease, filter 0.15s ease;
+}
+
+.partnerLogoItem:hover {
+  opacity: 1;
+  filter: grayscale(0);
 }
 
 /* ---------- Sections ---------- */
@@ -1354,6 +1379,200 @@
   color: var(--primary-dark);
   text-align: center;
   padding: 0.75rem 0;
+}
+
+.demoOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(42, 40, 32, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 1000;
+}
+
+.demoModalCard {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 1.7rem 1.8rem;
+  box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.35);
+}
+
+.demoModalClose {
+  position: absolute;
+  top: 1.1rem;
+  right: 1.1rem;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.demoModalClose:hover {
+  color: var(--text);
+}
+
+.demoModalTitle {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--secondary);
+  margin: 0 0 0.4rem;
+  padding-right: 1.5rem;
+}
+
+.demoModalSub {
+  font-size: 0.86rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0 0 1.2rem;
+}
+
+.demoFieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+}
+
+.demoFieldLabel {
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: var(--secondary);
+}
+
+.miniCalendarWrap {
+  position: relative;
+}
+
+.miniCalendarTrigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: inherit;
+  font-size: 0.88rem;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.65rem 0.8rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.miniCalendarTrigger:hover {
+  border-color: var(--primary);
+}
+
+.miniCalendarTrigger i {
+  color: var(--primary);
+  font-size: 0.95rem;
+}
+
+.miniCalendarPlaceholder {
+  color: var(--text-muted);
+}
+
+.miniCalendarPanel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  z-index: 20;
+  width: 280px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 20px 45px -20px rgba(58, 56, 38, 0.35);
+  padding: 1rem;
+}
+
+.miniCalendarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--secondary);
+}
+
+.miniCalendarHeader button {
+  border: none;
+  background: var(--bg);
+  color: var(--secondary);
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.miniCalendarHeader button:hover {
+  background: var(--accent-soft);
+}
+
+.miniCalendarWeekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 0.3rem;
+}
+
+.miniCalendarWeekdays span {
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.miniCalendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.2rem;
+}
+
+.miniCalendarDay {
+  aspect-ratio: 1;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.miniCalendarDay:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.miniCalendarDay:disabled {
+  color: var(--border);
+  cursor: not-allowed;
+}
+
+.miniCalendarDaySelected {
+  background: var(--primary) !important;
+  color: #fff !important;
+  font-weight: 700;
+}
+
+.miniCalendarDayToday:not(.miniCalendarDaySelected) {
+  border: 1.5px solid var(--primary);
 }
 
 @media (max-width: 560px) {

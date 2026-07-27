@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.fcm_token import FCMToken
 from app.models.notification import Notification, NotificationType
+from app.models.utilisateur import Utilisateur, UtilisateurRole
 
 logger = logging.getLogger(__name__)
 
@@ -82,3 +83,18 @@ def send_push_to_user(
         db.commit()
 
     return notification
+
+
+def notify_admins(
+    db: Session,
+    title: str,
+    body: str,
+    notif_type: Optional[NotificationType] = None,
+    reference_id: Optional[int] = None,
+) -> None:
+    """Notifie chaque administrateur (cloche in-app + push) — utilisé pour les
+    événements soumis publiquement sans destinataire naturel (avis, réclamation,
+    demande de démo)."""
+    admin_ids = [u.id for u in db.query(Utilisateur).filter(Utilisateur.role == UtilisateurRole.ADMINISTRATEUR).all()]
+    for admin_id in admin_ids:
+        send_push_to_user(db, user_id=admin_id, title=title, body=body, notif_type=notif_type, reference_id=reference_id)

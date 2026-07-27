@@ -12,10 +12,11 @@ def _ensure_owner_or_admin(current_user: Utilisateur, notification: Notification
 
 
 def list_notifications(db: Session, current_user: Utilisateur, skip: int = 0, limit: int = 100) -> list[Notification]:
-    query = db.query(Notification)
-    if current_user.role != UtilisateurRole.ADMINISTRATEUR:
-        query = query.filter(Notification.user_id == current_user.id)
-    return query.offset(skip).limit(limit).all()
+    # Toujours filtré sur l'utilisateur courant, y compris pour l'admin : la liste
+    # alimente la cloche/page notifications personnelles, pas un flux global (qui
+    # existe déjà via le journal d'activité). _ensure_owner_or_admin plus bas garde
+    # néanmoins l'accès admin à une notification précise par id, pour le support.
+    return db.query(Notification).filter(Notification.user_id == current_user.id).offset(skip).limit(limit).all()
 
 
 def get_notification(db: Session, current_user: Utilisateur, notification_id: int) -> Notification:

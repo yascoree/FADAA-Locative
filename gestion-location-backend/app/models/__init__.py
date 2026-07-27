@@ -21,6 +21,7 @@ from app.models.subscription_plan import SubscriptionPlan
 from app.models.plan_permission import PlanPermission
 from app.models.subscription import Subscription
 from app.models.historique import Historique
+from app.models.demande_demo import DemandeDemo
 
 __all__ = [
     "Utilisateur",
@@ -45,5 +46,6 @@ __all__ = [
     "SubscriptionPlan",
     "PlanPermission",
     "Subscription",
-    "Historique"
+    "Historique",
+    "DemandeDemo",
 ]

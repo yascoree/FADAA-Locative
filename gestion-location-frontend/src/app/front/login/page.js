@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { ROLE_DASHBOARD_PATH, ROLE_LABELS, PUBLIC_REGISTER_ROLES } from "@/lib/roles";
+import { ROLE_DASHBOARD_PATH, PUBLIC_REGISTER_ROLES } from "@/lib/roles";
 import { extractErrorMessage } from "@/lib/apiClient";
 import Modal from "@/components/Modal";
+import LogoIcon from "@/components/LogoIcon";
 import styles from "./login.module.css";
 
 function EyeIcon() {
@@ -25,8 +26,8 @@ function BrandPanel() {
 
       <div className={styles.brandTop}>
         <div className={styles.logoLockup}>
-          <span className={styles.logoMark}>F</span>
-          <span className={styles.logoWord}>FADAA Locative</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/fadaa-logo-full-light.png" alt="FADAA Locative" className={styles.brandLogoFull} />
         </div>
       </div>
 
@@ -151,27 +152,17 @@ export default function LoginPage() {
     setRegisterBanner(null);
     setRegisterBusy(true);
     try {
-      const created = await register({
+      await register({
         nom: lastName,
         prenom: firstName,
         email: registerEmail,
         mot_de_passe: registerPassword,
         role: Number(role),
       });
-      setRegisterBanner({
-        type: "success",
-        message: `Compte créé : ${created.prenom} ${created.nom} (${ROLE_LABELS[created.role]}). Vous pouvez maintenant vous connecter avec cet e-mail.`,
-      });
-      setLoginEmail(registerEmail);
-      setFirstName("");
-      setLastName("");
-      setRegisterEmail("");
-      setRegisterPassword("");
-      setRegisterConfirm("");
-      setTerms(false);
+      const me = await login(registerEmail, registerPassword);
+      router.push(ROLE_DASHBOARD_PATH[me.role] || "/");
     } catch (err) {
       setRegisterBanner({ type: "error", message: extractErrorMessage(err) });
-    } finally {
       setRegisterBusy(false);
     }
   }
@@ -205,7 +196,9 @@ export default function LoginPage() {
       <main className={styles.formPanel}>
         <div className={styles.formCol}>
           <div className={styles.mobileLogo}>
-            <span className={styles.logoMark}>F</span>
+            <span className={styles.logoMark}>
+            <LogoIcon size={24} tone="light" />
+          </span>
             <span className={styles.logoWord}>FADAA Locative</span>
           </div>
 

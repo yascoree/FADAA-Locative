@@ -29,3 +29,6 @@ class ReclamationRead(BaseModel):
     traite_par_id: Optional[int] = None
     proprietaire: Optional[UtilisateurMini] = None
     traite_par: Optional[UtilisateurMini] = None
+    # Calculé à la volée (pas une colonne) : True si acceptée mais sans message
+    # échangé depuis plus de 24h — la messagerie admin est alors reverrouillée.
+    expiree: bool = False

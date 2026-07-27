@@ -46,6 +46,9 @@ const EMPTY_RECLAMATION_FORM = { sujet: "", message: "" };
 
 export default function ProprietaireMessageriePage() {
   const { user } = useAuth();
+  const [activeView, setActiveView] = useState("messagerie");
+  const viewTabRefs = useRef({});
+  const [viewTabIndicator, setViewTabIndicator] = useState(null);
   const [contacts, setContacts] = useState([]);
   const [messages, setMessages] = useState([]);
   const [reclamations, setReclamations] = useState([]);
@@ -94,7 +97,7 @@ export default function ProprietaireMessageriePage() {
             role: "Gestionnaire",
           }));
         const acceptedReclamation = reclamationsList.find(
-          (r) => r.statut === RECLAMATION_STATUS.ACCEPTEE && r.traite_par
+          (r) => r.statut === RECLAMATION_STATUS.ACCEPTEE && !r.expiree && r.traite_par
         );
         const adminContact = acceptedReclamation
           ? [
@@ -155,8 +158,14 @@ export default function ProprietaireMessageriePage() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const el = viewTabRefs.current[activeView];
+    if (!el) return;
+    setViewTabIndicator({ width: el.offsetWidth, left: el.offsetLeft });
+  }, [activeView, isLoading]);
+
   const latestReclamation = reclamations[0] || null;
-  const adminUnlocked = reclamations.some((r) => r.statut === RECLAMATION_STATUS.ACCEPTEE);
+  const adminUnlocked = reclamations.some((r) => r.statut === RECLAMATION_STATUS.ACCEPTEE && !r.expiree);
   const hasPendingReclamation = reclamations.some((r) => r.statut === RECLAMATION_STATUS.EN_ATTENTE);
 
   async function handleSubmitReclamation(e) {
@@ -265,11 +274,49 @@ export default function ProprietaireMessageriePage() {
       <div className={styles.section} style={{ marginBottom: 0 }}>
         <h2 className={styles.sectionTitle}>
           <i className="bi bi-chat-dots-fill" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-          Messagerie
+          Discussions
         </h2>
-        <p className={styles.sectionSubtitle}>Échangez directement avec vos locataires et gestionnaires.</p>
+        <p className={styles.sectionSubtitle}>
+          Échangez avec vos locataires et gestionnaires, ou contactez l&apos;administration.
+        </p>
 
-        <div className={styles.msgShell}>
+        <div className={styles.discussionToggle} role="tablist" aria-label="Messagerie ou réclamation">
+          {viewTabIndicator && (
+            <span
+              className={styles.discussionToggleBubble}
+              style={{ width: `${viewTabIndicator.width}px`, transform: `translateX(${viewTabIndicator.left}px)` }}
+            />
+          )}
+          <button
+            type="button"
+            role="tab"
+            ref={(el) => {
+              viewTabRefs.current.messagerie = el;
+            }}
+            aria-selected={activeView === "messagerie"}
+            className={`${styles.discussionToggleBtn} ${activeView === "messagerie" ? styles.discussionToggleBtnActive : ""}`}
+            onClick={() => setActiveView("messagerie")}
+          >
+            <i className="bi bi-chat-dots-fill" />
+            Messagerie
+          </button>
+          <button
+            type="button"
+            role="tab"
+            ref={(el) => {
+              viewTabRefs.current.reclamation = el;
+            }}
+            aria-selected={activeView === "reclamation"}
+            className={`${styles.discussionToggleBtn} ${activeView === "reclamation" ? styles.discussionToggleBtnActive : ""}`}
+            onClick={() => setActiveView("reclamation")}
+          >
+            <i className="bi bi-headset" />
+            Réclamation
+          </button>
+        </div>
+
+        {activeView === "messagerie" && (
+        <div className={`${styles.msgShell} ${styles.chartFade}`}>
           {/* ---- Liste des contacts ---- */}
           <div className={styles.msgContacts}>
             <div className={styles.msgContactsHeader}>
@@ -483,9 +530,10 @@ export default function ProprietaireMessageriePage() {
             )}
           </div>
         </div>
+        )}
 
-        {!adminUnlocked && (
-          <div className={styles.card} style={{ marginTop: "1.25rem" }}>
+        {activeView === "reclamation" && (
+          <div className={`${styles.card} ${styles.chartFade}`} style={{ marginTop: "1.25rem" }}>
             <h3 className={styles.cardTitle}>
               <i className="bi bi-headset" style={{ color: "var(--primary)" }} />
               Contacter l&apos;administration
@@ -493,7 +541,12 @@ export default function ProprietaireMessageriePage() {
 
             <Banner banner={reclamationBanner} />
 
-            {hasPendingReclamation ? (
+            {adminUnlocked ? (
+              <p className={styles.sectionSubtitle} style={{ marginTop: "0.5rem" }}>
+                Votre réclamation a été acceptée : l&apos;administration est désormais disponible dans l&apos;onglet{" "}
+                <strong>Messagerie</strong>.
+              </p>
+            ) : hasPendingReclamation ? (
               <p className={styles.sectionSubtitle} style={{ marginTop: "0.5rem" }}>
                 Votre réclamation « {latestReclamation.sujet} » est{" "}
                 <strong>{RECLAMATION_STATUS_LABELS[latestReclamation.statut].toLowerCase()}</strong>, en attente de
@@ -508,13 +561,18 @@ export default function ProprietaireMessageriePage() {
                     en soumettre une nouvelle ci-dessous.
                   </p>
                 )}
+                {latestReclamation?.statut === RECLAMATION_STATUS.ACCEPTEE && latestReclamation.expiree && (
+                  <p className={styles.sectionSubtitle} style={{ marginTop: "0.5rem" }}>
+                    Votre réclamation a expiré après 24h sans message échangé avec l&apos;administration.
+                    Soumettez-en une nouvelle ci-dessous pour la recontacter.
+                  </p>
+                )}
                 <form onSubmit={handleSubmitReclamation} style={{ marginTop: "0.75rem" }}>
                   <TextField
                     label="Sujet"
                     name="reclamation-sujet"
                     value={reclamationForm.sujet}
                     onChange={(e) => setReclamationForm((f) => ({ ...f, sujet: e.target.value }))}
-                    placeholder="Ex : Problème de facturation"
                     required
                   />
                   <label className={uiStyles.field}>

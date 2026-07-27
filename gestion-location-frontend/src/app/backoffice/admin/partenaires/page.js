@@ -51,6 +51,8 @@ export default function AdminPartenairesPage() {
   const [partnerFormDraft, setPartnerFormDraft] = useState(EMPTY_PARTNER_FORM);
   const [partnerFormBusy, setPartnerFormBusy] = useState(false);
   const [partnerFormBanner, setPartnerFormBanner] = useState(null);
+  const [logoStaged, setLogoStaged] = useState(null);
+  const [logoCurrentUrl, setLogoCurrentUrl] = useState(null);
   const [partnerDeleteTarget, setPartnerDeleteTarget] = useState(null);
   const [partnerDeleteBusy, setPartnerDeleteBusy] = useState(false);
   const [logoUploadingId, setLogoUploadingId] = useState(null);
@@ -77,6 +79,8 @@ export default function AdminPartenairesPage() {
     setPartnerFormTargetId(null);
     setPartnerFormDraft(EMPTY_PARTNER_FORM);
     setPartnerFormBanner(null);
+    setLogoStaged(null);
+    setLogoCurrentUrl(null);
     setPartnerFormOpen(true);
   }
 
@@ -93,12 +97,29 @@ export default function AdminPartenairesPage() {
       statut: p.statut,
     });
     setPartnerFormBanner(null);
+    setLogoStaged(null);
+    setLogoCurrentUrl(p.logo || null);
     setPartnerFormOpen(true);
   }
 
   function closePartnerForm() {
     if (partnerFormBusy) return;
+    if (logoStaged) URL.revokeObjectURL(logoStaged.preview);
+    setLogoStaged(null);
     setPartnerFormOpen(false);
+  }
+
+  function handleStageLogo(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (logoStaged) URL.revokeObjectURL(logoStaged.preview);
+    setLogoStaged({ file, preview: URL.createObjectURL(file) });
+  }
+
+  function clearStagedLogo() {
+    if (logoStaged) URL.revokeObjectURL(logoStaged.preview);
+    setLogoStaged(null);
   }
 
   async function handleSubmitPartnerForm(e) {
@@ -115,12 +136,21 @@ export default function AdminPartenairesPage() {
       statut: Number(partnerFormDraft.statut),
     };
     try {
+      let saved =
+        partnerFormMode === "create"
+          ? await createPartenaire(payload)
+          : await updatePartenaire(partnerFormTargetId, payload);
+
+      if (logoStaged) {
+        saved = await uploadPartenaireLogo(saved.id, logoStaged.file);
+        URL.revokeObjectURL(logoStaged.preview);
+        setLogoStaged(null);
+      }
+
       if (partnerFormMode === "create") {
-        const created = await createPartenaire(payload);
-        setPartenaires((prev) => [...prev, created]);
+        setPartenaires((prev) => [...prev, saved]);
       } else {
-        const updated = await updatePartenaire(partnerFormTargetId, payload);
-        setPartenaires((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+        setPartenaires((prev) => prev.map((p) => (p.id === saved.id ? saved : p)));
       }
       setPartnerFormOpen(false);
     } catch (err) {
@@ -188,7 +218,7 @@ export default function AdminPartenairesPage() {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem" }}>
           <div>
             <h2 className={styles.sectionTitle}>
-              <i className="bi bi-handshake" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
+              <i className="bi bi-buildings" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
               Partenaires
             </h2>
             <p className={styles.sectionSubtitle}>
@@ -292,6 +322,39 @@ export default function AdminPartenairesPage() {
             onChange={(e) => setPartnerFormDraft((d) => ({ ...d, nom: e.target.value }))}
             required
           />
+
+          <label className={styles.field} style={{ marginBottom: "0.9rem" }}>
+            Logo (optionnel)
+            <div className={styles.logoPickWrap}>
+              <div className={styles.logoPickPreview}>
+                {logoStaged ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logoStaged.preview} alt="" />
+                ) : logoCurrentUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logoSrc(logoCurrentUrl)} alt="" />
+                ) : (
+                  <i className="bi bi-building" style={{ color: "var(--text-muted)", fontSize: "1.4rem" }} />
+                )}
+                {logoStaged && (
+                  <button
+                    type="button"
+                    className={styles.logoPickRemoveBtn}
+                    onClick={clearStagedLogo}
+                    title="Retirer ce logo"
+                  >
+                    <i className="bi bi-x" />
+                  </button>
+                )}
+              </div>
+              <label className={styles.logoPickUpload}>
+                <i className="bi bi-image" />
+                {logoCurrentUrl || logoStaged ? "Changer le logo" : "Choisir un logo"}
+                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleStageLogo} />
+              </label>
+            </div>
+          </label>
+
           <TextField
             label="Description (optionnel)"
             name="description"

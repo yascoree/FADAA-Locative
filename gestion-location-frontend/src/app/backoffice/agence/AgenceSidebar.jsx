@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { API_BASE_URL } from "@/lib/apiClient";
 import { fetchNotifications, NOTIFICATION_STATUS, NOTIFICATION_TYPE } from "@/lib/notifications";
+import LogoIcon from "@/components/LogoIcon";
 import styles from "./agence.module.css";
 
 const NAV_SECTIONS = [
@@ -88,7 +89,7 @@ export default function AgenceSidebar({ user, onLogout }) {
   return (
     <aside className={styles.sidebar}>
       <div className={styles.brand}>
-        <span className={styles.logoMark}>F</span>
+        <LogoIcon size={34} />
         <span>FADAA Locative</span>
       </div>
 
