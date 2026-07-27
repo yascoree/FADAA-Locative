@@ -4,14 +4,19 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models.avis import Avis, AvisStatus
+from app.models.notification import NotificationType
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.avis import AvisCreate, AvisUpdate
 from app.services.exceptions import Forbidden, NotFound
+from app.services.push_service import notify_admins
 
 
-def list_avis(db: Session, current_user: Utilisateur, skip: int = 0, limit: int = 100) -> list[Avis]:
+def list_avis(db: Session, current_user: Utilisateur | None, skip: int = 0, limit: int = 100) -> list[Avis]:
     query = db.query(Avis).filter(Avis.deleted_at.is_(None))
-    if current_user.role != UtilisateurRole.ADMINISTRATEUR:
+    if current_user is None:
+        # Anonymous visitor (e.g. the public landing page) — only moderated reviews.
+        query = query.filter(Avis.statut == AvisStatus.PUBLIE)
+    elif current_user.role != UtilisateurRole.ADMINISTRATEUR:
         query = query.filter(or_(Avis.statut == AvisStatus.PUBLIE, Avis.user_id == current_user.id))
     return query.offset(skip).limit(limit).all()
 
@@ -26,13 +31,27 @@ def get_avis(db: Session, current_user: Utilisateur, avis_id: int) -> Avis:
     return avis
 
 
-def create_avis(db: Session, current_user: Utilisateur, avis_in: AvisCreate) -> Avis:
-    if current_user.role != UtilisateurRole.ADMINISTRATEUR and avis_in.user_id != current_user.id:
+def create_avis(db: Session, current_user: Utilisateur | None, avis_in: AvisCreate) -> Avis:
+    data = avis_in.model_dump()
+    if current_user is None:
+        # Anonymous submission (public landing page) — never trust a client-supplied
+        # user_id when there's no authenticated session to back it.
+        data["user_id"] = None
+    elif current_user.role != UtilisateurRole.ADMINISTRATEUR and avis_in.user_id != current_user.id:
         raise Forbidden("Cannot create a review for another user")
-    avis = Avis(**avis_in.model_dump())
+    avis = Avis(**data)
     db.add(avis)
     db.commit()
     db.refresh(avis)
+
+    notify_admins(
+        db,
+        title="Nouvel avis reçu",
+        body=f"{avis.prenom} {avis.nom} a laissé un avis ({avis.note}/5).",
+        notif_type=NotificationType.AVIS,
+        reference_id=avis.id,
+    )
+
     return avis
 
 

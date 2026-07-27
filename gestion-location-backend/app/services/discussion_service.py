@@ -16,6 +16,7 @@ from app.models.notification import NotificationType
 from app.models.reclamation import Reclamation, ReclamationStatus
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.discussion import DiscussionCreate, DiscussionUpdate
+from app.services import reclamation_service
 from app.services.exceptions import BadRequest, Forbidden, NotFound
 from app.services.push_service import send_push_to_user
 
@@ -80,19 +81,25 @@ def _is_legitimate_contact(db: Session, current_user: Utilisateur, destinataire:
     if current_user.role == UtilisateurRole.ADMINISTRATEUR:
         return True
 
-    # A proprietaire can message the admin only after one of their complaints has been accepted.
+    # A proprietaire can message the admin only after one of their complaints has been
+    # accepted by that specific admin, and only while the conversation stays active
+    # (see reclamation_service.is_reclamation_expired — 24h of silence locks it back).
     if destinataire.role == UtilisateurRole.ADMINISTRATEUR:
         if current_user.role != UtilisateurRole.PROPRIETAIRE:
             return False
-        return (
+        reclamation = (
             db.query(Reclamation)
             .filter(
                 Reclamation.proprietaire_id == current_user.id,
+                Reclamation.traite_par_id == destinataire.id,
                 Reclamation.statut == ReclamationStatus.ACCEPTEE,
             )
+            .order_by(Reclamation.date_traitement.desc())
             .first()
-            is not None
         )
+        if reclamation is None:
+            return False
+        return not reclamation_service.is_reclamation_expired(db, reclamation)
 
     if current_user.role == UtilisateurRole.PROPRIETAIRE:
         if destinataire.role == UtilisateurRole.LOCATAIRE:

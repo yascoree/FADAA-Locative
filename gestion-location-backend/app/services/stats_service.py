@@ -187,9 +187,13 @@ def _proprietaire_counts(db: Session, owner_ids: list[int]):
         "total_biens": total_biens,
         "total_lots": total_lots,
         "lots_occupes": lots_occupes,
-        "lots_by_status": [StatusCount(status=int(r.status), count=int(r.count)) for r in lots_by_status_rows],
+        "lots_by_status": [
+            StatusCount(status=int(r.status), count=int(r.count)) for r in lots_by_status_rows if r.status is not None
+        ],
         "baux_actifs": baux_actifs,
-        "baux_by_status": [StatusCount(status=int(r.status), count=int(r.count)) for r in baux_by_status_rows],
+        "baux_by_status": [
+            StatusCount(status=int(r.status), count=int(r.count)) for r in baux_by_status_rows if r.status is not None
+        ],
         "echeances_en_retard": echeances_en_retard,
         "montant_en_retard": float(montant_en_retard),
         "revenu_mois": float(revenu_mois),

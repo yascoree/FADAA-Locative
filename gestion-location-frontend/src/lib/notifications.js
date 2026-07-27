@@ -13,6 +13,9 @@ export const NOTIFICATION_TYPE = {
   DISCUSSION: 5,
   RELANCE: 6,
   GESTION: 7,
+  AVIS: 8,
+  RECLAMATION: 9,
+  DEMANDE_DEMO: 10,
 };
 
 export const NOTIFICATION_TYPE_LABELS = {
@@ -23,6 +26,9 @@ export const NOTIFICATION_TYPE_LABELS = {
   5: "Discussion",
   6: "Relance",
   7: "Activité gestionnaire",
+  8: "Avis",
+  9: "Réclamation",
+  10: "Demande de démo",
 };
 
 export async function fetchNotifications() {

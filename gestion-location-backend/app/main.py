@@ -10,6 +10,7 @@ from app.api import (
     baux,
     biens,
     categories,
+    demandes_demo,
     discussions,
     echeances,
     fcm_tokens,
@@ -75,6 +76,7 @@ app.include_router(discussions.router)
 app.include_router(avis.router)
 app.include_router(partenaires.router)
 app.include_router(reclamations.router)
+app.include_router(demandes_demo.router)
 app.include_router(stats.router)
 app.include_router(historique.router)
 

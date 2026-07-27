@@ -287,21 +287,17 @@ export default function AgenceBiensPage() {
     return <p>Chargement...</p>;
   }
 
-  if (proprietaires.length === 0) {
-    return (
-      <div>
-        <Banner banner={loadError ? { type: "error", message: loadError } : null} />
-        <p className={styles.empty}>
-          Aucun mandat actif pour l&apos;instant. Un propriétaire doit vous inviter pour que ses biens apparaissent
-          ici.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div>
       <Banner banner={loadError ? { type: "error", message: loadError } : null} />
+
+      {proprietaires.length === 0 && (
+        <div className={`${styles.banner} ${styles.bannerSuccess}`}>
+          <i className="bi bi-hourglass-split" style={{ marginRight: "0.4rem" }} />
+          Aucun mandat actif pour l&apos;instant. Un propriétaire doit vous inviter pour que ses biens apparaissent
+          ici.
+        </div>
+      )}
 
       {/* ---- Stats ---- */}
       <div className={styles.section}>
