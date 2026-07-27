@@ -347,7 +347,7 @@ export default function LocataireDashboardPage() {
                   <i className="bi bi-file-earmark-pdf-fill" style={{ color: "var(--primary)" }} />
                   Mes quittances
                 </h3>
-                <Link href="/backoffice/locataire/quittances" className={styles.viewAllLink}>
+                <Link href="/backoffice/locataire/paiements" className={styles.viewAllLink}>
                   Voir tout
                 </Link>
               </div>
