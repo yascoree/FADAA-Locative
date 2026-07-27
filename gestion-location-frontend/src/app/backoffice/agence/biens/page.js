@@ -45,7 +45,13 @@ function photoUrl(url) {
 const STATUS_OPTIONS = Object.entries(BIEN_STATUS_LABELS).map(([value, label]) => ({ value, label }));
 const PAGE_SIZE = 10;
 
-const EMPTY_FORM = { proprietaire_id: "", designation: "", categorie_id: "", statut: String(BIEN_STATUS.DISPONIBLE) };
+const EMPTY_FORM = {
+  proprietaire_id: "",
+  designation: "",
+  description: "",
+  categorie_id: "",
+  statut: String(BIEN_STATUS.DISPONIBLE),
+};
 
 export default function AgenceBiensPage() {
   const [biens, setBiens] = useState([]);
@@ -159,6 +165,7 @@ export default function AgenceBiensPage() {
     setFormDraft({
       proprietaire_id: String(bien.proprietaire_id),
       designation: bien.designation || "",
+      description: bien.description || "",
       categorie_id: String(bien.categorie_id),
       statut: String(bien.statut),
     });
@@ -241,6 +248,7 @@ export default function AgenceBiensPage() {
           proprietaireId: Number(formDraft.proprietaire_id),
           categorieId: Number(formDraft.categorie_id),
           designation: formDraft.designation,
+          description: formDraft.description,
           statut: Number(formDraft.statut),
         });
         const photos = [];
@@ -256,6 +264,7 @@ export default function AgenceBiensPage() {
         const updated = await updateBien(formTargetId, {
           categorie_id: Number(formDraft.categorie_id),
           designation: formDraft.designation,
+          description: formDraft.description || null,
           statut: Number(formDraft.statut),
         });
         setBiens((prev) => prev.map((b) => (b.id === updated.id ? { ...b, ...updated } : b)));
@@ -492,6 +501,16 @@ export default function AgenceBiensPage() {
             value={formDraft.designation}
             onChange={(e) => setFormDraft((d) => ({ ...d, designation: e.target.value }))}
             placeholder="Ex : Villa Anfa, Immeuble 12..."
+          />
+          <TextField
+            label="Description"
+            name="description"
+            as="textarea"
+            rows={3}
+            value={formDraft.description}
+            onChange={(e) => setFormDraft((d) => ({ ...d, description: e.target.value }))}
+            placeholder="Détails, particularités, informations utiles..."
+            hint="Optionnel"
           />
           <SelectField
             label="Catégorie"

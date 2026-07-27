@@ -39,11 +39,12 @@ export async function fetchBiens() {
   return data;
 }
 
-export async function createBien({ proprietaireId, categorieId, designation, statut }) {
+export async function createBien({ proprietaireId, categorieId, designation, description, statut }) {
   const { data } = await apiClient.post("/properties/", {
     proprietaire_id: proprietaireId,
     categorie_id: categorieId,
     designation: designation || null,
+    description: description || null,
     statut: statut || null,
   });
   return data;
@@ -76,10 +77,11 @@ export async function fetchLots() {
   return data;
 }
 
-export async function createLot({ bienId, reference, loyerReference, statut }) {
+export async function createLot({ bienId, reference, description, loyerReference, statut }) {
   const { data } = await apiClient.post("/lots/", {
     bien_id: bienId,
     reference: reference || null,
+    description: description || null,
     loyer_reference: loyerReference || null,
     statut: statut || null,
   });
