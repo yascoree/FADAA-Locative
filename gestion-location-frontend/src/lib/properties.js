@@ -1,10 +1,13 @@
 import apiClient from "@/lib/apiClient";
 
-export const BIEN_STATUS = { DISPONIBLE: 1, LOUE: 2, MAINTENANCE: 3, HORS_SERVICE: 4 };
-export const BIEN_STATUS_LABELS = { 1: "Disponible", 2: "Loué", 3: "En maintenance", 4: "Hors service" };
+// Le bien (immeuble/propriété) ne porte plus de notion d'occupation — un bien
+// peut avoir plusieurs lots dans des états différents. L'occupation se lit sur
+// le Lot (LOT_STATUS), automatiquement synchronisé avec ses baux.
+export const BIEN_STATUS = { ACTIF: 1, EN_TRAVAUX: 2, HORS_SERVICE: 3 };
+export const BIEN_STATUS_LABELS = { 1: "Actif", 2: "En travaux", 3: "Hors service" };
 
-export const LOT_STATUS = { LIBRE: 1, OCCUPE: 2, RESERVE: 3 };
-export const LOT_STATUS_LABELS = { 1: "Libre", 2: "Occupé", 3: "Réservé" };
+export const LOT_STATUS = { DISPONIBLE: 1, LOUE: 2, EN_MAINTENANCE: 3, HORS_SERVICE: 4 };
+export const LOT_STATUS_LABELS = { 1: "Disponible", 2: "Loué", 3: "En maintenance", 4: "Hors service" };
 
 export const BAIL_STATUS = { EN_ATTENTE: 1, ACTIF: 2, RESILIE: 3, EXPIRE: 4 };
 export const BAIL_STATUS_LABELS = { 1: "En attente", 2: "Actif", 3: "Résilié", 4: "Expiré" };
@@ -156,8 +159,8 @@ export async function deletePaiement(paiementId) {
 export const PAIEMENT_STATUS = { VALIDE: 1, ANNULE: 2 };
 export const PAIEMENT_STATUS_LABELS = { 1: "Validé", 2: "Annulé" };
 
-export async function annulerPaiement(paiementId) {
-  const { data } = await apiClient.post(`/payments/${paiementId}/annuler`);
+export async function annulerPaiement(paiementId, motif) {
+  const { data } = await apiClient.post(`/payments/${paiementId}/annuler`, motif ? { motif } : undefined);
   return data;
 }
 

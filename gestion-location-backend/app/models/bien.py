@@ -9,10 +9,13 @@ from app.database import Base
 
 
 class BienStatus(int, enum.Enum):
-    DISPONIBLE = 1
-    LOUE = 2
-    MAINTENANCE = 3
-    HORS_SERVICE = 4
+    """État du bien (immeuble/propriété) lui-même — indépendant de l'occupation,
+    qui se gère au niveau du Lot (voir LotStatus) puisqu'un bien peut avoir
+    plusieurs lots dans des états d'occupation différents."""
+
+    ACTIF = 1
+    EN_TRAVAUX = 2
+    HORS_SERVICE = 3
 
 
 class Bien(Base):

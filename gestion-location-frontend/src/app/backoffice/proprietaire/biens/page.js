@@ -31,9 +31,8 @@ function Banner({ banner }) {
 }
 
 function badgeClass(statut) {
-  if (statut === BIEN_STATUS.DISPONIBLE) return styles.badgeActive;
-  if (statut === BIEN_STATUS.LOUE) return styles.badgeNeutral;
-  if (statut === BIEN_STATUS.MAINTENANCE) return styles.badgeWarning;
+  if (statut === BIEN_STATUS.ACTIF) return styles.badgeActive;
+  if (statut === BIEN_STATUS.EN_TRAVAUX) return styles.badgeWarning;
   return styles.badgeDanger;
 }
 
@@ -44,7 +43,7 @@ function photoUrl(url) {
 const STATUS_OPTIONS = Object.entries(BIEN_STATUS_LABELS).map(([value, label]) => ({ value, label }));
 const PAGE_SIZE = 10;
 
-const EMPTY_FORM = { designation: "", description: "", categorie_id: "", statut: String(BIEN_STATUS.DISPONIBLE) };
+const EMPTY_FORM = { designation: "", description: "", categorie_id: "", statut: String(BIEN_STATUS.ACTIF) };
 
 export default function ProprietaireBiensPage() {
   const { user } = useAuth();
@@ -92,20 +91,24 @@ export default function ProprietaireBiensPage() {
   const stats = useMemo(() => {
     return {
       total: biens.length,
-      disponibles: biens.filter((b) => b.statut === BIEN_STATUS.DISPONIBLE).length,
-      loues: biens.filter((b) => b.statut === BIEN_STATUS.LOUE).length,
-      autres: biens.filter((b) => b.statut === BIEN_STATUS.MAINTENANCE || b.statut === BIEN_STATUS.HORS_SERVICE).length,
+      actifs: biens.filter((b) => b.statut === BIEN_STATUS.ACTIF).length,
+      enTravaux: biens.filter((b) => b.statut === BIEN_STATUS.EN_TRAVAUX).length,
+      horsService: biens.filter((b) => b.statut === BIEN_STATUS.HORS_SERVICE).length,
     };
   }, [biens]);
 
   const filteredBiens = useMemo(() => {
     const term = search.trim().toLowerCase();
     return biens.filter((b) => {
-      if (term && !(b.designation || "").toLowerCase().includes(term)) return false;
+      if (term) {
+        const haystack = `${b.designation || ""} ${b.description || ""} ${categoryName(b.categorie_id)}`.toLowerCase();
+        if (!haystack.includes(term)) return false;
+      }
       if (statusFilter && String(b.statut) !== statusFilter) return false;
       return true;
     });
-  }, [biens, search, statusFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [biens, search, statusFilter, categories]);
 
   const totalPages = Math.max(1, Math.ceil(filteredBiens.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -269,9 +272,9 @@ export default function ProprietaireBiensPage() {
       <div className={styles.section}>
         <div className={styles.statsGrid}>
           <StatCard icon="bi-house-door-fill" tone="primary" label="Biens" value={stats.total} />
-          <StatCard icon="bi-check-circle-fill" tone="accent" label="Disponibles" value={stats.disponibles} />
-          <StatCard icon="bi-key-fill" tone="primary" label="Loués" value={stats.loues} />
-          <StatCard icon="bi-tools" tone="warning" label="Maintenance / hors service" value={stats.autres} />
+          <StatCard icon="bi-check-circle-fill" tone="accent" label="Actifs" value={stats.actifs} />
+          <StatCard icon="bi-tools" tone="warning" label="En travaux" value={stats.enTravaux} />
+          <StatCard icon="bi-slash-circle" tone="danger" label="Hors service" value={stats.horsService} />
         </div>
       </div>
 
@@ -296,7 +299,7 @@ export default function ProprietaireBiensPage() {
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher par désignation..."
+            placeholder="Rechercher par désignation, catégorie, description..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -519,13 +522,13 @@ export default function ProprietaireBiensPage() {
           setDeleteError(null);
         }}
         onConfirm={handleConfirmDelete}
-        title="Supprimer le bien"
+        title="Masquer le bien"
         message={
           deleteTarget
-            ? `Masquer "${deleteTarget.designation || `Bien #${deleteTarget.id}`}" ? Il n'apparaîtra plus dans vos listes, mais ses lots et baux sont conservés (non supprimés). Impossible si l'un de ses lots a un bail actif.`
+            ? `Masquer "${deleteTarget.designation || `Bien #${deleteTarget.id}`}" ? Il ne sera plus visible dans vos listes (ses lots et baux restent conservés).`
             : ""
         }
-        confirmLabel="Supprimer"
+        confirmLabel="Masquer"
         danger
         isBusy={deleteBusy}
         error={deleteError}
