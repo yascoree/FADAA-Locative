@@ -10,6 +10,7 @@ import {
   updatePaiement,
   annulerPaiement,
   updateEcheance,
+  downloadQuittance,
   ECHEANCE_STATUS,
   MODE_PAIEMENT,
   MODE_PAIEMENT_LABELS,
@@ -80,6 +81,8 @@ export default function ProprietairePaiementsPage() {
   const [cancelBusy, setCancelBusy] = useState(false);
   const [cancelError, setCancelError] = useState(null);
   const [listBanner, setListBanner] = useState(null);
+
+  const [downloadingQuittanceId, setDownloadingQuittanceId] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -316,6 +319,19 @@ export default function ProprietairePaiementsPage() {
     }
   }
 
+  async function handleDownloadQuittance(paiement) {
+    if (!paiement.quittance) return;
+    setDownloadingQuittanceId(paiement.quittance.id);
+    setListBanner(null);
+    try {
+      await downloadQuittance(paiement.quittance.id);
+    } catch (err) {
+      setListBanner({ type: "error", message: extractErrorMessage(err) });
+    } finally {
+      setDownloadingQuittanceId(null);
+    }
+  }
+
   if (isLoading) {
     return <p>Chargement...</p>;
   }
@@ -447,6 +463,18 @@ export default function ProprietairePaiementsPage() {
                       <span className={styles.empty}>—</span>
                     ) : (
                       <div className={styles.tableActions}>
+                        {p.quittance && (
+                          <button
+                            type="button"
+                            className={styles.btnOutline}
+                            onClick={() => handleDownloadQuittance(p)}
+                            disabled={downloadingQuittanceId === p.quittance.id}
+                            title="Télécharger la quittance"
+                          >
+                            <i className="bi bi-download" />
+                            {downloadingQuittanceId === p.quittance.id ? "..." : "PDF"}
+                          </button>
+                        )}
                         <button type="button" className={styles.iconBtn} onClick={() => openEdit(p)} title="Modifier">
                           <i className="bi bi-pencil" />
                         </button>

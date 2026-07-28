@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
 
 
 class Token(BaseModel):
@@ -23,3 +23,19 @@ class PasswordVerifyRequest(BaseModel):
 
 class PasswordVerifyResponse(BaseModel):
     valid: bool
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+    # Uniquement rempli en mode test (SMTP non configuré) : à retirer côté frontend
+    # une fois l'envoi d'email réel branché.
+    debug_link: Optional[str] = None
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8)

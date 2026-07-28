@@ -23,7 +23,6 @@ const NAV_SECTIONS = [
     label: "Finances",
     items: [
       { href: "/backoffice/proprietaire/paiements", label: "Paiements", icon: "bi-cash-stack" },
-      { href: "/backoffice/proprietaire/quittances", label: "Quittances", icon: "bi-receipt" },
       { href: "/backoffice/proprietaire/revenus", label: "Revenus", icon: "bi-graph-up" },
     ],
   },
