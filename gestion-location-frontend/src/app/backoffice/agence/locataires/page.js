@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import { fetchLocataires, createLocataire } from "@/lib/tenants";
 import { fetchBiens, fetchBaux, fetchEcheances, fetchPaiements, BAIL_STATUS, BAIL_STATUS_LABELS, ECHEANCE_STATUS } from "@/lib/properties";
@@ -55,6 +56,7 @@ const PAGE_SIZE = 10;
 const EMPTY_FORM = { prenom: "", nom: "", email: "", mot_de_passe: "", statut_compte: String(ACCOUNT_STATUS.ACTIF) };
 
 export default function AgenceLocatairesPage() {
+  const searchParams = useSearchParams();
   const [locataires, setLocataires] = useState([]);
   const [baux, setBaux] = useState([]);
   const [echeances, setEcheances] = useState([]);
@@ -141,8 +143,12 @@ export default function AgenceLocatairesPage() {
     const term = search.trim().toLowerCase();
     const filtered = locataires.filter((l) => {
       if (term) {
-        const name = `${l.prenom} ${l.nom} ${l.email}`.toLowerCase();
-        if (!name.includes(term)) return false;
+        const activeBaux = bauxOf(l.id).filter((b) => b.statut === BAIL_STATUS.ACTIF);
+        const haystack = [l.prenom, l.nom, l.email, ...activeBaux.map((b) => bienLotLabel(b))]
+          .filter((v) => v !== null && v !== undefined && v !== "")
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(term)) return false;
       }
       if (overdueOnly && !locataireHasOverdue.get(l.id)) return false;
       return true;
@@ -151,7 +157,8 @@ export default function AgenceLocatairesPage() {
       dateOf: (l) => l.date_creation,
       nameOf: (l) => `${l.prenom} ${l.nom}`,
     });
-  }, [locataires, search, overdueOnly, locataireHasOverdue, sortBy]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locataires, search, overdueOnly, locataireHasOverdue, sortBy, baux, biens]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLocataires.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -164,6 +171,16 @@ export default function AgenceLocatairesPage() {
     setFormBanner(null);
     setFormOpen(true);
   }
+
+  useEffect(() => {
+    function openIfRequested() {
+      if (searchParams.get("create") === "1") {
+        openCreate();
+      }
+    }
+    openIfRequested();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function closeForm() {
     if (formBusy) return;
@@ -231,7 +248,7 @@ export default function AgenceLocatairesPage() {
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher par nom ou e-mail..."
+            placeholder="Rechercher par nom, e-mail, bien occupé..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);

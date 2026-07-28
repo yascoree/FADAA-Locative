@@ -1,7 +1,7 @@
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.api.deps import managed_proprietaire_ids
+from app.api.deps import gestionnaire_ids_for_proprietaire, managed_proprietaire_ids
 from app.core.security import hash_password
 from app.models.bail import Bail
 from app.models.bien import Bien
@@ -33,8 +33,11 @@ def _is_my_tenant(db: Session, current_user: Utilisateur, tenant_id: int) -> boo
     )
 
 
-def list_locataires(db: Session, current_user: Utilisateur, skip: int = 0, limit: int = 100) -> list[Utilisateur]:
-    query = db.query(Utilisateur).filter(Utilisateur.role == UtilisateurRole.LOCATAIRE)
+def list_locataires(db: Session, current_user: Utilisateur, skip: int = 0, limit: int = 1000) -> list[Utilisateur]:
+    query = db.query(Utilisateur).filter(
+        Utilisateur.role == UtilisateurRole.LOCATAIRE,
+        Utilisateur.deleted_at.is_(None),
+    )
     if current_user.role == UtilisateurRole.PROPRIETAIRE:
         tenant_ids_with_bail = (
             db.query(Bail.locataire_id)
@@ -42,8 +45,13 @@ def list_locataires(db: Session, current_user: Utilisateur, skip: int = 0, limit
             .join(Bien, Bien.id == Lot.bien_id)
             .filter(Bien.proprietaire_id == current_user.id)
         )
+        # A tenant a gestionnaire onboarded on this propriétaire's behalf must be
+        # just as visible to the propriétaire as one they created themselves —
+        # otherwise a brand-new (bail-less) tenant is invisible to one side of
+        # the relationship until a bail happens to already link them.
+        creator_ids = [current_user.id, *gestionnaire_ids_for_proprietaire(db, current_user.id)]
         query = query.filter(
-            or_(Utilisateur.id.in_(tenant_ids_with_bail), Utilisateur.cree_par_id == current_user.id)
+            or_(Utilisateur.id.in_(tenant_ids_with_bail), Utilisateur.cree_par_id.in_(creator_ids))
         )
     elif current_user.role == UtilisateurRole.GESTIONNAIRE:
         ids = managed_proprietaire_ids(db, current_user.id)
@@ -55,8 +63,9 @@ def list_locataires(db: Session, current_user: Utilisateur, skip: int = 0, limit
             if ids
             else db.query(Bail.locataire_id).filter(False)
         )
+        creator_ids = [current_user.id, *ids]
         query = query.filter(
-            or_(Utilisateur.id.in_(tenant_ids_with_bail), Utilisateur.cree_par_id == current_user.id)
+            or_(Utilisateur.id.in_(tenant_ids_with_bail), Utilisateur.cree_par_id.in_(creator_ids))
         )
     elif current_user.role != UtilisateurRole.ADMINISTRATEUR:
         return []
