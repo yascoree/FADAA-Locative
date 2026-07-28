@@ -134,7 +134,7 @@ export default function AdminAvisPage() {
                   <tr key={avis.id}>
                     <td>
                       <span className={styles.userName}>
-                        {avis.user ? `${avis.user.prenom} ${avis.user.nom}` : `Utilisateur #${avis.user_id}`}
+                        {avis.user ? `${avis.user.prenom} ${avis.user.nom}` : `${avis.prenom} ${avis.nom}`}
                       </span>
                       {avis.user?.email && <div className={styles.tableSubtext}>{avis.user.email}</div>}
                     </td>

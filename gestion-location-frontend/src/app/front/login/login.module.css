@@ -90,6 +90,12 @@
   gap: 0.65rem;
 }
 
+.brandLogoFull {
+  height: 60px;
+  width: auto;
+  display: block;
+}
+
 .logoMark {
   width: 2.5rem;
   height: 2.5rem;

@@ -170,14 +170,17 @@ export default function AgenceDashboardPage() {
         </span>
       </div>
 
-      {stats.proprietaires_geres === 0 ? (
-        <p className={styles.empty}>
-          Aucun mandat actif pour l&apos;instant. Un propriétaire doit vous inviter pour que ses biens apparaissent ici.
-        </p>
-      ) : (
-        <>
-          {/* ---- Tuiles ---- */}
-          <div className={styles.heroTilesGrid}>
+      {stats.proprietaires_geres === 0 && (
+        <div className={`${styles.banner} ${styles.bannerSuccess}`}>
+          <i className="bi bi-hourglass-split" style={{ marginRight: "0.4rem" }} />
+          Aucun mandat actif pour l&apos;instant. Un propriétaire doit vous inviter pour que ses biens apparaissent
+          ici — en attendant, voici votre tableau de bord.
+        </div>
+      )}
+
+      <>
+        {/* ---- Tuiles ---- */}
+        <div className={styles.heroTilesGrid}>
             <Link href="/backoffice/agence/paiements" className={`${styles.heroTile} ${styles.heroTilePrimary}`}>
               <div className={styles.heroTileTop}>
                 <span className={styles.heroTileIcon}>
@@ -374,8 +377,7 @@ export default function AgenceDashboardPage() {
               </div>
             </div>
           </div>
-        </>
-      )}
+      </>
     </div>
   );
 }

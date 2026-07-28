@@ -17,7 +17,6 @@ const PAGE_TITLES = {
   "/backoffice/agence/locataires": "Locataires",
   "/backoffice/agence/echeances": "Échéances",
   "/backoffice/agence/paiements": "Paiements",
-  "/backoffice/agence/quittances": "Quittances",
   "/backoffice/agence/discussions": "Discussions",
   "/backoffice/agence/notifications": "Notifications",
   "/backoffice/agence/parametres": "Paramètres",

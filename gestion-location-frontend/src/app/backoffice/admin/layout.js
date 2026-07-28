@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { ROLES } from "@/lib/roles";
 import AdminSidebar from "./AdminSidebar";
+import NotificationBell from "@/components/NotificationBell";
 import PageTransition from "@/components/PageTransition";
 import styles from "./admin.module.css";
 
@@ -12,6 +13,8 @@ const PAGE_TITLES = {
   "/backoffice/admin": "Dashboard",
   "/backoffice/admin/utilisateurs": "Utilisateurs",
   "/backoffice/admin/messagerie": "Messagerie",
+  "/backoffice/admin/demandes-demo": "Demandes de démo",
+  "/backoffice/admin/notifications": "Notifications",
   "/backoffice/admin/abonnements": "Gestion des abonnements",
   "/backoffice/admin/architecture": "Catégories",
   "/backoffice/admin/avis": "Avis",
@@ -56,6 +59,7 @@ export default function AdminLayout({ children }) {
       <div className={styles.main}>
         <header className={`${styles.topbar} ${isScrolled ? styles.topbarScrolled : ""}`}>
           <h1 className={styles.pageTitle}>{PAGE_TITLES[pathname] || "FADAA Locative"}</h1>
+          <NotificationBell href="/backoffice/admin/notifications" />
         </header>
         <main className={styles.content} onScroll={handleContentScroll}>
           <PageTransition>{children}</PageTransition>

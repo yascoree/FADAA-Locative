@@ -10,6 +10,7 @@ import {
   updatePaiement,
   annulerPaiement,
   updateEcheance,
+  downloadQuittance,
   ECHEANCE_STATUS,
   MODE_PAIEMENT,
   MODE_PAIEMENT_LABELS,
@@ -82,6 +83,7 @@ export default function AgencePaiementsPage() {
   const [cancelBusy, setCancelBusy] = useState(false);
   const [cancelError, setCancelError] = useState(null);
   const [listBanner, setListBanner] = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -181,8 +183,23 @@ export default function AgencePaiementsPage() {
     return paiements.filter((p) => {
       if (term) {
         const locataire = p.echeance?.bail?.locataire;
-        const name = `${locataire?.prenom || ""} ${locataire?.nom || ""} ${locataire?.email || ""}`.toLowerCase();
-        if (!name.includes(term)) return false;
+        const bien = biens.find((b) => b.id === p.echeance?.bail?.lot?.bien_id);
+        const haystack = [
+          locataire?.prenom,
+          locataire?.nom,
+          locataire?.email,
+          bien?.designation,
+          p.echeance?.bail?.lot?.reference,
+          p.montant,
+          MODE_PAIEMENT_LABELS[p.mode_paiement],
+          formatDate(p.date_paiement),
+          formatDate(p.echeance?.date_echeance),
+          PAIEMENT_STATUS_LABELS[p.statut],
+        ]
+          .filter((v) => v !== null && v !== undefined && v !== "")
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(term)) return false;
       }
       if (modeFilter && String(p.mode_paiement) !== modeFilter) return false;
       if (monthOnly) {
@@ -191,7 +208,7 @@ export default function AgencePaiementsPage() {
       }
       return true;
     });
-  }, [paiements, search, modeFilter, monthOnly]);
+  }, [paiements, search, modeFilter, monthOnly, biens]);
 
   const totalPages = Math.max(1, Math.ceil(filteredPaiements.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -311,6 +328,18 @@ export default function AgencePaiementsPage() {
     }
   }
 
+  async function handleDownload(quittanceId) {
+    setDownloadingId(quittanceId);
+    setListBanner(null);
+    try {
+      await downloadQuittance(quittanceId);
+    } catch (err) {
+      setListBanner({ type: "error", message: extractErrorMessage(err) });
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
   async function handleConfirmCancel() {
     if (!cancelTarget) return;
     setCancelBusy(true);
@@ -360,18 +389,26 @@ export default function AgencePaiementsPage() {
               {filteredPaiements.length} paiement(s) affiché(s) sur {paiements.length}, tous propriétaires confondus.
             </p>
           </div>
-          {locatairesWithEcheances.length > 0 && (
-            <button type="button" className={styles.btn} onClick={openCreate}>
-              <i className="bi bi-plus-lg" />
-              Enregistrer un paiement
-            </button>
-          )}
+          <button
+            type="button"
+            className={styles.btn}
+            onClick={openCreate}
+            disabled={locatairesWithEcheances.length === 0}
+            title={locatairesWithEcheances.length === 0 ? "Aucun locataire avec une échéance à régler" : undefined}
+          >
+            <i className="bi bi-plus-lg" />
+            Enregistrer un paiement
+          </button>
         </div>
+
+        {locatairesWithEcheances.length === 0 && (
+          <p className={styles.empty}>Aucun locataire avec une échéance à régler pour le moment.</p>
+        )}
 
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher par locataire..."
+            placeholder="Rechercher (locataire, bien, montant, date...)"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -416,13 +453,14 @@ export default function AgencePaiementsPage() {
                 <th>Mode</th>
                 <th>Date de paiement</th>
                 <th>Statut</th>
+                <th>PDF</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredPaiements.length === 0 && (
                 <tr>
-                  <td colSpan={8} className={styles.empty}>
+                  <td colSpan={9} className={styles.empty}>
                     Aucun paiement ne correspond à ces critères.
                   </td>
                 </tr>
@@ -450,6 +488,21 @@ export default function AgencePaiementsPage() {
                     <span className={`${styles.badge} ${p.statut === PAIEMENT_STATUS.ANNULE ? styles.badgeDanger : styles.badgeActive}`}>
                       {PAIEMENT_STATUS_LABELS[p.statut] || "—"}
                     </span>
+                  </td>
+                  <td>
+                    {p.quittance ? (
+                      <button
+                        type="button"
+                        className={styles.btnOutline}
+                        onClick={() => handleDownload(p.quittance.id)}
+                        disabled={downloadingId === p.quittance.id}
+                      >
+                        <i className="bi bi-download" />
+                        {downloadingId === p.quittance.id ? "..." : "PDF"}
+                      </button>
+                    ) : (
+                      <span className={styles.empty}>—</span>
+                    )}
                   </td>
                   <td>
                     {(() => {

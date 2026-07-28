@@ -78,20 +78,6 @@
   letter-spacing: -0.01em;
 }
 
-.logoMark {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 9px;
-  background: linear-gradient(155deg, var(--accent), #c2a879);
-  color: var(--secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 0.92rem;
-  flex-shrink: 0;
-  box-shadow: var(--shadow-sm);
-}
 
 .navSections {
   position: relative;
@@ -2107,6 +2093,77 @@
   border-top: 1px solid var(--border);
 }
 
+.logoPickWrap {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin: 0.4rem 0 0;
+}
+
+.logoPickPreview {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.logoPickPreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.logoPickRemoveBtn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 50%;
+  border: none;
+  background: rgba(42, 40, 32, 0.65);
+  color: #fff;
+  font-size: 0.68rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.logoPickRemoveBtn:hover {
+  background: var(--danger);
+}
+
+.logoPickUpload {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px dashed var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.55rem 0.9rem;
+  border-radius: var(--radius-field);
+  cursor: pointer;
+}
+
+.logoPickUpload:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.logoPickUpload input {
+  display: none;
+}
+
 /* ---------- Messagerie ---------- */
 
 .msgShell {
@@ -2600,4 +2657,106 @@
   margin-top: 1rem;
   padding-top: 0.9rem;
   border-top: 1px solid var(--border);
+}
+
+/* ---------- Notifications ---------- */
+
+.notifList {
+  display: flex;
+  flex-direction: column;
+}
+
+.notifItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.12s ease;
+}
+
+.notifItem:hover {
+  background: var(--bg);
+}
+
+.notifItem:last-child {
+  border-bottom: none;
+}
+
+.notifItemUnread {
+  background: var(--primary-soft);
+}
+
+.notifIcon {
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.notifIconPrimary {
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+}
+.notifIconAccent {
+  background: var(--accent-soft);
+  color: #8a6a34;
+}
+.notifIconDanger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.notifBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.notifTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.notifTitle {
+  font-weight: 700;
+  color: var(--secondary);
+  font-size: 0.9rem;
+}
+
+.notifDate {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.notifDesc {
+  font-size: 0.83rem;
+  color: var(--text);
+  margin-top: 0.2rem;
+  line-height: 1.4;
+}
+
+.notifActions {
+  display: flex;
+  gap: 0.3rem;
+  margin-left: 0.5rem;
+  flex-shrink: 0;
+}
+
+.notifDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  flex-shrink: 0;
+  margin-top: 0.42rem;
 }

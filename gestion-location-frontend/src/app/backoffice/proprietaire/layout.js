@@ -16,7 +16,6 @@ const PAGE_TITLES = {
   "/backoffice/proprietaire/baux": "Baux",
   "/backoffice/proprietaire/echeances": "Échéances",
   "/backoffice/proprietaire/paiements": "Paiements",
-  "/backoffice/proprietaire/quittances": "Quittances",
   "/backoffice/proprietaire/revenus": "Revenus",
   "/backoffice/proprietaire/permissions": "Gestionnaires",
   "/backoffice/proprietaire/locataires": "Locataires",

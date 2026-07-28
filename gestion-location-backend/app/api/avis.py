@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_admin
+from app.api.deps import get_current_user, get_optional_user, require_admin
 from app.database import get_db
 from app.models.utilisateur import Utilisateur
 from app.schemas.avis import AvisCreate, AvisRead, AvisUpdate
@@ -16,8 +16,10 @@ def list_avis(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: Utilisateur = Depends(get_current_user),
+    current_user: Utilisateur | None = Depends(get_optional_user),
 ):
+    # Anonymous (public landing page) and authenticated users alike; the service
+    # narrows results to published reviews only when there's no session.
     return avis_service.list_avis(db, current_user, skip, limit)
 
 
@@ -25,8 +27,10 @@ def list_avis(
 def create_avis(
     avis_in: AvisCreate,
     db: Session = Depends(get_db),
-    current_user: Utilisateur = Depends(get_current_user),
+    current_user: Utilisateur | None = Depends(get_optional_user),
 ):
+    # Anonymous submissions are allowed (public "leave a review" widget) — they
+    # land as EN_ATTENTE and need admin moderation before showing up publicly.
     try:
         return avis_service.create_avis(db, current_user, avis_in)
     except Forbidden as exc:

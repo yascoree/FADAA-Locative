@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { API_BASE_URL } from "@/lib/apiClient";
 import { fetchNotifications, NOTIFICATION_STATUS, NOTIFICATION_TYPE } from "@/lib/notifications";
+import LogoIcon from "@/components/LogoIcon";
 import styles from "./proprietaire.module.css";
 
 const NAV_SECTIONS = [
@@ -22,7 +23,6 @@ const NAV_SECTIONS = [
     label: "Finances",
     items: [
       { href: "/backoffice/proprietaire/paiements", label: "Paiements", icon: "bi-cash-stack" },
-      { href: "/backoffice/proprietaire/quittances", label: "Quittances", icon: "bi-receipt" },
       { href: "/backoffice/proprietaire/revenus", label: "Revenus", icon: "bi-graph-up" },
     ],
   },
@@ -95,7 +95,7 @@ export default function ProprietaireSidebar({ user, onLogout }) {
   return (
     <aside className={styles.sidebar}>
       <div className={styles.brand}>
-        <span className={styles.logoMark}>F</span>
+        <LogoIcon size={34} />
         <span>FADAA Locative</span>
       </div>
 

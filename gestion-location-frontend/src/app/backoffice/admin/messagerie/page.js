@@ -49,10 +49,15 @@ function formatDayLabel(value) {
   return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-function reclamationBadgeClass(statut) {
-  if (statut === RECLAMATION_STATUS.ACCEPTEE) return styles.badgeActive;
-  if (statut === RECLAMATION_STATUS.REJETEE) return styles.badgeExpired;
+function reclamationBadgeClass(r) {
+  if (r.statut === RECLAMATION_STATUS.ACCEPTEE) return r.expiree ? styles.badgeExpired : styles.badgeActive;
+  if (r.statut === RECLAMATION_STATUS.REJETEE) return styles.badgeExpired;
   return styles.badgeSuspended;
+}
+
+function reclamationStatutLabel(r) {
+  if (r.statut === RECLAMATION_STATUS.ACCEPTEE && r.expiree) return "Expirée";
+  return RECLAMATION_STATUS_LABELS[r.statut];
 }
 
 const TABS = [
@@ -149,10 +154,11 @@ export default function AdminMessageriePage() {
   );
 
   // Un propriétaire n'apparaît comme contact chattable qu'après acceptation
-  // d'au moins une de ses réclamations (voir _is_legitimate_contact côté backend).
+  // d'au moins une de ses réclamations, et tant qu'elle n'a pas expiré après
+  // 24h sans message (voir _is_legitimate_contact côté backend).
   const contacts = useMemo(() => {
     const acceptedIds = new Set(
-      reclamations.filter((r) => r.statut === RECLAMATION_STATUS.ACCEPTEE).map((r) => r.proprietaire_id)
+      reclamations.filter((r) => r.statut === RECLAMATION_STATUS.ACCEPTEE && !r.expiree).map((r) => r.proprietaire_id)
     );
     return allProprietaires
       .filter((u) => acceptedIds.has(u.id))
@@ -316,8 +322,8 @@ export default function AdminMessageriePage() {
                         </span>
                         {r.proprietaire?.email && <div className={styles.tableSubtext}>{r.proprietaire.email}</div>}
                       </div>
-                      <span className={`${styles.badge} ${reclamationBadgeClass(r.statut)}`}>
-                        {RECLAMATION_STATUS_LABELS[r.statut]}
+                      <span className={`${styles.badge} ${reclamationBadgeClass(r)}`}>
+                        {reclamationStatutLabel(r)}
                       </span>
                     </div>
                     <div className={styles.reclamationSubject}>{r.sujet}</div>

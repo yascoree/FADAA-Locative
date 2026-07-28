@@ -37,6 +37,18 @@ def create_utilisateur(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
+@router.get("/gestionnaires", response_model=list[UtilisateurRead])
+def list_gestionnaires(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    _current_user: Utilisateur = Depends(require_gestion),
+):
+    """List GESTIONNAIRE accounts for the searchable invite dropdown on the
+    proprietaire Permissions page. Must be declared before /{utilisateur_id}."""
+    return utilisateur_service.list_gestionnaires(db, skip, limit)
+
+
 @router.get("/lookup", response_model=UtilisateurRead)
 def lookup_utilisateur_by_email(
     email: str,

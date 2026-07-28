@@ -6,10 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.models.bien import BienStatus
 from app.schemas.bien_photo import BienPhotoRead
 
-
 class BienMini(BaseModel):
-    """Identité minimale d'un bien, pour l'afficher en tant que portée d'un
-    Mandat (voir MandatRead) sans exposer toute la ressource /properties/{id}."""
+
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -21,20 +19,19 @@ class BienBase(BaseModel):
     proprietaire_id: int = Field(gt=0)
     categorie_id: int = Field(gt=0)
     designation: Optional[str] = Field(default=None, max_length=150)
+    description: Optional[str] = None
     statut: Optional[BienStatus] = None
     attachement: Optional[str] = Field(default=None, max_length=255)
-
 
 class BienCreate(BienBase):
     pass
 
-
 class BienUpdate(BaseModel):
     categorie_id: Optional[int] = Field(default=None, gt=0)
     designation: Optional[str] = Field(default=None, max_length=150)
+    description: Optional[str] = None
     statut: Optional[BienStatus] = None
     attachement: Optional[str] = Field(default=None, max_length=255)
-
 
 class BienRead(BienBase):
     model_config = ConfigDict(from_attributes=True)
@@ -42,3 +39,4 @@ class BienRead(BienBase):
     id: int
     photos: list[BienPhotoRead] = []
     created_at: datetime
+

@@ -10,6 +10,7 @@ from app.api import (
     baux,
     biens,
     categories,
+    demandes_demo,
     discussions,
     echeances,
     fcm_tokens,
@@ -53,6 +54,7 @@ UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
+
 app.include_router(auth.router)
 app.include_router(utilisateurs.router)
 app.include_router(subscription_plans.router)
@@ -74,6 +76,7 @@ app.include_router(discussions.router)
 app.include_router(avis.router)
 app.include_router(partenaires.router)
 app.include_router(reclamations.router)
+app.include_router(demandes_demo.router)
 app.include_router(stats.router)
 app.include_router(historique.router)
 

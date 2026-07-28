@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -15,5 +15,7 @@ class HistoriqueRead(BaseModel):
     action: str
     element_id: Optional[int] = None
     element_label: Optional[str] = None
+    old_values: Optional[dict[str, Any]] = None
+    new_values: Optional[dict[str, Any]] = None
     created_at: datetime
     utilisateur: Optional[UtilisateurMini] = None

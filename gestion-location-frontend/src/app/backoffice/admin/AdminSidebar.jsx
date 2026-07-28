@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { API_BASE_URL } from "@/lib/apiClient";
 import { fetchNotifications, NOTIFICATION_STATUS, NOTIFICATION_TYPE } from "@/lib/notifications";
+import { fetchDemandesDemo, DEMANDE_DEMO_STATUS } from "@/lib/demandesDemo";
+import LogoIcon from "@/components/LogoIcon";
 import styles from "./admin.module.css";
 
 const NAV_SECTIONS = [
@@ -14,6 +16,13 @@ const NAV_SECTIONS = [
       { href: "/backoffice/admin", label: "Dashboard", icon: "bi-grid", exact: true },
       { href: "/backoffice/admin/utilisateurs", label: "Utilisateurs", icon: "bi-people" },
       { href: "/backoffice/admin/messagerie", label: "Messagerie", icon: "bi-chat-dots", badgeKey: "discussions" },
+      {
+        href: "/backoffice/admin/demandes-demo",
+        label: "Demandes de démo",
+        icon: "bi-calendar2-check",
+        badgeKey: "demandesDemo",
+      },
+      { href: "/backoffice/admin/notifications", label: "Notifications", icon: "bi-bell", badgeKey: "notifications" },
     ],
   },
   {
@@ -22,7 +31,7 @@ const NAV_SECTIONS = [
       { href: "/backoffice/admin/abonnements", label: "Abonnements", icon: "bi-credit-card" },
       { href: "/backoffice/admin/architecture", label: "Catégories", icon: "bi-diagram-3" },
       { href: "/backoffice/admin/avis", label: "Avis", icon: "bi-chat-square-quote" },
-      { href: "/backoffice/admin/partenaires", label: "Partenaires", icon: "bi-handshake" },
+      { href: "/backoffice/admin/partenaires", label: "Partenaires", icon: "bi-buildings" },
     ],
   },
   {
@@ -39,16 +48,20 @@ export default function AdminSidebar({ user, onLogout }) {
   const initial = `${user?.prenom?.[0] || ""}${user?.nom?.[0] || ""}`.toUpperCase();
   const itemRefs = useRef({});
   const [bubble, setBubble] = useState(null);
-  const [badges, setBadges] = useState({ discussions: 0 });
+  const [badges, setBadges] = useState({ discussions: 0, demandesDemo: 0, notifications: 0 });
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
-        const list = await fetchNotifications();
+        const [list, demandes] = await Promise.all([fetchNotifications(), fetchDemandesDemo()]);
         if (cancelled) return;
         const unread = list.filter((n) => n.statut === NOTIFICATION_STATUS.NON_LUE);
-        setBadges({ discussions: unread.filter((n) => n.type === NOTIFICATION_TYPE.DISCUSSION).length });
+        setBadges({
+          discussions: unread.filter((n) => n.type === NOTIFICATION_TYPE.DISCUSSION).length,
+          demandesDemo: demandes.filter((d) => d.statut === DEMANDE_DEMO_STATUS.NOUVELLE).length,
+          notifications: unread.filter((n) => n.type !== NOTIFICATION_TYPE.DISCUSSION).length,
+        });
       } catch {
         // Les badges sont un simple confort d'UX : une erreur ne doit jamais casser la sidebar.
       }
@@ -80,7 +93,7 @@ export default function AdminSidebar({ user, onLogout }) {
   return (
     <aside className={styles.sidebar}>
       <div className={styles.brand}>
-        <span className={styles.logoMark}>F</span>
+        <LogoIcon size={36} />
         <span>FADAA Locative</span>
       </div>
 
