@@ -110,6 +110,10 @@ export async function updatePlan(planId, payload) {
   return data;
 }
 
+export async function deletePlan(planId) {
+  await apiClient.delete(`/subscription-plans/${planId}`);
+}
+
 export async function setPlanActive(planId, isActive) {
   const { data } = await apiClient.post(`/subscription-plans/${planId}/${isActive ? "activate" : "deactivate"}`);
   return data;

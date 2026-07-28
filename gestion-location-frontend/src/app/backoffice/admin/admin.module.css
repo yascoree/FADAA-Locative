@@ -904,6 +904,20 @@
   text-decoration: underline;
 }
 
+.planFooterActions {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.planDeleteLink {
+  color: var(--danger);
+}
+
+.planDeleteLink:hover {
+  color: #8f4230;
+}
+
 .planUsersLine {
   font-size: 0.75rem;
   color: var(--text-muted);

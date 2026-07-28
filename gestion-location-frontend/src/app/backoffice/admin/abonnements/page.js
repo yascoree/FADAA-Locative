@@ -19,10 +19,12 @@ import {
   cancelSubscription,
   createPlan,
   updatePlan,
+  deletePlan,
   setPlanActive,
 } from "@/lib/subscriptions";
 import StatCard from "@/components/StatCard";
 import CountUp from "@/components/CountUp";
+import ConfirmationDialog from "@/components/ConfirmationDialog";
 import styles from "../admin.module.css";
 
 function Banner({ banner }) {
@@ -154,6 +156,10 @@ export default function AdminAbonnementsPage() {
   const [editDraft, setEditDraft] = useState(null);
   const [planSaving, setPlanSaving] = useState(false);
   const [planBanner, setPlanBanner] = useState(null);
+
+  const [planDeleteTarget, setPlanDeleteTarget] = useState(null);
+  const [planDeleteBusy, setPlanDeleteBusy] = useState(false);
+  const [planDeleteError, setPlanDeleteError] = useState(null);
 
   const [newPlan, setNewPlan] = useState({
     name: "",
@@ -327,6 +333,21 @@ export default function AdminAbonnementsPage() {
     }
   }
 
+  async function handleConfirmDeletePlan() {
+    if (!planDeleteTarget) return;
+    setPlanDeleteBusy(true);
+    setPlanDeleteError(null);
+    try {
+      await deletePlan(planDeleteTarget.id);
+      setPlans((prev) => prev.filter((p) => p.id !== planDeleteTarget.id));
+      setPlanDeleteTarget(null);
+    } catch (err) {
+      setPlanDeleteError(extractErrorMessage(err));
+    } finally {
+      setPlanDeleteBusy(false);
+    }
+  }
+
   async function handleCreatePlan(e) {
     e.preventDefault();
     setCreateBanner(null);
@@ -417,6 +438,10 @@ export default function AdminAbonnementsPage() {
   }
 
   const changePlanTarget = plans.find((p) => p.id === Number(changePlanTargetId)) || null;
+
+  const planDeleteTargetCount = planDeleteTarget
+    ? subscriptions.filter((s) => s.plan_id === planDeleteTarget.id).length
+    : 0;
 
   if (isLoading) {
     return <p>Chargement...</p>;
@@ -513,9 +538,22 @@ export default function AdminAbonnementsPage() {
                         <span className={styles.planStatusDot} />
                         {plan.is_active ? "Actif" : "Inactif"}
                       </button>
-                      <button type="button" className={styles.planModifyLink} onClick={() => startEdit(plan)}>
-                        Modifier
-                      </button>
+                      <div className={styles.planFooterActions}>
+                        <button type="button" className={styles.planModifyLink} onClick={() => startEdit(plan)}>
+                          Modifier
+                        </button>
+                        <button
+                          type="button"
+                          className={`${styles.planModifyLink} ${styles.planDeleteLink}`}
+                          onClick={() => {
+                            setPlanDeleteError(null);
+                            setPlanDeleteTarget(plan);
+                          }}
+                          title={impactCount > 0 ? "Utilisé par des abonnements existants" : "Supprimer"}
+                        >
+                          <i className="bi bi-trash" />
+                        </button>
+                      </div>
                     </div>
                     <div className={styles.planUsersLine}>{usersLine(impactCount, plan)}</div>
                   </>
@@ -719,6 +757,25 @@ export default function AdminAbonnementsPage() {
           </button>
         </form>
       </div>
+
+      <ConfirmationDialog
+        isOpen={!!planDeleteTarget}
+        onClose={() => setPlanDeleteTarget(null)}
+        onConfirm={handleConfirmDeletePlan}
+        title="Supprimer le plan"
+        message={
+          planDeleteTarget
+            ? planDeleteTargetCount > 0
+              ? `Impossible de supprimer "${planDeleteTarget.name}" : ce plan est utilisé par ${planDeleteTargetCount} abonnement${planDeleteTargetCount > 1 ? "s" : ""} existant${planDeleteTargetCount > 1 ? "s" : ""}.`
+              : `Supprimer définitivement le plan "${planDeleteTarget.name}" ?`
+            : ""
+        }
+        confirmLabel="Supprimer"
+        danger
+        isBusy={planDeleteBusy}
+        error={planDeleteError}
+        hideConfirm={planDeleteTargetCount > 0}
+      />
 
       {/* ---- Abonnements par compte ---- */}
       <div className={styles.section}>
