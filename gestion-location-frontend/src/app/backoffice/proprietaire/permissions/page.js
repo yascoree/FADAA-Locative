@@ -248,7 +248,8 @@ export default function GestionPermissionPage() {
                 id="gestionnaire-search"
                 items={gestionnaires}
                 getId={(g) => g.id}
-                getLabel={(g) => `${g.prenom} ${g.nom} (${g.email})`}
+                getLabel={(g) => `${g.prenom} ${g.nom}`}
+                getMeta={(g) => g.email}
                 value={selectedGestionnaire}
                 onSelect={setSelectedGestionnaire}
                 placeholder="Rechercher un gestionnaire..."
