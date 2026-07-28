@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { ROLE_DASHBOARD_PATH, PUBLIC_REGISTER_ROLES } from "@/lib/roles";
 import { extractErrorMessage } from "@/lib/apiClient";
+import { requestPasswordReset } from "@/lib/passwordReset";
 import Modal from "@/components/Modal";
 import LogoIcon from "@/components/LogoIcon";
 import styles from "./login.module.css";
@@ -117,6 +118,9 @@ export default function LoginPage() {
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
+  const [forgotBusy, setForgotBusy] = useState(false);
+  const [forgotDebugLink, setForgotDebugLink] = useState(null);
+  const [forgotError, setForgotError] = useState(null);
 
   // ---- Register form state ----
   const [role, setRole] = useState(PUBLIC_REGISTER_ROLES[0].value);
@@ -174,19 +178,29 @@ export default function LoginPage() {
   function openForgotPassword() {
     setForgotEmail(loginEmail);
     setForgotSubmitted(false);
+    setForgotDebugLink(null);
+    setForgotError(null);
     setForgotOpen(true);
   }
 
   function closeForgotPassword() {
+    if (forgotBusy) return;
     setForgotOpen(false);
   }
 
-  function handleSubmitForgotPassword(e) {
+  async function handleSubmitForgotPassword(e) {
     e.preventDefault();
-    // La vérification par email n'est pas encore branchée côté serveur (aucune
-    // infrastructure d'envoi n'existe pour l'instant) : on affiche juste un message
-    // honnête plutôt que de faire semblant d'avoir envoyé quoi que ce soit.
-    setForgotSubmitted(true);
+    setForgotBusy(true);
+    setForgotError(null);
+    try {
+      const data = await requestPasswordReset(forgotEmail);
+      setForgotDebugLink(data.debug_link || null);
+      setForgotSubmitted(true);
+    } catch (err) {
+      setForgotError(extractErrorMessage(err));
+    } finally {
+      setForgotBusy(false);
+    }
   }
 
   return (
@@ -402,10 +416,18 @@ export default function LoginPage() {
         {forgotSubmitted ? (
           <div>
             <p className={styles.formSubtext} style={{ margin: 0 }}>
-              La réinitialisation par e-mail arrive bientôt. En attendant, contactez la personne qui vous a invité sur
-              la plateforme (propriétaire ou gestionnaire) ou l&apos;administrateur pour réinitialiser votre mot de
-              passe.
+              Si un compte existe avec cette adresse, un email de réinitialisation vient d&apos;être envoyé.
             </p>
+            {forgotDebugLink && (
+              <div className={styles.formSubtext} style={{ marginTop: "0.9rem" }}>
+                <strong>Mode test</strong> (aucun service d&apos;envoi d&apos;email n&apos;est encore branché) — voici
+                le lien directement :
+                <br />
+                <a href={forgotDebugLink} style={{ wordBreak: "break-all" }}>
+                  {forgotDebugLink}
+                </a>
+              </div>
+            )}
             <button type="button" className={styles.btnSubmit} style={{ marginTop: "1.2rem" }} onClick={closeForgotPassword}>
               Fermer
             </button>
@@ -427,8 +449,13 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <button type="submit" className={styles.btnSubmit}>
-              Envoyer les instructions
+            {forgotError && (
+              <p className={styles.formSubtext} style={{ color: "var(--danger, #c1622f)" }}>
+                {forgotError}
+              </p>
+            )}
+            <button type="submit" className={styles.btnSubmit} disabled={forgotBusy}>
+              {forgotBusy ? "Envoi..." : "Envoyer les instructions"}
             </button>
           </form>
         )}

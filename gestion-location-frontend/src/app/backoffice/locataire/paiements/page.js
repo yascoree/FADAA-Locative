@@ -225,7 +225,7 @@ export default function LocatairePaiementsPage() {
                       </span>
                     </td>
                     <td>
-                      {quittance ? (
+                      {quittance && p.statut !== PAIEMENT_STATUS.ANNULE ? (
                         <button
                           type="button"
                           className={styles.btnOutline}

@@ -162,24 +162,6 @@ def create_paiement(db: Session, current_user: Utilisateur, paiement_in: Paiemen
     return paiement
 
 
-# def update_paiement(db: Session, current_user: Utilisateur, paiement_id: int, paiement_in: PaiementUpdate) -> Paiement:
-#     paiement = (
-#         db.query(Paiement)
-#         .filter(Paiement.id == paiement_id, Paiement.deleted_at.is_(None))
-#         .first()
-#     )
-#     if not paiement:
-#         raise NotFound("Payment not found")
-#     _, bien = _chain_for_paiement(db, paiement.echeance_id)
-#     if not has_permission_for_bien(db, current_user, bien, "UPDATE_PAYMENT"):
-#         raise Forbidden("Not allowed to modify this payment")
-#     for field, value in paiement_in.model_dump(exclude_unset=True).items():
-#         setattr(paiement, field, value)
-#     db.commit()
-#     db.refresh(paiement)
-#     return paiement
-
-
 def delete_paiement(db: Session, current_user: Utilisateur, paiement_id: int) -> None:
     paiement = (
         db.query(Paiement)

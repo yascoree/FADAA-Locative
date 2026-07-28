@@ -19,12 +19,10 @@ class PaiementCreate(PaiementBase):
     pass
 
 
-##class PaiementUpdate(BaseModel):
-##    montant: Optional[Decimal] = Field(default=None, gt=0, max_digits=10, decimal_places=2)
-##    mode_paiement: Optional[ModePaiement] = None
-
-
 class QuittanceMini(BaseModel):
+    """Version allégée de QuittanceRead, définie ici (pas importée de schemas.quittance)
+    pour éviter l'import circulaire paiement <-> quittance."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int

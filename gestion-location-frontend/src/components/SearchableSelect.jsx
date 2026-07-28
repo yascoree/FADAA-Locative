@@ -3,11 +3,30 @@
 import { useEffect, useRef, useState } from "react";
 import styles from "./ui.module.css";
 
+function initials(label) {
+  const parts = label.trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] || "") + (parts[1]?.[0] || "")).toUpperCase();
+}
+
 /** Champ texte avec suggestions filtrées — pour choisir un élément dans une liste
-    (ex: un gestionnaire) en tapant son nom/email plutôt qu'un <select> natif. */
-export default function SearchableSelect({ label, items, getId, getLabel, value, onSelect, placeholder, hint, id }) {
+    (ex: un gestionnaire) en tapant son nom/email plutôt qu'un <select> natif.
+    `getMeta` (optionnel) fournit une ligne secondaire (ex: l'email), affichée sous
+    le libellé principal dans le menu et incluse dans la recherche. */
+export default function SearchableSelect({
+  label,
+  items,
+  getId,
+  getLabel,
+  getMeta,
+  value,
+  onSelect,
+  placeholder,
+  hint,
+  id,
+}) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(0);
   const containerRef = useRef(null);
 
   useEffect(() => {
@@ -18,25 +37,75 @@ export default function SearchableSelect({ label, items, getId, getLabel, value,
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filtered = items.filter((item) => getLabel(item).toLowerCase().includes(query.trim().toLowerCase()));
+  const filtered = items.filter((item) => {
+    const haystack = `${getLabel(item)} ${getMeta ? getMeta(item) : ""}`.toLowerCase();
+    return haystack.includes(query.trim().toLowerCase());
+  });
+
+  function selectItem(item) {
+    onSelect(item);
+    setQuery("");
+    setOpen(false);
+  }
+
+  function handleKeyDown(e) {
+    if (!open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+      setOpen(true);
+      return;
+    }
+    if (!open || filtered.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlighted((i) => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlighted((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      selectItem(filtered[highlighted]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
+  }
 
   const input = (
-    <input
-      id={id}
-      className={styles.fieldInput}
-      value={value ? getLabel(value) : query}
-      placeholder={placeholder}
-      onFocus={() => setOpen(true)}
-      onChange={(e) => {
-        setQuery(e.target.value);
-        setOpen(true);
-        if (value) onSelect(null);
-      }}
-    />
+    <div className={styles.searchSelectInputWrap}>
+      <i className={`bi bi-search ${styles.searchSelectIcon}`} />
+      <input
+        id={id}
+        className={`${styles.fieldInput} ${styles.searchSelectInput}`}
+        value={value ? getLabel(value) : query}
+        placeholder={placeholder}
+        onFocus={() => {
+          setOpen(true);
+          setHighlighted(0);
+        }}
+        onKeyDown={handleKeyDown}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          setHighlighted(0);
+          if (value) onSelect(null);
+        }}
+      />
+      {(value || query) && (
+        <button
+          type="button"
+          className={styles.searchSelectClear}
+          onClick={() => {
+            onSelect(null);
+            setQuery("");
+          }}
+          aria-label="Effacer"
+        >
+          <i className="bi bi-x-lg" />
+        </button>
+      )}
+    </div>
   );
 
   return (
-    <div ref={containerRef} style={{ position: "relative" }}>
+    <div ref={containerRef} className={styles.searchSelectWrap}>
       {label ? (
         <label className={styles.field}>
           {label}
@@ -46,51 +115,34 @@ export default function SearchableSelect({ label, items, getId, getLabel, value,
       ) : (
         input
       )}
-      {open && filtered.length > 0 && (
-        <ul
-          style={{
-            position: "absolute",
-            zIndex: 10,
-            top: "100%",
-            left: 0,
-            right: 0,
-            background: "var(--brand-surface)",
-            border: "1px solid var(--brand-border)",
-            borderRadius: "var(--brand-radius-field)",
-            maxHeight: "220px",
-            overflowY: "auto",
-            margin: "0.25rem 0 0",
-            padding: "0.3rem",
-            listStyle: "none",
-            boxShadow: "0 8px 24px rgba(0, 0, 0, 0.12)",
-          }}
-        >
-          {filtered.map((item) => (
-            <li key={getId(item)}>
-              <button
-                type="button"
-                onClick={() => {
-                  onSelect(item);
-                  setQuery("");
-                  setOpen(false);
-                }}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "0.5rem 0.6rem",
-                  border: "none",
-                  background: "none",
-                  borderRadius: "calc(var(--brand-radius-field) - 2px)",
-                  cursor: "pointer",
-                  color: "inherit",
-                }}
-              >
-                {getLabel(item)}
-              </button>
-            </li>
-          ))}
-        </ul>
+      {open && (
+        <div className={styles.searchSelectDropdown}>
+          {filtered.length === 0 ? (
+            <p className={styles.searchSelectEmpty}>
+              <i className="bi bi-search" />
+              Aucun résultat{query.trim() ? ` pour « ${query.trim()} »` : ""}
+            </p>
+          ) : (
+            <ul className={styles.searchSelectList}>
+              {filtered.map((item, i) => (
+                <li key={getId(item)}>
+                  <button
+                    type="button"
+                    className={`${styles.searchSelectOption} ${i === highlighted ? styles.searchSelectOptionActive : ""}`}
+                    onMouseEnter={() => setHighlighted(i)}
+                    onClick={() => selectItem(item)}
+                  >
+                    <span className={styles.searchSelectAvatar}>{initials(getLabel(item))}</span>
+                    <span className={styles.searchSelectOptionBody}>
+                      <span className={styles.searchSelectOptionName}>{getLabel(item)}</span>
+                      {getMeta && <span className={styles.searchSelectOptionMeta}>{getMeta(item)}</span>}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
     </div>
   );
