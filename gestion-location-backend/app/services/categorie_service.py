@@ -45,7 +45,19 @@ def update_categorie(db: Session, categorie_id: int, categorie_in: CategorieUpda
     )
     if not categorie:
         raise NotFound("Category not found")
-    for field, value in categorie_in.model_dump(exclude_unset=True).items():
+
+    updates = categorie_in.model_dump(exclude_unset=True)
+    if "libelle" in updates and updates["libelle"] != categorie.libelle:
+        in_use = (
+            db.query(Bien)
+            .filter(Bien.categorie_id == categorie_id, Bien.deleted_at.is_(None))
+            .first()
+            is not None
+        )
+        if in_use:
+            raise BadRequest("Category is used by existing properties, its libelle cannot be changed")
+
+    for field, value in updates.items():
         setattr(categorie, field, value)
     db.commit()
     db.refresh(categorie)

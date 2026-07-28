@@ -57,6 +57,10 @@ export default function AdminCategoriesPage() {
     return map;
   }, [biens]);
 
+  const catDeleteTargetCount = catDeleteTarget ? usageCount.get(catDeleteTarget.id) || 0 : 0;
+  const catFormTargetCount = catFormTargetId ? usageCount.get(catFormTargetId) || 0 : 0;
+  const libelleLocked = catFormMode === "edit" && catFormTargetCount > 0;
+
   function openCreateCategory() {
     setCatFormMode("create");
     setCatFormTargetId(null);
@@ -189,7 +193,6 @@ export default function AdminCategoriesPage() {
                             setCatDeleteError(null);
                             setCatDeleteTarget(cat);
                           }}
-                          disabled={count > 0}
                           title={count > 0 ? "Utilisée par des biens existants" : "Supprimer"}
                         >
                           <i className="bi bi-trash" />
@@ -218,6 +221,8 @@ export default function AdminCategoriesPage() {
             onChange={(e) => setCatFormDraft((d) => ({ ...d, libelle: e.target.value }))}
             placeholder="Ex : Appartement, Villa, Studio..."
             required
+            disabled={libelleLocked}
+            hint={libelleLocked ? "Utilisée par des biens existants : le libellé ne peut plus être modifié." : undefined}
           />
           <TextField
             label="Description (optionnel)"
@@ -244,10 +249,17 @@ export default function AdminCategoriesPage() {
         onClose={() => setCatDeleteTarget(null)}
         onConfirm={handleConfirmDeleteCategory}
         title="Supprimer la catégorie"
-        message={catDeleteTarget ? `Supprimer définitivement la catégorie "${catDeleteTarget.libelle}" ?` : ""}
+        message={
+          catDeleteTarget
+            ? catDeleteTargetCount > 0
+              ? `Impossible de supprimer "${catDeleteTarget.libelle}" : cette catégorie est liée à ${catDeleteTargetCount} bien${catDeleteTargetCount > 1 ? "s" : ""} existant${catDeleteTargetCount > 1 ? "s" : ""}.`
+              : `Supprimer définitivement la catégorie "${catDeleteTarget.libelle}" ?`
+            : ""
+        }
         confirmLabel="Supprimer"
         danger
         isBusy={catDeleteBusy}
+        hideConfirm={catDeleteTargetCount > 0}
       />
     </div>
   );

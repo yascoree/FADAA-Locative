@@ -41,10 +41,14 @@ DEFAULT_CATEGORIES = [
 
 
 def upgrade() -> None:
-    values = ", ".join(f"('{libelle}', NOW(), NOW())" for libelle in DEFAULT_CATEGORIES)
+    values = ", ".join(f"('{libelle}')" for libelle in DEFAULT_CATEGORIES)
     op.execute(f"""
         INSERT INTO categories (libelle, created_at, updated_at)
-        VALUES {values};
+        SELECT v.libelle, NOW(), NOW()
+        FROM (VALUES {values}) AS v(libelle)
+        WHERE NOT EXISTS (
+            SELECT 1 FROM categories c WHERE c.libelle = v.libelle
+        );
     """)
 
 

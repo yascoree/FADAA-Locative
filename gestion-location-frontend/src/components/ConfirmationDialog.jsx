@@ -19,6 +19,7 @@ export default function ConfirmationDialog({
   danger = false,
   isBusy = false,
   error = null,
+  hideConfirm = false,
 }) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
@@ -42,14 +43,16 @@ export default function ConfirmationDialog({
         <button type="button" className={styles.btnOutline} onClick={onClose} disabled={isBusy}>
           {cancelLabel}
         </button>
-        <button
-          type="button"
-          className={`${styles.btn} ${danger ? styles.btnDanger : ""}`}
-          onClick={onConfirm}
-          disabled={isBusy}
-        >
-          {isBusy ? "..." : confirmLabel}
-        </button>
+        {!hideConfirm && (
+          <button
+            type="button"
+            className={`${styles.btn} ${danger ? styles.btnDanger : ""}`}
+            onClick={onConfirm}
+            disabled={isBusy}
+          >
+            {isBusy ? "..." : confirmLabel}
+          </button>
+        )}
       </div>
     </Modal>
   );
