@@ -15,21 +15,40 @@ def compute_owner_usage(db: Session, owner_id: int) -> dict:
     """Compte l'usage réel d'un propriétaire, pour le comparer aux limites de son
     plan (voir app.models.subscription_plan.SubscriptionPlan). Purement informatif
     ici — rien n'empêche encore la création au-delà de ces limites."""
-    biens = db.query(Bien).filter(Bien.proprietaire_id == owner_id).count()
+    biens = (
+        db.query(Bien)
+        .filter(Bien.proprietaire_id == owner_id, Bien.deleted_at.is_(None))
+        .count()
+    )
 
-    lots = db.query(Lot).join(Bien, Bien.id == Lot.bien_id).filter(Bien.proprietaire_id == owner_id).count()
+    lots = (
+        db.query(Lot)
+        .join(Bien, Bien.id == Lot.bien_id)
+        .filter(Bien.proprietaire_id == owner_id, Bien.deleted_at.is_(None), Lot.deleted_at.is_(None))
+        .count()
+    )
 
     baux_actifs = (
         db.query(Bail)
         .join(Lot, Lot.id == Bail.lot_id)
         .join(Bien, Bien.id == Lot.bien_id)
-        .filter(Bien.proprietaire_id == owner_id, Bail.statut == BailStatus.ACTIF)
+        .filter(
+            Bien.proprietaire_id == owner_id,
+            Bien.deleted_at.is_(None),
+            Lot.deleted_at.is_(None),
+            Bail.deleted_at.is_(None),
+            Bail.statut == BailStatus.ACTIF,
+        )
         .count()
     )
 
     gestionnaires = (
         db.query(Mandat)
-        .filter(Mandat.proprietaire_id == owner_id, Mandat.statut == MandatStatus.ACTIF)
+        .filter(
+            Mandat.proprietaire_id == owner_id,
+            Mandat.deleted_at.is_(None),
+            Mandat.statut == MandatStatus.ACTIF,
+        )
         .count()
     )
 
@@ -37,7 +56,12 @@ def compute_owner_usage(db: Session, owner_id: int) -> dict:
         db.query(Bail.locataire_id)
         .join(Lot, Lot.id == Bail.lot_id)
         .join(Bien, Bien.id == Lot.bien_id)
-        .filter(Bien.proprietaire_id == owner_id)
+        .filter(
+            Bien.proprietaire_id == owner_id,
+            Bien.deleted_at.is_(None),
+            Lot.deleted_at.is_(None),
+            Bail.deleted_at.is_(None),
+        )
         .distinct()
         .count()
     )
@@ -50,7 +74,16 @@ def compute_owner_usage(db: Session, owner_id: int) -> dict:
         .join(Bail, Bail.id == Echeance.bail_id)
         .join(Lot, Lot.id == Bail.lot_id)
         .join(Bien, Bien.id == Lot.bien_id)
-        .filter(Bien.proprietaire_id == owner_id, Quittance.date_generation >= month_start)
+        .filter(
+            Bien.proprietaire_id == owner_id,
+            Bien.deleted_at.is_(None),
+            Lot.deleted_at.is_(None),
+            Bail.deleted_at.is_(None),
+            Echeance.deleted_at.is_(None),
+            Paiement.deleted_at.is_(None),
+            Quittance.deleted_at.is_(None),
+            Quittance.date_generation >= month_start,
+        )
         .count()
     )
 
