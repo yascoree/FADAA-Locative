@@ -16,7 +16,6 @@ const NAV_SECTIONS = [
       { href: "/backoffice/locataire/bail", label: "Mon bail", icon: "bi-file-earmark-text" },
       { href: "/backoffice/locataire/echeances", label: "Mes échéances", icon: "bi-calendar-event" },
       { href: "/backoffice/locataire/paiements", label: "Mes paiements", icon: "bi-cash-stack" },
-      { href: "/backoffice/locataire/quittances", label: "Mes quittances", icon: "bi-receipt" },
     ],
   },
   {

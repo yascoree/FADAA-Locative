@@ -14,7 +14,6 @@ const PAGE_TITLES = {
   "/backoffice/locataire/bail": "Mon bail",
   "/backoffice/locataire/echeances": "Mes échéances",
   "/backoffice/locataire/paiements": "Mes paiements",
-  "/backoffice/locataire/quittances": "Mes quittances",
   "/backoffice/locataire/discussions": "Discussions",
   "/backoffice/locataire/notifications": "Notifications",
   "/backoffice/locataire/parametres": "Paramètres",

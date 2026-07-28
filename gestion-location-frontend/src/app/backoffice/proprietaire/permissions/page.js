@@ -8,7 +8,7 @@ import {
   fetchPermissionCatalog,
   fetchMandatePermissions,
   saveMandatePermissions,
-  lookupGestionnaireByEmail,
+  fetchGestionnaires,
   createMandate,
   setMandateStatus,
   groupPermissionCatalog,
@@ -17,6 +17,7 @@ import {
 } from "@/lib/mandates";
 import { fetchBiens } from "@/lib/properties";
 import StatCard from "@/components/StatCard";
+import SearchableSelect from "@/components/SearchableSelect";
 import styles from "./permissions.module.css";
 
 const RESOURCE_ICONS = {
@@ -65,7 +66,8 @@ export default function GestionPermissionPage() {
   const [grantedByMandate, setGrantedByMandate] = useState({});
   const [savingMandateIds, setSavingMandateIds] = useState(new Set());
   const [isLoading, setIsLoading] = useState(true);
-  const [email, setEmail] = useState("");
+  const [gestionnaires, setGestionnaires] = useState([]);
+  const [selectedGestionnaire, setSelectedGestionnaire] = useState(null);
   const [scopeBienId, setScopeBienId] = useState("all");
   const [inviteBusy, setInviteBusy] = useState(false);
   const [banner, setBanner] = useState(null);
@@ -77,10 +79,11 @@ export default function GestionPermissionPage() {
     async function init() {
       setIsLoading(true);
       try {
-        const [mandateList, catalog, biensList] = await Promise.all([
+        const [mandateList, catalog, biensList, gestionnairesList] = await Promise.all([
           fetchMandates(),
           fetchPermissionCatalog(),
           fetchBiens(),
+          fetchGestionnaires(),
         ]);
         const grantedEntries = await Promise.all(
           mandateList.map(async (mandat) => {
@@ -92,6 +95,7 @@ export default function GestionPermissionPage() {
         setGroups(groupPermissionCatalog(catalog));
         setGrantedByMandate(Object.fromEntries(grantedEntries));
         setBiens(biensList);
+        setGestionnaires(gestionnairesList);
       } catch (err) {
         setBanner({ type: "error", message: extractErrorMessage(err) });
       } finally {
@@ -109,9 +113,13 @@ export default function GestionPermissionPage() {
   async function handleInvite(e) {
     e.preventDefault();
     setBanner(null);
+    if (!selectedGestionnaire) {
+      setBanner({ type: "error", message: "Sélectionnez un gestionnaire dans la liste." });
+      return;
+    }
     setInviteBusy(true);
     try {
-      const gestionnaire = await lookupGestionnaireByEmail(email);
+      const gestionnaire = selectedGestionnaire;
       const bienId = scopeBienId === "all" ? null : Number(scopeBienId);
       const mandat = await createMandate({ gestionnaireId: gestionnaire.id, proprietaireId: user.id, bienId });
       const scopeLabel = bienId ? biens.find((b) => b.id === bienId)?.designation || `bien #${bienId}` : "tous vos biens";
@@ -119,7 +127,7 @@ export default function GestionPermissionPage() {
         type: "success",
         message: `${gestionnaire.prenom} ${gestionnaire.nom} a été ajouté comme gestionnaire pour ${scopeLabel}.`,
       });
-      setEmail("");
+      setSelectedGestionnaire(null);
       setScopeBienId("all");
       // Le backend accorde automatiquement les permissions "Voir" par défaut : on
       // récupère l'état réel plutôt que de supposer un mandat vide.
@@ -230,19 +238,20 @@ export default function GestionPermissionPage() {
           <i className="bi bi-person-plus-fill" />
           Donner l&apos;accès à un gestionnaire
         </h3>
-        <p className={styles.subtitle}>L&apos;invitation prend effet immédiatement dès que l&apos;email correspond à un compte gestionnaire existant.</p>
+        <p className={styles.subtitle}>Recherchez un gestionnaire déjà inscrit sur la plateforme pour lui donner accès.</p>
 
         <form onSubmit={handleInvite}>
           <div className={styles.inviteRow}>
             <div className={styles.inviteField}>
-              <label htmlFor="gestionnaire-email">Email du gestionnaire</label>
-              <input
-                id="gestionnaire-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="contact@atlas-immo.ma"
-                required
+              <label htmlFor="gestionnaire-search">Gestionnaire</label>
+              <SearchableSelect
+                id="gestionnaire-search"
+                items={gestionnaires}
+                getId={(g) => g.id}
+                getLabel={(g) => `${g.prenom} ${g.nom} (${g.email})`}
+                value={selectedGestionnaire}
+                onSelect={setSelectedGestionnaire}
+                placeholder="Rechercher un gestionnaire..."
               />
             </div>
             <div className={`${styles.inviteField} ${styles.scopeField}`}>
@@ -256,7 +265,7 @@ export default function GestionPermissionPage() {
                 ))}
               </select>
             </div>
-            <button type="submit" className={styles.inviteButton} disabled={inviteBusy}>
+            <button type="submit" className={styles.inviteButton} disabled={inviteBusy || !selectedGestionnaire}>
               <i className="bi bi-plus-lg" />
               {inviteBusy ? "Ajout..." : "Donner l'accès"}
             </button>

@@ -19,9 +19,17 @@ class PaiementCreate(PaiementBase):
     pass
 
 
-class PaiementUpdate(BaseModel):
-    montant: Optional[Decimal] = Field(default=None, gt=0, max_digits=10, decimal_places=2)
-    mode_paiement: Optional[ModePaiement] = None
+##class PaiementUpdate(BaseModel):
+##    montant: Optional[Decimal] = Field(default=None, gt=0, max_digits=10, decimal_places=2)
+##    mode_paiement: Optional[ModePaiement] = None
+
+
+class QuittanceMini(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    statut: QuittanceStatus
+    fichier_pdf: Optional[str] = None
 
 
 class QuittanceMini(BaseModel):

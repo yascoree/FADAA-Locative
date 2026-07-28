@@ -41,7 +41,13 @@ function formatCurrency(value) {
 const STATUS_OPTIONS = Object.entries(LOT_STATUS_LABELS).map(([value, label]) => ({ value, label }));
 const PAGE_SIZE = 10;
 
-const EMPTY_FORM = { bien_id: "", reference: "", loyer_reference: "", statut: String(LOT_STATUS.LIBRE) };
+const EMPTY_FORM = {
+  bien_id: "",
+  reference: "",
+  description: "",
+  loyer_reference: "",
+  statut: String(LOT_STATUS.LIBRE),
+};
 
 export default function ProprietaireLotsPage() {
   const [lots, setLots] = useState([]);
@@ -123,6 +129,7 @@ export default function ProprietaireLotsPage() {
     setFormDraft({
       bien_id: String(lot.bien_id),
       reference: lot.reference || "",
+      description: lot.description || "",
       loyer_reference: lot.loyer_reference ?? "",
       statut: String(lot.statut),
     });
@@ -144,6 +151,7 @@ export default function ProprietaireLotsPage() {
         const created = await createLot({
           bienId: Number(formDraft.bien_id),
           reference: formDraft.reference,
+          description: formDraft.description,
           loyerReference: formDraft.loyer_reference === "" ? null : Number(formDraft.loyer_reference),
           statut: Number(formDraft.statut),
         });
@@ -152,6 +160,7 @@ export default function ProprietaireLotsPage() {
         const updated = await updateLot(formTargetId, {
           bien_id: Number(formDraft.bien_id),
           reference: formDraft.reference,
+          description: formDraft.description || null,
           loyer_reference: formDraft.loyer_reference === "" ? null : Number(formDraft.loyer_reference),
           statut: Number(formDraft.statut),
         });
@@ -368,6 +377,16 @@ export default function ProprietaireLotsPage() {
             value={formDraft.reference}
             onChange={(e) => setFormDraft((d) => ({ ...d, reference: e.target.value }))}
             placeholder="Ex : Apt 3B, Lot 12..."
+          />
+          <TextField
+            label="Description"
+            name="description"
+            as="textarea"
+            rows={3}
+            value={formDraft.description}
+            onChange={(e) => setFormDraft((d) => ({ ...d, description: e.target.value }))}
+            placeholder="Détails, particularités, informations utiles..."
+            hint="Optionnel"
           />
           <TextField
             label="Loyer de référence (MAD)"

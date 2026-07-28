@@ -21,6 +21,11 @@ export async function lookupGestionnaireByEmail(email) {
   return data;
 }
 
+export async function fetchGestionnaires() {
+  const { data } = await apiClient.get("/users/gestionnaires");
+  return data;
+}
+
 export async function lookupLocataireByEmail(email) {
   const { data } = await apiClient.get("/users/lookup", { params: { email, role: "LOCATAIRE" } });
   return data;

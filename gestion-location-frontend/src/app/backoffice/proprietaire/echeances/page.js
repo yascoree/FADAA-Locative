@@ -15,7 +15,6 @@ import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
-import SelectField from "@/components/SelectField";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -69,9 +68,6 @@ export default function ProprietaireEcheancesPage() {
   const [editBusy, setEditBusy] = useState(false);
   const [editBanner, setEditBanner] = useState(null);
 
-  const [rowBusyId, setRowBusyId] = useState(null);
-  const [rowBanner, setRowBanner] = useState(null);
-
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
@@ -115,15 +111,27 @@ export default function ProprietaireEcheancesPage() {
     const term = search.trim().toLowerCase();
     return echeances.filter((e) => {
       if (term) {
-        const name = `${e.bail?.locataire?.prenom || ""} ${e.bail?.locataire?.nom || ""} ${e.bail?.locataire?.email || ""}`.toLowerCase();
-        if (!name.includes(term)) return false;
+        const haystack = [
+          e.bail?.locataire?.prenom,
+          e.bail?.locataire?.nom,
+          e.bail?.locataire?.email,
+          biens.find((b) => b.id === e.bail?.lot?.bien_id)?.designation,
+          e.bail?.lot?.reference,
+          e.montant_du,
+          formatDate(e.date_echeance),
+          ECHEANCE_STATUS_LABELS[e.statut],
+        ]
+          .filter((v) => v !== null && v !== undefined && v !== "")
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(term)) return false;
       }
       if (bailFilter && String(e.bail_id) !== bailFilter) return false;
       if (statusFilter && String(e.statut) !== statusFilter) return false;
       if (overdueOnly && !isOverdue(e)) return false;
       return true;
     });
-  }, [echeances, search, bailFilter, statusFilter, overdueOnly]);
+  }, [echeances, search, bailFilter, statusFilter, overdueOnly, biens]);
 
   const totalPages = Math.max(1, Math.ceil(filteredEcheances.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -134,7 +142,6 @@ export default function ProprietaireEcheancesPage() {
     setEditDraft({
       date_echeance: echeance.date_echeance || "",
       montant_du: echeance.montant_du ?? "",
-      statut: String(echeance.statut),
     });
     setEditBanner(null);
   }
@@ -154,7 +161,6 @@ export default function ProprietaireEcheancesPage() {
       const updated = await updateEcheance(editTarget.id, {
         date_echeance: editDraft.date_echeance || null,
         montant_du: editDraft.montant_du === "" ? null : Number(editDraft.montant_du),
-        statut: Number(editDraft.statut),
       });
       setEcheances((prev) => prev.map((e) => (e.id === updated.id ? { ...e, ...updated } : e)));
       setEditTarget(null);
@@ -163,19 +169,6 @@ export default function ProprietaireEcheancesPage() {
       setEditBanner({ type: "error", message: extractErrorMessage(err) });
     } finally {
       setEditBusy(false);
-    }
-  }
-
-  async function handleMarkPaid(echeance) {
-    setRowBusyId(echeance.id);
-    setRowBanner(null);
-    try {
-      const updated = await updateEcheance(echeance.id, { statut: ECHEANCE_STATUS.PAYE });
-      setEcheances((prev) => prev.map((e) => (e.id === updated.id ? { ...e, ...updated } : e)));
-    } catch (err) {
-      setRowBanner({ type: "error", message: extractErrorMessage(err) });
-    } finally {
-      setRowBusyId(null);
     }
   }
 
@@ -227,12 +220,10 @@ export default function ProprietaireEcheancesPage() {
           </div>
         </div>
 
-        <Banner banner={rowBanner} />
-
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher par locataire..."
+            placeholder="Rechercher (locataire, bien, montant, date...)"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -302,7 +293,6 @@ export default function ProprietaireEcheancesPage() {
               )}
               {paginatedEcheances.map((e) => {
                 const overdue = isOverdue(e);
-                const isPaid = e.statut === ECHEANCE_STATUS.PAYE;
                 return (
                   <tr key={e.id}>
                     <td>
@@ -334,17 +324,6 @@ export default function ProprietaireEcheancesPage() {
                     </td>
                     <td>
                       <div className={styles.tableActions}>
-                        {!isPaid && (
-                          <button
-                            type="button"
-                            className={styles.iconBtn}
-                            onClick={() => handleMarkPaid(e)}
-                            disabled={rowBusyId === e.id}
-                            title="Marquer comme payée"
-                          >
-                            <i className="bi bi-check-lg" />
-                          </button>
-                        )}
                         <button type="button" className={styles.iconBtn} onClick={() => openEdit(e)} title="Modifier">
                           <i className="bi bi-pencil" />
                         </button>
@@ -420,13 +399,6 @@ export default function ProprietaireEcheancesPage() {
               min="0"
               value={editDraft.montant_du}
               onChange={(e) => setEditDraft((d) => ({ ...d, montant_du: e.target.value }))}
-            />
-            <SelectField
-              label="Statut"
-              name="statut"
-              options={STATUS_OPTIONS}
-              value={editDraft.statut}
-              onChange={(e) => setEditDraft((d) => ({ ...d, statut: e.target.value }))}
             />
 
             <div className={styles.editActions} style={{ marginTop: "1.2rem" }}>

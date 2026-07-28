@@ -54,6 +54,7 @@ UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
+
 app.include_router(auth.router)
 app.include_router(utilisateurs.router)
 app.include_router(subscription_plans.router)

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.database import get_db
 from app.models.utilisateur import Utilisateur
-from app.schemas.paiement import PaiementCreate, PaiementRead, PaiementUpdate
+from app.schemas.paiement import PaiementCreate, PaiementRead
 from app.services import paiement_service
 from app.services.exceptions import BadRequest, Forbidden, NotFound
 
@@ -49,19 +49,20 @@ def get_paiement(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
 
 
-@router.put("/{paiement_id}", response_model=PaiementRead)
-def update_paiement(
-    paiement_id: int,
-    paiement_in: PaiementUpdate,
-    db: Session = Depends(get_db),
-    current_user: Utilisateur = Depends(get_current_user),
-):
-    try:
-        return paiement_service.update_paiement(db, current_user, paiement_id, paiement_in)
-    except NotFound as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
-    except Forbidden as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+# @router.put("/{paiement_id}", response_model=PaiementRead)
+# def update_paiement(
+#     paiement_id: int,
+#     paiement_in: PaiementUpdate,
+#     db: Session = Depends(get_db),
+#     current_user: Utilisateur = Depends(get_current_user),
+# ):
+#     try:
+#         return paiement_service.update_paiement(db, current_user, paiement_id, paiement_in)
+#     except NotFound as exc:
+#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+#     except Forbidden as exc:
+#         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+
 
 
 @router.delete("/{paiement_id}", status_code=status.HTTP_204_NO_CONTENT)

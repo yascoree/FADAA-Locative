@@ -20,6 +20,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 DEFAULT_CATEGORIES = [
+    # Immobilier
     "Appartement",
     "Villa",
     "Studio",
@@ -28,6 +29,14 @@ DEFAULT_CATEGORIES = [
     "Bureau",
     "Local commercial",
     "Terrain",
+
+    # Véhicules
+    "Voiture",
+    "Moto",
+    "Scooter",
+    "Camion",
+    "Camionnette",
+    "Bus",
 ]
 
 

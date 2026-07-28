@@ -44,7 +44,7 @@ function photoUrl(url) {
 const STATUS_OPTIONS = Object.entries(BIEN_STATUS_LABELS).map(([value, label]) => ({ value, label }));
 const PAGE_SIZE = 10;
 
-const EMPTY_FORM = { designation: "", categorie_id: "", statut: String(BIEN_STATUS.DISPONIBLE) };
+const EMPTY_FORM = { designation: "", description: "", categorie_id: "", statut: String(BIEN_STATUS.DISPONIBLE) };
 
 export default function ProprietaireBiensPage() {
   const { user } = useAuth();
@@ -130,6 +130,7 @@ export default function ProprietaireBiensPage() {
     setFormTargetId(bien.id);
     setFormDraft({
       designation: bien.designation || "",
+      description: bien.description || "",
       categorie_id: String(bien.categorie_id),
       statut: String(bien.statut),
     });
@@ -212,6 +213,7 @@ export default function ProprietaireBiensPage() {
           proprietaireId: user.id,
           categorieId: Number(formDraft.categorie_id),
           designation: formDraft.designation,
+          description: formDraft.description,
           statut: Number(formDraft.statut),
         });
         const photos = [];
@@ -227,6 +229,7 @@ export default function ProprietaireBiensPage() {
         const updated = await updateBien(formTargetId, {
           categorie_id: Number(formDraft.categorie_id),
           designation: formDraft.designation,
+          description: formDraft.description || null,
           statut: Number(formDraft.statut),
         });
         setBiens((prev) => prev.map((b) => (b.id === updated.id ? { ...b, ...updated } : b)));
@@ -422,6 +425,16 @@ export default function ProprietaireBiensPage() {
             value={formDraft.designation}
             onChange={(e) => setFormDraft((d) => ({ ...d, designation: e.target.value }))}
             placeholder="Ex : Villa Anfa, Immeuble 12..."
+          />
+          <TextField
+            label="Description"
+            name="description"
+            as="textarea"
+            rows={3}
+            value={formDraft.description}
+            onChange={(e) => setFormDraft((d) => ({ ...d, description: e.target.value }))}
+            placeholder="Détails, particularités, informations utiles..."
+            hint="Optionnel"
           />
           <SelectField
             label="Catégorie"
