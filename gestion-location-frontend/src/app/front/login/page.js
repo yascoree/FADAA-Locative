@@ -1,14 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { ROLE_DASHBOARD_PATH, PUBLIC_REGISTER_ROLES } from "@/lib/roles";
 import { extractErrorMessage } from "@/lib/apiClient";
 import { requestPasswordReset } from "@/lib/passwordReset";
+import { fetchAvis } from "@/lib/avis";
 import Modal from "@/components/Modal";
 import LogoIcon from "@/components/LogoIcon";
 import styles from "./login.module.css";
+
+const FALLBACK_QUOTE = {
+  text: "Depuis qu'on gère nos biens avec FADAA, chaque gestionnaire sait exactement ce qu'il a le droit de faire — plus aucune mauvaise surprise.",
+  attribution: "Nadia B. — propriétaire de 8 biens",
+};
+
+const QUOTE_ROTATION_MS = 6000;
 
 function EyeIcon() {
   return (
@@ -19,11 +28,49 @@ function EyeIcon() {
   );
 }
 
+function Stars({ note }) {
+  return (
+    <span className={styles.quoteStars}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <i key={n} className={`bi ${n <= note ? "bi-star-fill" : "bi-star"}`} />
+      ))}
+    </span>
+  );
+}
+
 function BrandPanel() {
+  const [avisList, setAvisList] = useState([]);
+  const [quoteIndex, setQuoteIndex] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchAvis()
+      .then((list) => {
+        if (!cancelled) setAvisList(list.filter((a) => a.commentaire?.trim()));
+      })
+      .catch(() => {
+        // Avis publics : un échec de chargement ne doit pas casser l'écran de connexion.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (avisList.length < 2) return undefined;
+    const id = setInterval(() => {
+      setQuoteIndex((i) => (i + 1) % avisList.length);
+    }, QUOTE_ROTATION_MS);
+    return () => clearInterval(id);
+  }, [avisList.length]);
+
+  const currentAvis = avisList[quoteIndex] || null;
+
   return (
     <aside className={styles.brandPanel} aria-hidden="true">
       <span className={`${styles.blob} ${styles.blob1}`} />
       <span className={`${styles.blob} ${styles.blob2}`} />
+      <span className={`${styles.blob} ${styles.blob3}`} />
 
       <div className={styles.brandTop}>
         <div className={styles.logoLockup}>
@@ -56,15 +103,24 @@ function BrandPanel() {
       </div>
 
       <div className={styles.brandBottom}>
-        <div className={styles.quoteCard}>
+        <div className={styles.quoteCard} key={currentAvis ? currentAvis.id : "fallback"}>
           <span className={styles.quoteMark}>&ldquo;</span>
-          <p className={styles.quoteText}>
-            Depuis qu&apos;on gère nos biens avec FADAA, chaque gestionnaire sait exactement ce qu&apos;il a le
-            droit de faire — plus aucune mauvaise surprise.
-          </p>
-          <p className={styles.quoteAttr}>
-            <strong>Nadia B.</strong> — propriétaire de 8 biens
-          </p>
+          {currentAvis ? (
+            <>
+              <p className={styles.quoteText}>{currentAvis.commentaire}</p>
+              <p className={styles.quoteAttr}>
+                <strong>
+                  {currentAvis.prenom} {currentAvis.nom?.[0]}.
+                </strong>
+                <Stars note={currentAvis.note} />
+              </p>
+            </>
+          ) : (
+            <>
+              <p className={styles.quoteText}>{FALLBACK_QUOTE.text}</p>
+              <p className={styles.quoteAttr}>{FALLBACK_QUOTE.attribution}</p>
+            </>
+          )}
         </div>
       </div>
     </aside>
@@ -313,6 +369,7 @@ export default function LoginPage() {
                       onChange={() => setRole(option.value)}
                     />
                     <span className={`${styles.roleCard} ${role === option.value ? styles.roleCardActive : ""}`}>
+                      <i className={`bi bi-check-circle-fill ${styles.roleCheck}`} />
                       <span className={styles.roleTitle}>{option.label}</span>
                       <span className={styles.roleSub}>{option.hint}</span>
                     </span>
@@ -392,8 +449,14 @@ export default function LoginPage() {
                   onChange={(e) => setTerms(e.target.checked)}
                 />
                 <label htmlFor="register-terms">
-                  J&apos;accepte les <a href="#terms">Conditions d&apos;utilisation</a> et la{" "}
-                  <a href="#privacy">Politique de confidentialité</a>
+                  J&apos;accepte les{" "}
+                  <Link href="/front/conditions-utilisation" target="_blank">
+                    Conditions d&apos;utilisation
+                  </Link>{" "}
+                  et la{" "}
+                  <Link href="/front/politique-confidentialite" target="_blank">
+                    Politique de confidentialité
+                  </Link>
                 </label>
               </div>
 
@@ -407,7 +470,14 @@ export default function LoginPage() {
 
           <p className={styles.legalNote}>
             {activeTab === "login" ? "En vous connectant" : "En créant votre compte"}, vous acceptez nos{" "}
-            <a href="#terms">Conditions d&apos;utilisation</a> et notre <a href="#privacy">Politique de confidentialité</a>.
+            <Link href="/front/conditions-utilisation" target="_blank">
+              Conditions d&apos;utilisation
+            </Link>{" "}
+            et notre{" "}
+            <Link href="/front/politique-confidentialite" target="_blank">
+              Politique de confidentialité
+            </Link>
+            .
           </p>
         </div>
       </main>
