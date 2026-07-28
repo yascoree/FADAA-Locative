@@ -7,7 +7,6 @@ import {
   fetchEcheances,
   fetchPaiements,
   createPaiement,
-  updatePaiement,
   annulerPaiement,
   updateEcheance,
   downloadQuittance,
@@ -72,18 +71,11 @@ export default function ProprietairePaiementsPage() {
   const [createBusy, setCreateBusy] = useState(false);
   const [createBanner, setCreateBanner] = useState(null);
 
-  const [editTarget, setEditTarget] = useState(null);
-  const [editDraft, setEditDraft] = useState(null);
-  const [editBusy, setEditBusy] = useState(false);
-  const [editBanner, setEditBanner] = useState(null);
-
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelBusy, setCancelBusy] = useState(false);
   const [cancelError, setCancelError] = useState(null);
   const [listBanner, setListBanner] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
-
-  const [downloadingQuittanceId, setDownloadingQuittanceId] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -281,42 +273,6 @@ export default function ProprietairePaiementsPage() {
     }
   }
 
-  function openEdit(paiement) {
-    setEditTarget(paiement);
-    setEditDraft({
-      montant: paiement.montant ?? "",
-      mode_paiement: String(paiement.mode_paiement || MODE_PAIEMENT.VIREMENT),
-    });
-    setEditBanner(null);
-  }
-
-  function closeEdit() {
-    if (editBusy) return;
-    setEditTarget(null);
-    setEditDraft(null);
-  }
-
-  async function handleSubmitEdit(e) {
-    e.preventDefault();
-    if (!editTarget) return;
-    setEditBusy(true);
-    setEditBanner(null);
-    try {
-      const updated = await updatePaiement(editTarget.id, {
-        montant: editDraft.montant === "" ? null : Number(editDraft.montant),
-        mode_paiement: Number(editDraft.mode_paiement),
-      });
-      setPaiements((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
-      await reconcileEcheance(editTarget.echeance_id, editTarget.id, editDraft.montant);
-      setEditTarget(null);
-      setEditDraft(null);
-    } catch (err) {
-      setEditBanner({ type: "error", message: extractErrorMessage(err) });
-    } finally {
-      setEditBusy(false);
-    }
-  }
-
   async function handleDownload(quittanceId) {
     setDownloadingId(quittanceId);
     setListBanner(null);
@@ -344,19 +300,6 @@ export default function ProprietairePaiementsPage() {
       setCancelError(extractErrorMessage(err));
     } finally {
       setCancelBusy(false);
-    }
-  }
-
-  async function handleDownloadQuittance(paiement) {
-    if (!paiement.quittance) return;
-    setDownloadingQuittanceId(paiement.quittance.id);
-    setListBanner(null);
-    try {
-      await downloadQuittance(paiement.quittance.id);
-    } catch (err) {
-      setListBanner({ type: "error", message: extractErrorMessage(err) });
-    } finally {
-      setDownloadingQuittanceId(null);
     }
   }
 
@@ -507,21 +450,6 @@ export default function ProprietairePaiementsPage() {
                       <span className={styles.empty}>—</span>
                     ) : (
                       <div className={styles.tableActions}>
-                        {p.quittance && (
-                          <button
-                            type="button"
-                            className={styles.btnOutline}
-                            onClick={() => handleDownloadQuittance(p)}
-                            disabled={downloadingQuittanceId === p.quittance.id}
-                            title="Télécharger la quittance"
-                          >
-                            <i className="bi bi-download" />
-                            {downloadingQuittanceId === p.quittance.id ? "..." : "PDF"}
-                          </button>
-                        )}
-                        <button type="button" className={styles.iconBtn} onClick={() => openEdit(p)} title="Modifier">
-                          <i className="bi bi-pencil" />
-                        </button>
                         <button
                           type="button"
                           className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
@@ -629,47 +557,6 @@ export default function ProprietairePaiementsPage() {
             </button>
           </div>
         </form>
-      </Modal>
-
-      {/* ---- Modifier un paiement ---- */}
-      <Modal isOpen={!!editTarget} onClose={closeEdit} title="Modifier le paiement">
-        {editTarget && editDraft && (
-          <form onSubmit={handleSubmitEdit}>
-            <Banner banner={editBanner} />
-            <p className={styles.sectionSubtitle} style={{ marginBottom: "1rem" }}>
-              {bienLotLabel(editTarget.echeance)} · {editTarget.echeance?.bail?.locataire?.prenom}{" "}
-              {editTarget.echeance?.bail?.locataire?.nom}
-            </p>
-            <TextField
-              label="Montant (MAD)"
-              name="montant"
-              type="number"
-              step="0.01"
-              min="0"
-              value={editDraft.montant}
-              onChange={(e) => setEditDraft((d) => ({ ...d, montant: e.target.value }))}
-              required
-            />
-            <SelectField
-              label="Mode de paiement"
-              name="mode_paiement"
-              options={MODE_OPTIONS}
-              value={editDraft.mode_paiement}
-              onChange={(e) => setEditDraft((d) => ({ ...d, mode_paiement: e.target.value }))}
-            />
-
-            <div className={styles.editActions} style={{ marginTop: "1.2rem" }}>
-              <button type="submit" className={styles.btn} disabled={editBusy}>
-                <i className="bi bi-check-lg" />
-                {editBusy ? "Enregistrement..." : "Enregistrer"}
-              </button>
-              <button type="button" className={styles.btnOutline} onClick={closeEdit} disabled={editBusy}>
-                <i className="bi bi-x-lg" />
-                Annuler
-              </button>
-            </div>
-          </form>
-        )}
       </Modal>
 
       <ConfirmationDialog

@@ -149,11 +149,6 @@ export async function createPaiement({ echeanceId, montant, modePaiement }) {
   return data;
 }
 
-export async function updatePaiement(paiementId, payload) {
-  const { data } = await apiClient.put(`/payments/${paiementId}`, payload);
-  return data;
-}
-
 export async function deletePaiement(paiementId) {
   await apiClient.delete(`/payments/${paiementId}`);
 }
