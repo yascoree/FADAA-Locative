@@ -120,6 +120,7 @@ export default function AgenceEcheancesPage() {
     return echeances.filter((e) => {
       if (term) {
         const haystack = [
+          e.reference,
           e.bail?.locataire?.prenom,
           e.bail?.locataire?.nom,
           e.bail?.locataire?.email,
@@ -231,7 +232,7 @@ export default function AgenceEcheancesPage() {
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher (locataire, bien, montant, date...)"
+            placeholder="Rechercher (référence, locataire, bien, montant, date...)"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -283,6 +284,7 @@ export default function AgenceEcheancesPage() {
           <table className={styles.table}>
             <thead>
               <tr>
+                <th>Référence</th>
                 <th>Locataire</th>
                 <th>Bien / Lot</th>
                 <th>Date d&apos;échéance</th>
@@ -294,7 +296,7 @@ export default function AgenceEcheancesPage() {
             <tbody>
               {filteredEcheances.length === 0 && (
                 <tr>
-                  <td colSpan={6} className={styles.empty}>
+                  <td colSpan={7} className={styles.empty}>
                     Aucune échéance ne correspond à ces critères.
                   </td>
                 </tr>
@@ -303,6 +305,7 @@ export default function AgenceEcheancesPage() {
                 const overdue = isOverdue(e);
                 return (
                   <tr key={e.id}>
+                    <td className={styles.mono}>{e.reference}</td>
                     <td>
                       {e.bail?.locataire ? (
                         <div>
@@ -340,7 +343,17 @@ export default function AgenceEcheancesPage() {
                         return (
                           <div className={styles.tableActions}>
                             {canUpdate && (
-                              <button type="button" className={styles.iconBtn} onClick={() => openEdit(e)} title="Modifier">
+                              <button
+                                type="button"
+                                className={styles.iconBtn}
+                                onClick={() => openEdit(e)}
+                                disabled={e.statut !== ECHEANCE_STATUS.IMPAYE}
+                                title={
+                                  e.statut !== ECHEANCE_STATUS.IMPAYE
+                                    ? "Un paiement est déjà associé à cette échéance : elle ne peut plus être modifiée."
+                                    : "Modifier"
+                                }
+                              >
                                 <i className="bi bi-pencil" />
                               </button>
                             )}
@@ -443,13 +456,9 @@ export default function AgenceEcheancesPage() {
           setDeleteError(null);
         }}
         onConfirm={handleConfirmDelete}
-        title="Supprimer l'échéance"
-        message={
-          deleteTarget
-            ? `Masquer cette échéance du ${formatDate(deleteTarget.date_echeance)} ? Impossible si un paiement y est déjà associé.`
-            : ""
-        }
-        confirmLabel="Supprimer"
+        title="Masquer l'échéance"
+        message={deleteTarget ? `Masquer l'échéance du ${formatDate(deleteTarget.date_echeance)} ?` : ""}
+        confirmLabel="Masquer"
         danger
         isBusy={deleteBusy}
         error={deleteError}

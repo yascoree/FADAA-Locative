@@ -205,6 +205,13 @@
   text-overflow: ellipsis;
 }
 
+.mono {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 .userRole {
   font-size: 0.74rem;
   color: var(--text-muted);

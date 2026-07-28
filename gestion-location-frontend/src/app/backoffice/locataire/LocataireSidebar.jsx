@@ -14,6 +14,11 @@ const NAV_SECTIONS = [
     items: [
       { href: "/backoffice/locataire", label: "Dashboard", icon: "bi-grid", exact: true },
       { href: "/backoffice/locataire/bail", label: "Mon bail", icon: "bi-file-earmark-text" },
+    ],
+  },
+  {
+    label: "Finances",
+    items: [
       { href: "/backoffice/locataire/echeances", label: "Mes échéances", icon: "bi-calendar-event" },
       { href: "/backoffice/locataire/paiements", label: "Mes paiements", icon: "bi-cash-stack" },
     ],
