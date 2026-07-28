@@ -1118,6 +1118,45 @@
   margin: 0 auto;
 }
 
+.avisCarouselWrap {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+}
+
+.avisCarouselTrack {
+  display: flex;
+  width: max-content;
+  gap: 1.25rem;
+  animation-name: avisScroll;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.avisCarouselWrap:hover .avisCarouselTrack {
+  animation-play-state: paused;
+}
+
+.avisCard {
+  flex: 0 0 320px;
+  max-width: 320px;
+}
+
+@keyframes avisScroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avisCarouselTrack {
+    animation: none;
+  }
+}
+
 /* ---------- Why FADAA (dark reliability card) ---------- */
 
 .whyCard {

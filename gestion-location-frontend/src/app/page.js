@@ -694,25 +694,38 @@ function AvisSection() {
         <p className={styles.avisEmpty}>Aucun avis publié pour le moment — soyez le premier à en laisser un !</p>
       )}
 
-      {avisList.length > 0 && (
-        <div className={styles.testimonialsGrid} style={{ marginTop: "2.5rem" }}>
-          {avisList.slice(0, 6).map((a) => (
-            <div key={a.id} className={styles.testimonialCard}>
-              <Stars note={a.note} />
-              {a.commentaire && <p className={styles.quoteText} style={{ marginTop: "0.9rem" }}>&ldquo;{a.commentaire}&rdquo;</p>}
-              <div className={styles.testimonialMeta} style={{ marginTop: "1rem" }}>
-                <span className={styles.testimonialAvatar}>
-                  {a.prenom?.[0]}
-                  {a.nom?.[0]}
-                </span>
-                <div className={styles.testimonialName}>
-                  {a.prenom} {a.nom}
-                </div>
+      {avisList.length > 0 &&
+        (() => {
+          const cards = avisList.slice(0, 6);
+          return (
+            <div className={styles.avisCarouselWrap} style={{ marginTop: "2.5rem" }}>
+              <div
+                className={styles.avisCarouselTrack}
+                style={{ animationDuration: `${Math.max(18, cards.length * 6)}s` }}
+              >
+                {[...cards, ...cards].map((a, i) => (
+                  <div key={`${a.id}-${i}`} className={`${styles.testimonialCard} ${styles.avisCard}`}>
+                    <Stars note={a.note} />
+                    {a.commentaire && (
+                      <p className={styles.quoteText} style={{ marginTop: "0.9rem" }}>
+                        &ldquo;{a.commentaire}&rdquo;
+                      </p>
+                    )}
+                    <div className={styles.testimonialMeta} style={{ marginTop: "1rem" }}>
+                      <span className={styles.testimonialAvatar}>
+                        {a.prenom?.[0]}
+                        {a.nom?.[0]}
+                      </span>
+                      <div className={styles.testimonialName}>
+                        {a.prenom} {a.nom}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          );
+        })()}
     </section>
   );
 }
