@@ -216,7 +216,12 @@ export default function LocatairePaiementsPage() {
                   <tr key={p.id}>
                     <td>{bienLotLabel(p.echeance)}</td>
                     <td>{formatDate(p.echeance?.date_echeance)}</td>
-                    <td>{formatCurrency(p.montant)}</td>
+                    <td>
+                      {formatCurrency(p.montant)}
+                      {p.echeance?.montant_du !== null && p.echeance?.montant_du !== undefined && (
+                        <span className={styles.recentEmail}> / {formatCurrency(p.echeance.montant_du)} dû</span>
+                      )}
+                    </td>
                     <td>{MODE_PAIEMENT_LABELS[p.mode_paiement] || "—"}</td>
                     <td>{formatDate(p.date_paiement)}</td>
                     <td>

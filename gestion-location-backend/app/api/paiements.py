@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.database import get_db
 from app.models.utilisateur import Utilisateur
-from app.schemas.paiement import PaiementCreate, PaiementRead
+from app.schemas.paiement import PaiementAnnulation, PaiementCreate, PaiementRead
 from app.services import paiement_service
 from app.services.exceptions import BadRequest, Forbidden, NotFound
 
@@ -68,11 +68,13 @@ def delete_paiement(
 @router.post("/{paiement_id}/annuler", response_model=PaiementRead)
 def annuler_paiement(
     paiement_id: int,
+    annulation_in: PaiementAnnulation | None = None,
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
+    motif = annulation_in.motif if annulation_in else None
     try:
-        return paiement_service.annuler_paiement(db, current_user, paiement_id)
+        return paiement_service.annuler_paiement(db, current_user, paiement_id, motif)
     except NotFound as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except Forbidden as exc:

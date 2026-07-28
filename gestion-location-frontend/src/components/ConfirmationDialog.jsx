@@ -20,10 +20,12 @@ export default function ConfirmationDialog({
   isBusy = false,
   error = null,
   hideConfirm = false,
+  children,
 }) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <p>{message}</p>
+      {children}
       {error && (
         <p
           style={{
