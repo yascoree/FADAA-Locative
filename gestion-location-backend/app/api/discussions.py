@@ -25,16 +25,6 @@ def list_discussions(
 ):
     return discussion_service.list_discussions(db, current_user, skip, limit, with_user_id)
 
-        if with_user_id is not None:
-            query = query.filter(
-                or_(
-                    (Discussion.user_id == current_user.id) & (Discussion.destinataire_id == with_user_id),
-                    (Discussion.user_id == with_user_id) & (Discussion.destinataire_id == current_user.id),
-                )
-            )
-
-        return query.order_by(Discussion.date_sent.asc()).offset(skip).limit(limit).all()
-
 @router.post("/", response_model=DiscussionRead, status_code=status.HTTP_201_CREATED)
 def create_discussion(
     discussion_in: DiscussionCreate,
