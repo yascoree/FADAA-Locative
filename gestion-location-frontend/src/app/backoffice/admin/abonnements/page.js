@@ -238,9 +238,11 @@ export default function AdminAbonnementsPage() {
     const term = search.trim().toLowerCase();
     return rows.filter(({ subscription, user }) => {
       if (term) {
-        const matches =
-          `${user.prenom} ${user.nom}`.toLowerCase().includes(term) || user.email.toLowerCase().includes(term);
-        if (!matches) return false;
+        const haystack = [user.prenom, user.nom, user.email, subscription.plan?.name, SUBSCRIPTION_STATUS_LABELS[subscription.status]]
+          .filter((v) => v !== null && v !== undefined && v !== "")
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(term)) return false;
       }
       if (planFilter && String(subscription.plan_id) !== planFilter) return false;
       if (statusFilter && String(subscription.status) !== statusFilter) return false;
@@ -790,7 +792,7 @@ export default function AdminAbonnementsPage() {
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher par nom ou e-mail..."
+            placeholder="Rechercher par nom, e-mail, plan, statut..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
