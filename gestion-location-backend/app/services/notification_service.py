@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy.orm import Session
 
 from app.models.notification import Notification
@@ -11,16 +13,31 @@ def _ensure_owner_or_admin(current_user: Utilisateur, notification: Notification
         raise Forbidden("Not allowed to access this notification")
 
 
-def list_notifications(db: Session, current_user: Utilisateur, skip: int = 0, limit: int = 100) -> list[Notification]:
+def list_notifications(
+    db: Session, current_user: Utilisateur, skip: int = 0, limit: int = 100, masquees: bool = False
+) -> list[Notification]:
     # Toujours filtré sur l'utilisateur courant, y compris pour l'admin : la liste
     # alimente la cloche/page notifications personnelles, pas un flux global (qui
     # existe déjà via le journal d'activité). _ensure_owner_or_admin plus bas garde
     # néanmoins l'accès admin à une notification précise par id, pour le support.
-    return db.query(Notification).filter(Notification.user_id == current_user.id).offset(skip).limit(limit).all()
+    # masquees=True retourne l'onglet "notifications masquées" (pour restauration),
+    # au lieu de la liste active par défaut.
+    deleted_filter = Notification.deleted_at.isnot(None) if masquees else Notification.deleted_at.is_(None)
+    return (
+        db.query(Notification)
+        .filter(Notification.user_id == current_user.id, deleted_filter)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 def get_notification(db: Session, current_user: Utilisateur, notification_id: int) -> Notification:
-    notification = db.get(Notification, notification_id)
+    notification = (
+        db.query(Notification)
+        .filter(Notification.id == notification_id, Notification.deleted_at.is_(None))
+        .first()
+    )
     if not notification:
         raise NotFound("Notification not found")
     _ensure_owner_or_admin(current_user, notification)
@@ -40,10 +57,7 @@ def create_notification(db: Session, current_user: Utilisateur, notification_in:
 def update_notification(
     db: Session, current_user: Utilisateur, notification_id: int, notification_in: NotificationUpdate
 ) -> Notification:
-    notification = db.get(Notification, notification_id)
-    if not notification:
-        raise NotFound("Notification not found")
-    _ensure_owner_or_admin(current_user, notification)
+    notification = get_notification(db, current_user, notification_id)
     for field, value in notification_in.model_dump(exclude_unset=True).items():
         setattr(notification, field, value)
     db.commit()
@@ -52,9 +66,25 @@ def update_notification(
 
 
 def delete_notification(db: Session, current_user: Utilisateur, notification_id: int) -> None:
-    notification = db.get(Notification, notification_id)
+    """La suppression physique est interdite (perte de l'historique) : on masque
+    la notification (deleted_at) pour la retirer de la liste de l'utilisateur
+    tout en la conservant en base."""
+    notification = get_notification(db, current_user, notification_id)
+    notification.deleted_at = datetime.utcnow()
+    db.commit()
+
+
+def restaurer_notification(db: Session, current_user: Utilisateur, notification_id: int) -> Notification:
+    """Ramène une notification masquée dans la liste active de l'utilisateur."""
+    notification = (
+        db.query(Notification)
+        .filter(Notification.id == notification_id, Notification.deleted_at.isnot(None))
+        .first()
+    )
     if not notification:
         raise NotFound("Notification not found")
     _ensure_owner_or_admin(current_user, notification)
-    db.delete(notification)
+    notification.deleted_at = None
     db.commit()
+    db.refresh(notification)
+    return notification

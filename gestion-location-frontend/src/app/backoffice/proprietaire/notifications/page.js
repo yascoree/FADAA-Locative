@@ -6,12 +6,14 @@ import { extractErrorMessage } from "@/lib/apiClient";
 import {
   fetchNotifications,
   markNotificationRead,
-  deleteNotification,
+  masquerNotification,
+  restaurerNotification,
   NOTIFICATION_STATUS,
   NOTIFICATION_TYPE,
   NOTIFICATION_TYPE_LABELS,
 } from "@/lib/notifications";
 import StatCard from "@/components/StatCard";
+import ToggleSwitch from "@/components/ToggleSwitch";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -78,12 +80,13 @@ export default function ProprietaireNotificationsPage() {
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [markingAll, setMarkingAll] = useState(false);
+  const [showMasquees, setShowMasquees] = useState(false);
 
   useEffect(() => {
     async function init() {
       setIsLoading(true);
       try {
-        const list = await fetchNotifications();
+        const list = await fetchNotifications({ masquees: showMasquees });
         setNotifications(list);
       } catch (err) {
         setLoadError(extractErrorMessage(err));
@@ -92,7 +95,7 @@ export default function ProprietaireNotificationsPage() {
       }
     }
     init();
-  }, []);
+  }, [showMasquees]);
 
   const stats = useMemo(() => {
     return {
@@ -140,9 +143,18 @@ export default function ProprietaireNotificationsPage() {
     }
   }
 
-  async function handleDelete(notification) {
+  async function handleMasquer(notification) {
     try {
-      await deleteNotification(notification.id);
+      await masquerNotification(notification.id);
+      setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
+    } catch (err) {
+      setActionBanner({ type: "error", message: extractErrorMessage(err) });
+    }
+  }
+
+  async function handleRestaurer(notification) {
+    try {
+      await restaurerNotification(notification.id);
       setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
     } catch (err) {
       setActionBanner({ type: "error", message: extractErrorMessage(err) });
@@ -172,24 +184,27 @@ export default function ProprietaireNotificationsPage() {
           <div>
             <h2 className={styles.sectionTitle}>
               <i className="bi bi-bell" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-              Notifications
+              {showMasquees ? "Notifications masquées" : "Notifications"}
             </h2>
             <p className={styles.sectionSubtitle}>
               {filteredNotifications.length} notification(s) affichée(s) sur {notifications.length}.
             </p>
           </div>
-          <button
-            type="button"
-            className={styles.btnOutline}
-            onClick={handleMarkAllRead}
-            disabled={markingAll || stats.nonLues === 0}
-          >
-            <i className="bi bi-check2-all" />
-            {markingAll ? "..." : "Tout marquer comme lu"}
-          </button>
+          {!showMasquees && (
+            <button
+              type="button"
+              className={styles.btnOutline}
+              onClick={handleMarkAllRead}
+              disabled={markingAll || stats.nonLues === 0}
+            >
+              <i className="bi bi-check2-all" />
+              {markingAll ? "..." : "Tout marquer comme lu"}
+            </button>
+          )}
         </div>
 
         <div className={styles.filtersRow}>
+          <ToggleSwitch checked={showMasquees} onChange={setShowMasquees} label="Voir les notifications masquées" />
           <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
             <option value="">Tous les types</option>
             {TYPE_OPTIONS.map((opt) => (
@@ -234,18 +249,33 @@ export default function ProprietaireNotificationsPage() {
                   </div>
                   {isUnread && <span className={styles.notifDot} title="Non lue" />}
                   <div className={styles.notifActions}>
-                    <button
-                      type="button"
-                      className={styles.iconBtn}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleDelete(n);
-                      }}
-                      title="Supprimer"
-                    >
-                      <i className="bi bi-trash" />
-                    </button>
+                    {showMasquees ? (
+                      <button
+                        type="button"
+                        className={styles.iconBtn}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleRestaurer(n);
+                        }}
+                        title="Restaurer"
+                      >
+                        <i className="bi bi-arrow-counterclockwise" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className={styles.iconBtn}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleMasquer(n);
+                        }}
+                        title="Masquer"
+                      >
+                        <i className="bi bi-eye-slash" />
+                      </button>
+                    )}
                   </div>
                 </Link>
               );

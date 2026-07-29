@@ -31,8 +31,8 @@ export const NOTIFICATION_TYPE_LABELS = {
   10: "Demande de démo",
 };
 
-export async function fetchNotifications() {
-  const { data } = await apiClient.get("/notifications/", { params: { limit: 50 } });
+export async function fetchNotifications({ masquees = false } = {}) {
+  const { data } = await apiClient.get("/notifications/", { params: { limit: 50, masquees } });
   return data;
 }
 
@@ -43,6 +43,13 @@ export async function markNotificationRead(notificationId) {
   return data;
 }
 
-export async function deleteNotification(notificationId) {
+// Ne supprime jamais physiquement : le backend masque la notification
+// (elle reste en base pour l'historique) et la retire de la liste de l'utilisateur.
+export async function masquerNotification(notificationId) {
   await apiClient.delete(`/notifications/${notificationId}`);
+}
+
+export async function restaurerNotification(notificationId) {
+  const { data } = await apiClient.post(`/notifications/${notificationId}/restaurer`);
+  return data;
 }

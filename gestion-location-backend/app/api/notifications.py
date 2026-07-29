@@ -15,10 +15,11 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 def list_notifications(
     skip: int = 0,
     limit: int = 100,
+    masquees: bool = False,
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    return notification_service.list_notifications(db, current_user, skip, limit)
+    return notification_service.list_notifications(db, current_user, skip, limit, masquees)
 
 
 @router.post("/", response_model=NotificationRead, status_code=status.HTTP_201_CREATED)
@@ -70,6 +71,20 @@ def delete_notification(
 ):
     try:
         notification_service.delete_notification(db, current_user, notification_id)
+    except NotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except Forbidden as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+
+
+@router.post("/{notification_id}/restaurer", response_model=NotificationRead)
+def restaurer_notification(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(get_current_user),
+):
+    try:
+        return notification_service.restaurer_notification(db, current_user, notification_id)
     except NotFound as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except Forbidden as exc:
