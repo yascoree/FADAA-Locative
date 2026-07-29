@@ -219,6 +219,11 @@ def annuler_paiement(db: Session, current_user: Utilisateur, paiement_id: int, m
     quittance = db.query(Quittance).filter(Quittance.paiement_id == paiement.id, Quittance.deleted_at.is_(None)).first()
     if quittance and quittance.statut == QuittanceStatus.EMISE:
         quittance.statut = QuittanceStatus.ANNULEE
+        db.commit()
+        db.refresh(quittance)
+        # Même document, régénéré pour afficher la référence d'annulation
+        # (qui a annulé, quand) sans créer de second fichier.
+        quittance.fichier_pdf = generate_receipt_pdf(db, quittance)
     db.commit()
     db.refresh(paiement)
     echeance = db.get(Echeance, paiement.echeance_id)

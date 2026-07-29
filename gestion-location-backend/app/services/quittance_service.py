@@ -117,7 +117,8 @@ def get_quittance_pdf_path(db: Session, current_user: Utilisateur, quittance_id:
 
 def annuler_quittance(db: Session, current_user: Utilisateur, quittance_id: int) -> Quittance:
     """Une quittance ne se supprime jamais (preuve documentaire) : on la marque
-    ANNULEE, elle reste consultable dans l'historique avec ce statut."""
+    ANNULEE, elle reste consultable dans l'historique avec ce statut. Le PDF est
+    régénéré pour afficher la référence d'annulation (qui, quand)."""
     quittance = (
         db.query(Quittance)
         .filter(Quittance.id == quittance_id, Quittance.deleted_at.is_(None))
@@ -131,6 +132,9 @@ def annuler_quittance(db: Session, current_user: Utilisateur, quittance_id: int)
     if quittance.statut == QuittanceStatus.ANNULEE:
         raise BadRequest("Impossible d'annuler cette quittance : elle est déjà annulée.")
     quittance.statut = QuittanceStatus.ANNULEE
+    db.commit()
+    db.refresh(quittance)
+    quittance.fichier_pdf = generate_receipt_pdf(db, quittance)
     db.commit()
     db.refresh(quittance)
     return quittance

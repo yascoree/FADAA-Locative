@@ -49,7 +49,15 @@ def download_quittance(
     except Forbidden as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
 
-    return FileResponse(pdf_path, media_type="application/pdf", filename=f"quittance_{quittance_id}.pdf")
+    # Le contenu du PDF change quand le paiement est annulé (même URL, même nom
+    # de fichier) : interdire toute mise en cache navigateur pour toujours servir
+    # la version courante.
+    return FileResponse(
+        pdf_path,
+        media_type="application/pdf",
+        filename=f"quittance_{quittance_id}.pdf",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @router.post("/{quittance_id}/annuler", response_model=QuittanceRead)

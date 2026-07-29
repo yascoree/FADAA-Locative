@@ -445,7 +445,7 @@ export default function AgencePaiementsPage() {
                     </span>
                   </td>
                   <td>
-                    {p.quittance && p.statut !== PAIEMENT_STATUS.ANNULE ? (
+                    {p.quittance ? (
                       <button
                         type="button"
                         className={styles.btnOutline}

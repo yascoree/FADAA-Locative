@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from reportlab.lib.colors import HexColor
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
@@ -10,7 +11,7 @@ from app.models.bien import Bien
 from app.models.echeance import Echeance
 from app.models.lot import Lot
 from app.models.paiement import ModePaiement, Paiement
-from app.models.quittance import Quittance
+from app.models.quittance import Quittance, QuittanceStatus
 from app.models.utilisateur import Utilisateur
 
 MODE_PAIEMENT_LABELS = {
@@ -39,7 +40,10 @@ def _format_amount(value):
 def generate_receipt_pdf(db: Session, quittance: Quittance) -> str:
     """Génère le PDF d'une quittance et retourne son chemin absolu. Régénère à
     chaque appel : sûr à ré-invoquer (ex: téléchargement d'une quittance dont le
-    fichier a été perdu ou n'avait pas encore été généré)."""
+    fichier a été perdu, ou pour refléter une annulation). Un seul et même
+    fichier par paiement (quittance_{id}.pdf) : si le paiement a été annulé, le
+    document reste identique mais affiche en plus une petite référence
+    indiquant qui a annulé le paiement et quand."""
     paiement = db.get(Paiement, quittance.paiement_id)
     echeance = db.get(Echeance, paiement.echeance_id)
     bail = db.get(Bail, echeance.bail_id)
@@ -100,6 +104,21 @@ def generate_receipt_pdf(db: Session, quittance: Quittance) -> str:
     line("Montant payé :", _format_amount(paiement.montant))
     line("Mode de paiement :", MODE_PAIEMENT_LABELS.get(paiement.mode_paiement, "—"))
     line("Date de paiement :", _format_date(paiement.date_paiement))
+
+    if quittance.statut == QuittanceStatus.ANNULEE:
+        annulateur = db.get(Utilisateur, paiement.annule_par) if paiement.annule_par else None
+        y -= 4 * mm
+        c.setFillColor(HexColor("#c0392b"))
+        c.setFont("Helvetica-Bold", 10)
+        annulateur_label = f"{annulateur.prenom} {annulateur.nom}" if annulateur else "—"
+        c.drawString(
+            left,
+            y,
+            f"Paiement annulé le {_format_date(paiement.date_annulation)} par {annulateur_label}"
+            + (f" — Motif : {paiement.motif_annulation}" if paiement.motif_annulation else ""),
+        )
+        c.setFillColor(HexColor("#000000"))
+        y -= 7 * mm
 
     c.setFont("Helvetica-Oblique", 8)
     c.drawString(left, 15 * mm, "Document généré automatiquement par FADAA Locative.")
