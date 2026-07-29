@@ -6,15 +6,21 @@ import {
   fetchBiens,
   fetchBaux,
   fetchEcheances,
+  fetchPaiements,
+  createPaiement,
   updateEcheance,
   deleteEcheance,
   ECHEANCE_STATUS,
   ECHEANCE_STATUS_LABELS,
+  PAIEMENT_STATUS,
+  MODE_PAIEMENT,
+  MODE_PAIEMENT_LABELS,
 } from "@/lib/properties";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
+import SelectField from "@/components/SelectField";
 import { fetchGestionnairePermissionIndex } from "@/lib/mandates";
 import styles from "../agence.module.css";
 
@@ -49,12 +55,14 @@ function isOverdue(echeance) {
 }
 
 const STATUS_OPTIONS = Object.entries(ECHEANCE_STATUS_LABELS).map(([value, label]) => ({ value, label }));
+const MODE_OPTIONS = Object.entries(MODE_PAIEMENT_LABELS).map(([value, label]) => ({ value, label }));
 const PAGE_SIZE = 10;
 
 export default function AgenceEcheancesPage() {
   const [echeances, setEcheances] = useState([]);
   const [baux, setBaux] = useState([]);
   const [biens, setBiens] = useState([]);
+  const [paiements, setPaiements] = useState([]);
   const [permIndex, setPermIndex] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -74,19 +82,26 @@ export default function AgenceEcheancesPage() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
 
+  const [payTarget, setPayTarget] = useState(null);
+  const [payDraft, setPayDraft] = useState(null);
+  const [payBusy, setPayBusy] = useState(false);
+  const [payBanner, setPayBanner] = useState(null);
+
   useEffect(() => {
     async function init() {
       setIsLoading(true);
       try {
-        const [echeancesList, bauxList, biensList, permissionIndex] = await Promise.all([
+        const [echeancesList, bauxList, biensList, paiementsList, permissionIndex] = await Promise.all([
           fetchEcheances(),
           fetchBaux(),
           fetchBiens(),
+          fetchPaiements(),
           fetchGestionnairePermissionIndex(),
         ]);
         setEcheances(echeancesList);
         setBaux(bauxList);
         setBiens(biensList);
+        setPaiements(paiementsList);
         setPermIndex(permissionIndex);
       } catch (err) {
         setLoadError(extractErrorMessage(err));
@@ -96,6 +111,12 @@ export default function AgenceEcheancesPage() {
     }
     init();
   }, []);
+
+  function paidSoFar(echeanceId) {
+    return paiements
+      .filter((p) => p.echeance_id === echeanceId && p.statut !== PAIEMENT_STATUS.ANNULE)
+      .reduce((sum, p) => sum + Number(p.montant || 0), 0);
+  }
 
   const stats = useMemo(() => {
     return {
@@ -193,6 +214,61 @@ export default function AgenceEcheancesPage() {
       setDeleteError(extractErrorMessage(err));
     } finally {
       setDeleteBusy(false);
+    }
+  }
+
+  // Le statut réel est recalculé et persisté côté serveur dès la création du
+  // paiement (voir sync_echeance_statut) — on se contente ici de refléter la
+  // même valeur localement, sans appel réseau supplémentaire.
+  function reconcileEcheanceLocal(echeanceId, extraMontant) {
+    const echeance = echeances.find((e) => e.id === echeanceId);
+    if (!echeance || echeance.montant_du === null || echeance.montant_du === undefined) return;
+    const paidTotal = paidSoFar(echeanceId) + Number(extraMontant || 0);
+    const newStatus =
+      paidTotal >= Number(echeance.montant_du)
+        ? ECHEANCE_STATUS.PAYE
+        : paidTotal > 0
+          ? ECHEANCE_STATUS.PARTIEL
+          : ECHEANCE_STATUS.IMPAYE;
+    if (newStatus === echeance.statut) return;
+    setEcheances((prev) => prev.map((e) => (e.id === echeanceId ? { ...e, statut: newStatus } : e)));
+  }
+
+  function openPay(echeance) {
+    const reste = Number(echeance.montant_du || 0) - paidSoFar(echeance.id);
+    setPayTarget(echeance);
+    setPayDraft({
+      montant: reste > 0 ? String(reste) : "",
+      mode_paiement: String(MODE_PAIEMENT.VIREMENT),
+    });
+    setPayBanner(null);
+  }
+
+  function closePay() {
+    if (payBusy) return;
+    setPayTarget(null);
+    setPayDraft(null);
+  }
+
+  async function handleSubmitPay(e) {
+    e.preventDefault();
+    if (!payTarget) return;
+    setPayBusy(true);
+    setPayBanner(null);
+    try {
+      const created = await createPaiement({
+        echeanceId: payTarget.id,
+        montant: payDraft.montant,
+        modePaiement: Number(payDraft.mode_paiement),
+      });
+      setPaiements((prev) => [...prev, created]);
+      reconcileEcheanceLocal(payTarget.id, payDraft.montant);
+      setPayTarget(null);
+      setPayDraft(null);
+    } catch (err) {
+      setPayBanner({ type: "error", message: extractErrorMessage(err) });
+    } finally {
+      setPayBusy(false);
     }
   }
 
@@ -337,23 +413,22 @@ export default function AgenceEcheancesPage() {
                       {(() => {
                         const bienId = e.bail?.lot?.bien_id;
                         const proprietaireId = biens.find((b) => b.id === bienId)?.proprietaire_id;
-                        const canUpdate = permIndex?.hasForBien(bienId, proprietaireId, "UPDATE_DUE_DATE");
+                        const notPaid = e.statut !== ECHEANCE_STATUS.PAYE;
+                        const canPay = permIndex?.hasForBien(bienId, proprietaireId, "CREATE_PAYMENT") && notPaid;
+                        const canUpdate =
+                          permIndex?.hasForBien(bienId, proprietaireId, "UPDATE_DUE_DATE") &&
+                          e.statut === ECHEANCE_STATUS.IMPAYE;
                         const canDelete = permIndex?.hasForBien(bienId, proprietaireId, "DELETE_DUE_DATE");
-                        if (!canUpdate && !canDelete) return <span className={styles.empty}>—</span>;
+                        if (!canPay && !canUpdate && !canDelete) return <span className={styles.empty}>—</span>;
                         return (
                           <div className={styles.tableActions}>
+                            {canPay && (
+                              <button type="button" className={styles.iconBtn} onClick={() => openPay(e)} title="Payer">
+                                <i className="bi bi-cash-coin" />
+                              </button>
+                            )}
                             {canUpdate && (
-                              <button
-                                type="button"
-                                className={styles.iconBtn}
-                                onClick={() => openEdit(e)}
-                                disabled={e.statut !== ECHEANCE_STATUS.IMPAYE}
-                                title={
-                                  e.statut !== ECHEANCE_STATUS.IMPAYE
-                                    ? "Un paiement est déjà associé à cette échéance : elle ne peut plus être modifiée."
-                                    : "Modifier"
-                                }
-                              >
+                              <button type="button" className={styles.iconBtn} onClick={() => openEdit(e)} title="Modifier">
                                 <i className="bi bi-pencil" />
                               </button>
                             )}
@@ -441,6 +516,50 @@ export default function AgenceEcheancesPage() {
                 {editBusy ? "Enregistrement..." : "Enregistrer"}
               </button>
               <button type="button" className={styles.btnOutline} onClick={closeEdit} disabled={editBusy}>
+                <i className="bi bi-x-lg" />
+                Annuler
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* ---- Payer une échéance ---- */}
+      <Modal isOpen={!!payTarget} onClose={closePay} title="Payer l'échéance">
+        {payTarget && payDraft && (
+          <form onSubmit={handleSubmitPay}>
+            <Banner banner={payBanner} />
+            <p className={styles.sectionSubtitle} style={{ marginBottom: "0.3rem" }}>
+              {bailLabel(payTarget.bail)}
+            </p>
+            <p className={styles.sectionSubtitle} style={{ marginBottom: "1rem" }}>
+              Montant dû : {formatCurrency(payTarget.montant_du)}
+              {" · "}Reste à payer : {formatCurrency(Math.max(0, Number(payTarget.montant_du || 0) - paidSoFar(payTarget.id)))}
+            </p>
+            <TextField
+              label="Montant payé (MAD)"
+              name="montant"
+              type="number"
+              step="0.01"
+              min="0"
+              value={payDraft.montant}
+              onChange={(e) => setPayDraft((d) => ({ ...d, montant: e.target.value }))}
+              required
+            />
+            <SelectField
+              label="Mode de paiement"
+              name="mode_paiement"
+              options={MODE_OPTIONS}
+              value={payDraft.mode_paiement}
+              onChange={(e) => setPayDraft((d) => ({ ...d, mode_paiement: e.target.value }))}
+            />
+
+            <div className={styles.editActions} style={{ marginTop: "1.2rem" }}>
+              <button type="submit" className={styles.btn} disabled={payBusy}>
+                <i className="bi bi-check-lg" />
+                {payBusy ? "Enregistrement..." : "Enregistrer le paiement"}
+              </button>
+              <button type="button" className={styles.btnOutline} onClick={closePay} disabled={payBusy}>
                 <i className="bi bi-x-lg" />
                 Annuler
               </button>
