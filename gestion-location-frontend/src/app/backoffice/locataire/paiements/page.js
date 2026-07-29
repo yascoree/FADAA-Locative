@@ -13,6 +13,7 @@ import {
 } from "@/lib/properties";
 import StatCard from "@/components/StatCard";
 import FilterChip from "@/components/FilterChip";
+import FilterSelect from "@/components/FilterSelect";
 import styles from "../locataire.module.css";
 
 function Banner({ banner }) {
@@ -163,20 +164,14 @@ export default function LocatairePaiementsPage() {
         </div>
 
         <div className={styles.filtersRow}>
-          <select
+          <FilterSelect
             value={modeFilter}
-            onChange={(e) => {
-              setModeFilter(e.target.value);
+            onChange={(v) => {
+              setModeFilter(v);
               setCurrentPage(1);
             }}
-          >
-            <option value="">Tous les modes</option>
-            {MODE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            options={[{ value: "", label: "Tous les modes" }, ...MODE_OPTIONS]}
+          />
           <FilterChip
             checked={monthOnly}
             onChange={(checked) => {

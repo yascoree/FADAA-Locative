@@ -18,6 +18,7 @@ import {
 import { fetchBiens } from "@/lib/properties";
 import StatCard from "@/components/StatCard";
 import SearchableSelect from "@/components/SearchableSelect";
+import FilterSelect from "@/components/FilterSelect";
 import styles from "./permissions.module.css";
 
 const RESOURCE_ICONS = {
@@ -257,14 +258,15 @@ export default function GestionPermissionPage() {
             </div>
             <div className={`${styles.inviteField} ${styles.scopeField}`}>
               <label htmlFor="gestionnaire-scope">Portée</label>
-              <select id="gestionnaire-scope" value={scopeBienId} onChange={(e) => setScopeBienId(e.target.value)}>
-                <option value="all">Tous mes biens</option>
-                {biens.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.designation || `Bien #${b.id}`}
-                  </option>
-                ))}
-              </select>
+              <FilterSelect
+                id="gestionnaire-scope"
+                value={scopeBienId}
+                onChange={setScopeBienId}
+                options={[
+                  { value: "all", label: "Tous mes biens" },
+                  ...biens.map((b) => ({ value: b.id, label: b.designation || `Bien #${b.id}` })),
+                ]}
+              />
             </div>
             <button type="submit" className={styles.inviteButton} disabled={inviteBusy || !selectedGestionnaire}>
               <i className="bi bi-plus-lg" />

@@ -5,6 +5,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
 import { fetchEcheances, fetchBiens, ECHEANCE_STATUS, ECHEANCE_STATUS_LABELS } from "@/lib/properties";
 import StatCard from "@/components/StatCard";
 import FilterChip from "@/components/FilterChip";
+import FilterSelect from "@/components/FilterSelect";
 import styles from "../locataire.module.css";
 
 function Banner({ banner }) {
@@ -128,20 +129,14 @@ export default function LocataireEcheancesPage() {
         </div>
 
         <div className={styles.filtersRow}>
-          <select
+          <FilterSelect
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
+            onChange={(v) => {
+              setStatusFilter(v);
               setCurrentPage(1);
             }}
-          >
-            <option value="">Tous les statuts</option>
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            options={[{ value: "", label: "Tous les statuts" }, ...STATUS_OPTIONS]}
+          />
           <FilterChip
             checked={overdueOnly}
             onChange={(checked) => {

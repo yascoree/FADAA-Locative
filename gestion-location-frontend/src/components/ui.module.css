@@ -748,3 +748,125 @@
   opacity: 1;
   transform: scale(1);
 }
+
+/* ---------- FilterSelect ---------- */
+
+.filterSelectWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.filterSelectTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 170px;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--brand-border);
+  border-radius: var(--brand-radius-field);
+  background: var(--brand-surface);
+  color: var(--brand-text);
+  font-size: 0.84rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.filterSelectTrigger:hover {
+  border-color: var(--brand-primary);
+}
+
+.filterSelectTrigger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.filterSelectTriggerOpen {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px var(--brand-primary-soft);
+}
+
+.filterSelectValue {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.filterSelectChevron {
+  font-size: 0.72rem;
+  color: var(--brand-text-muted);
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.filterSelectTriggerOpen .filterSelectChevron {
+  transform: rotate(180deg);
+  color: var(--brand-primary);
+}
+
+.filterSelectDropdown {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  min-width: 100%;
+  width: max-content;
+  max-width: 320px;
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem;
+  background: var(--brand-surface);
+  border: 1px solid var(--brand-border);
+  border-radius: var(--brand-radius-card);
+  box-shadow: var(--brand-shadow-lift);
+  max-height: 280px;
+  overflow-y: auto;
+  animation: filterSelectPopIn 0.14s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes filterSelectPopIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.filterSelectOption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: none;
+  background: none;
+  border-radius: calc(var(--brand-radius-field) - 2px);
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.84rem;
+  color: var(--brand-text);
+  white-space: nowrap;
+  transition: background 0.1s ease;
+}
+
+.filterSelectOption:hover,
+.filterSelectOptionActive {
+  background: var(--brand-primary-soft);
+}
+
+.filterSelectOptionSelected {
+  color: var(--brand-primary-dark);
+  font-weight: 650;
+}
+
+.filterSelectOptionSelected i {
+  font-size: 0.78rem;
+  color: var(--brand-primary);
+}

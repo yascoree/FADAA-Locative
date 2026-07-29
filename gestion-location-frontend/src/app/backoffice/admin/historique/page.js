@@ -5,6 +5,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
 import { fetchHistorique, HISTORIQUE_ACTIONS } from "@/lib/historique";
 import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
+import FilterSelect from "@/components/FilterSelect";
 import styles from "../admin.module.css";
 
 function Banner({ banner }) {
@@ -145,41 +146,26 @@ export default function AdminHistoriquePage() {
               setCurrentPage(1);
             }}
           />
-          <select
+          <FilterSelect
             value={moduleFilter}
-            onChange={(e) => {
-              setModuleFilter(e.target.value);
+            onChange={(v) => {
+              setModuleFilter(v);
               setCurrentPage(1);
             }}
-          >
-            <option value="">Tous les modules</option>
-            {modules.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-          <select
+            options={[{ value: "", label: "Tous les modules" }, ...modules.map((m) => ({ value: m, label: m }))]}
+          />
+          <FilterSelect
             value={actionFilter}
-            onChange={(e) => {
-              setActionFilter(e.target.value);
+            onChange={(v) => {
+              setActionFilter(v);
               setCurrentPage(1);
             }}
-          >
-            <option value="">Toutes les actions</option>
-            {HISTORIQUE_ACTIONS.map((a) => (
-              <option key={a} value={a}>
-                {ACTION_LABELS[a] || a}
-              </option>
-            ))}
-          </select>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            {SORT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            options={[
+              { value: "", label: "Toutes les actions" },
+              ...HISTORIQUE_ACTIONS.map((a) => ({ value: a, label: ACTION_LABELS[a] || a })),
+            ]}
+          />
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>

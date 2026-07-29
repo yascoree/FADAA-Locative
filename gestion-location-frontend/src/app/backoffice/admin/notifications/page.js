@@ -14,6 +14,7 @@ import {
 } from "@/lib/notifications";
 import StatCard from "@/components/StatCard";
 import ToggleSwitch from "@/components/ToggleSwitch";
+import FilterSelect from "@/components/FilterSelect";
 import styles from "../admin.module.css";
 
 function Banner({ banner }) {
@@ -197,19 +198,20 @@ export default function AdminNotificationsPage() {
 
         <div className={styles.filtersRow}>
           <ToggleSwitch checked={showMasquees} onChange={setShowMasquees} label="Voir les notifications masquées" />
-          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-            <option value="">Tous les types</option>
-            {TYPE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="">Toutes</option>
-            <option value={NOTIFICATION_STATUS.NON_LUE}>Non lues</option>
-            <option value={NOTIFICATION_STATUS.LUE}>Lues</option>
-          </select>
+          <FilterSelect
+            value={typeFilter}
+            onChange={setTypeFilter}
+            options={[{ value: "", label: "Tous les types" }, ...TYPE_OPTIONS]}
+          />
+          <FilterSelect
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={[
+              { value: "", label: "Toutes" },
+              { value: NOTIFICATION_STATUS.NON_LUE, label: "Non lues" },
+              { value: NOTIFICATION_STATUS.LUE, label: "Lues" },
+            ]}
+          />
         </div>
 
         <div className={styles.card} style={{ padding: 0 }}>
