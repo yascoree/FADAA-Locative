@@ -8,6 +8,7 @@ import {
   UNLIMITED,
   LIMIT_FIELDS,
   LIMIT_TO_USAGE_KEY,
+  PLAN_COLOR_OPTIONS,
   formatLimit,
   fetchUsers,
   fetchPlans,
@@ -38,6 +39,29 @@ function Banner({ banner }) {
   );
 }
 
+function PlanColorPicker({ value, onChange }) {
+  return (
+    <div className={styles.colorSwatchGroup} role="radiogroup" aria-label="Couleur du plan">
+      {PLAN_COLOR_OPTIONS.map((opt) => (
+        <button
+          type="button"
+          key={opt.value}
+          role="radio"
+          aria-checked={value === opt.value}
+          title={opt.label}
+          className={`${styles.colorSwatchBtn} ${styles[`colorSwatch${capitalizeTone(opt.value)}`]} ${
+            value === opt.value ? styles.colorSwatchBtnActive : ""
+          }`}
+          onClick={() => onChange(opt.value)}
+        >
+          {value === opt.value && <i className="bi bi-check-lg" />}
+          <span className={styles.colorSwatchLabel}>{opt.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function badgeClass(status) {
   if (status === SUBSCRIPTION_STATUS.ACTIF) return styles.badgeActive;
   if (status === SUBSCRIPTION_STATUS.SUSPENDU) return styles.badgeSuspended;
@@ -50,11 +74,8 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-const PLAN_TONE_CYCLE = ["Olive", "Navy", "Charcoal"];
-
-function planTone(plan, nonTrialIndex) {
-  if (plan.is_trial) return "Terracotta";
-  return PLAN_TONE_CYCLE[nonTrialIndex % PLAN_TONE_CYCLE.length];
+function capitalizeTone(color) {
+  return color ? color[0].toUpperCase() + color.slice(1) : "Olive";
 }
 
 function planIcon(plan, isPopular) {
@@ -98,6 +119,7 @@ function planToDraft(plan) {
     description: plan.description || "",
     price: String(plan.price),
     duration_days: String(plan.duration_days),
+    color: plan.color || "olive",
     limits: Object.fromEntries(LIMIT_FIELDS.map((f) => [f.key, plan[f.key] === UNLIMITED ? "0" : String(plan[f.key])])),
     unlimited: Object.fromEntries(LIMIT_FIELDS.map((f) => [f.key, plan[f.key] === UNLIMITED])),
   };
@@ -114,6 +136,10 @@ function diffEntries(plan, draft) {
   }
   if (Number(draft.duration_days) !== Number(plan.duration_days)) {
     entries.push({ label: "Durée", before: `${plan.duration_days} j`, after: `${draft.duration_days} j` });
+  }
+  if (draft.color !== (plan.color || "olive")) {
+    const colorLabel = (value) => PLAN_COLOR_OPTIONS.find((c) => c.value === value)?.label || value;
+    entries.push({ label: "Couleur", before: colorLabel(plan.color || "olive"), after: colorLabel(draft.color) });
   }
   LIMIT_FIELDS.forEach((f) => {
     const newVal = draft.unlimited[f.key] ? UNLIMITED : Number(draft.limits[f.key] || 0);
@@ -169,6 +195,7 @@ export default function AdminAbonnementsPage() {
     price: "",
     duration_days: "30",
     is_trial: false,
+    color: "olive",
     limits: emptyLimits("0"),
     unlimited: emptyLimits(true),
   });
@@ -209,7 +236,18 @@ export default function AdminAbonnementsPage() {
     init();
   }, []);
 
-  const activePlans = useMemo(() => plans.filter((p) => p.is_active), [plans]);
+  // Free Trial toujours en premier, puis les plans payants du moins cher au plus cher
+  // (Trial - PRO - Enterprise) — la table subscription_plans n'a pas d'ordre garanti.
+  const sortedPlans = useMemo(
+    () =>
+      [...plans].sort((a, b) => {
+        if (a.is_trial !== b.is_trial) return a.is_trial ? -1 : 1;
+        return a.price - b.price;
+      }),
+    [plans]
+  );
+
+  const activePlans = useMemo(() => sortedPlans.filter((p) => p.is_active), [sortedPlans]);
 
   const rows = useMemo(() => {
     return subscriptions
@@ -228,13 +266,11 @@ export default function AdminAbonnementsPage() {
 
   const planTones = useMemo(() => {
     const map = {};
-    let nonTrialIndex = 0;
-    plans.forEach((plan) => {
-      map[plan.id] = planTone(plan, nonTrialIndex);
-      if (!plan.is_trial) nonTrialIndex += 1;
+    sortedPlans.forEach((plan) => {
+      map[plan.id] = capitalizeTone(plan.color);
     });
     return map;
-  }, [plans]);
+  }, [sortedPlans]);
 
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -310,6 +346,7 @@ export default function AdminAbonnementsPage() {
         description: editDraft.description || null,
         price: Number(editDraft.price),
         duration_days: Number(editDraft.duration_days),
+        color: editDraft.color,
       };
       LIMIT_FIELDS.forEach((f) => {
         payload[f.key] = editDraft.unlimited[f.key] ? UNLIMITED : Number(editDraft.limits[f.key] || 0);
@@ -363,6 +400,7 @@ export default function AdminAbonnementsPage() {
         price: Number(newPlan.price || 0),
         duration_days: Number(newPlan.duration_days),
         is_trial: newPlan.is_trial,
+        color: newPlan.color,
       };
       LIMIT_FIELDS.forEach((f) => {
         payload[f.key] = newPlan.unlimited[f.key] ? UNLIMITED : Number(newPlan.limits[f.key] || 0);
@@ -375,6 +413,7 @@ export default function AdminAbonnementsPage() {
         price: "",
         duration_days: "30",
         is_trial: false,
+        color: "olive",
         limits: emptyLimits("0"),
         unlimited: emptyLimits(true),
       });
@@ -491,13 +530,11 @@ export default function AdminAbonnementsPage() {
 
         <div className={styles.plansGrid}>
           {(() => {
-            const cheapestPaid = plans
-              .filter((p) => !p.is_trial)
-              .sort((a, b) => a.price - b.price)[0];
-            return plans.map((plan) => {
+            const cheapestPaid = sortedPlans.find((p) => !p.is_trial);
+            return sortedPlans.map((plan) => {
               const isEditing = editingPlanId === plan.id;
               const impactCount = subscriptions.filter((s) => s.plan_id === plan.id).length;
-              const tone = planTones[plan.id];
+              const tone = isEditing && editDraft ? capitalizeTone(editDraft.color) : planTones[plan.id];
               const isPopular = !!cheapestPaid && plan.id === cheapestPaid.id;
               return (
                 <div
@@ -565,7 +602,17 @@ export default function AdminAbonnementsPage() {
 
                 {isEditing && editDraft && (
                   <div className={styles.editForm}>
-                    <div className={styles.editGrid}>
+                    <div className={styles.editFormHeader}>
+                      <span className={styles.editFormTitle}>
+                        <i className="bi bi-sliders" />
+                        Modifier le plan
+                      </span>
+                      <button type="button" className={styles.editFormClose} onClick={cancelEdit} aria-label="Fermer">
+                        <i className="bi bi-x-lg" />
+                      </button>
+                    </div>
+
+                    <div className={styles.editRow}>
                       <label className={styles.field}>
                         Nom
                         <input
@@ -582,6 +629,18 @@ export default function AdminAbonnementsPage() {
                           onChange={(e) => setEditDraft((d) => ({ ...d, description: e.target.value }))}
                         />
                       </label>
+                    </div>
+
+                    <div className={styles.editSectionDivider}>
+                      <i className="bi bi-palette" />
+                      Apparence
+                    </div>
+                    <PlanColorPicker
+                      value={editDraft.color}
+                      onChange={(color) => setEditDraft((d) => ({ ...d, color }))}
+                    />
+
+                    <div className={styles.editRow}>
                       <label className={styles.field}>
                         Prix (MAD)
                         <input
@@ -599,19 +658,31 @@ export default function AdminAbonnementsPage() {
                           onChange={(e) => setEditDraft((d) => ({ ...d, duration_days: e.target.value }))}
                         />
                       </label>
+                    </div>
+
+                    <div className={styles.editSectionDivider}>
+                      <i className="bi bi-speedometer2" />
+                      Limites d&apos;usage
+                    </div>
+
+                    <div className={styles.limitEditList}>
                       {LIMIT_FIELDS.map((f) => (
-                        <label className={styles.field} key={f.key}>
-                          {f.label}
+                        <div className={styles.limitEditRow} key={f.key}>
+                          <span className={styles.limitEditIcon}>
+                            <i className={`bi ${f.icon}`} />
+                          </span>
+                          <span className={styles.limitEditLabel}>{f.label}</span>
                           <input
                             type="number"
                             min="0"
+                            className={styles.limitEditInput}
                             disabled={editDraft.unlimited[f.key]}
                             value={editDraft.limits[f.key]}
                             onChange={(e) =>
                               setEditDraft((d) => ({ ...d, limits: { ...d.limits, [f.key]: e.target.value } }))
                             }
                           />
-                          <span className={`${styles.field} ${styles.checkboxLabel}`}>
+                          <label className={styles.toggleSwitch}>
                             <input
                               type="checkbox"
                               checked={editDraft.unlimited[f.key]}
@@ -622,9 +693,12 @@ export default function AdminAbonnementsPage() {
                                 }))
                               }
                             />
-                            ∞ Illimité
-                          </span>
-                        </label>
+                            <span className={styles.toggleTrack}>
+                              <span className={styles.toggleThumb} />
+                            </span>
+                            <span className={styles.toggleLabel}>∞ Illimité</span>
+                          </label>
+                        </div>
                       ))}
                     </div>
 
@@ -679,87 +753,188 @@ export default function AdminAbonnementsPage() {
         </div>
 
         {/* ---- Créer un plan ---- */}
-        <form className={styles.newPlanForm} onSubmit={handleCreatePlan}>
-          <h3 className={styles.cardTitle}>
-            <i className="bi bi-plus-circle-fill" style={{ color: "var(--primary)" }} />
-            Créer un plan
-          </h3>
-          <Banner banner={createBanner} />
-          <div className={styles.newPlanGrid}>
-            <label className={styles.field}>
-              Nom
-              <input
-                type="text"
-                value={newPlan.name}
-                onChange={(e) => setNewPlan((p) => ({ ...p, name: e.target.value }))}
-                required
-              />
-            </label>
-            <label className={styles.field}>
-              Description
-              <input
-                type="text"
-                value={newPlan.description}
-                onChange={(e) => setNewPlan((p) => ({ ...p, description: e.target.value }))}
-              />
-            </label>
-            <label className={styles.field}>
-              Prix (MAD)
-              <input
-                type="number"
-                step="0.01"
-                value={newPlan.price}
-                onChange={(e) => setNewPlan((p) => ({ ...p, price: e.target.value }))}
-                required
-              />
-            </label>
-            <label className={styles.field}>
-              Durée (jours)
-              <input
-                type="number"
-                value={newPlan.duration_days}
-                onChange={(e) => setNewPlan((p) => ({ ...p, duration_days: e.target.value }))}
-                required
-              />
-            </label>
-            <label className={`${styles.field} ${styles.checkboxLabel}`}>
-              <input
-                type="checkbox"
-                checked={newPlan.is_trial}
-                onChange={(e) => setNewPlan((p) => ({ ...p, is_trial: e.target.checked }))}
-              />
-              Plan d&apos;essai
-            </label>
-            {LIMIT_FIELDS.map((f) => (
-              <label className={styles.field} key={f.key}>
-                {f.label}
-                <input
-                  type="number"
-                  min="0"
-                  disabled={newPlan.unlimited[f.key]}
-                  value={newPlan.limits[f.key]}
-                  onChange={(e) =>
-                    setNewPlan((p) => ({ ...p, limits: { ...p.limits, [f.key]: e.target.value } }))
-                  }
-                />
-                <span className={`${styles.field} ${styles.checkboxLabel}`}>
-                  <input
-                    type="checkbox"
-                    checked={newPlan.unlimited[f.key]}
-                    onChange={(e) =>
-                      setNewPlan((p) => ({ ...p, unlimited: { ...p.unlimited, [f.key]: e.target.checked } }))
-                    }
-                  />
-                  ∞ Illimité
-                </span>
-              </label>
-            ))}
+        <div className={styles.newPlanCard}>
+          <div className={styles.newPlanHeader}>
+            <span className={styles.newPlanHeaderIcon}>
+              <i className="bi bi-stars" />
+            </span>
+            <div>
+              <h3 className={styles.newPlanTitle}>Créer un plan</h3>
+              <p className={styles.newPlanSubtitle}>
+                Tarification et limites d&apos;usage — l&apos;aperçu se met à jour en direct.
+              </p>
+            </div>
           </div>
-          <button type="submit" className={styles.btn} disabled={createBusy}>
-            <i className="bi bi-plus-lg" />
-            {createBusy ? "Création..." : "Créer un plan"}
-          </button>
-        </form>
+          <Banner banner={createBanner} />
+
+          <div className={styles.newPlanLayout}>
+            <form className={styles.newPlanForm} onSubmit={handleCreatePlan}>
+              <div className={`${styles.editSectionDivider} ${styles.editSectionDividerFirst}`}>
+                <i className="bi bi-card-text" />
+                Informations générales
+              </div>
+              <div className={styles.editRow}>
+                <label className={styles.field}>
+                  Nom
+                  <input
+                    type="text"
+                    value={newPlan.name}
+                    onChange={(e) => setNewPlan((p) => ({ ...p, name: e.target.value }))}
+                    required
+                  />
+                </label>
+                <label className={styles.field}>
+                  Description
+                  <input
+                    type="text"
+                    value={newPlan.description}
+                    onChange={(e) => setNewPlan((p) => ({ ...p, description: e.target.value }))}
+                  />
+                </label>
+              </div>
+
+              <div className={styles.editSectionDivider}>
+                <i className="bi bi-palette" />
+                Apparence
+              </div>
+              <PlanColorPicker value={newPlan.color} onChange={(color) => setNewPlan((p) => ({ ...p, color }))} />
+
+              <div className={styles.editSectionDivider}>
+                <i className="bi bi-tag" />
+                Tarification
+              </div>
+              <div className={styles.editRow}>
+                <label className={styles.field}>
+                  Prix (MAD)
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={newPlan.price}
+                    onChange={(e) => setNewPlan((p) => ({ ...p, price: e.target.value }))}
+                    required
+                  />
+                </label>
+                <label className={styles.field}>
+                  Durée (jours)
+                  <input
+                    type="number"
+                    value={newPlan.duration_days}
+                    onChange={(e) => setNewPlan((p) => ({ ...p, duration_days: e.target.value }))}
+                    required
+                  />
+                </label>
+              </div>
+
+              <label className={styles.toggleSwitch} style={{ marginTop: "0.9rem" }}>
+                <input
+                  type="checkbox"
+                  checked={newPlan.is_trial}
+                  onChange={(e) => setNewPlan((p) => ({ ...p, is_trial: e.target.checked }))}
+                />
+                <span className={styles.toggleTrack}>
+                  <span className={styles.toggleThumb} />
+                </span>
+                <span className={styles.toggleLabel}>Plan d&apos;essai</span>
+              </label>
+
+              <div className={styles.editSectionDivider}>
+                <i className="bi bi-speedometer2" />
+                Limites d&apos;usage
+              </div>
+
+              <div className={styles.limitEditList}>
+                {LIMIT_FIELDS.map((f) => (
+                  <div className={styles.limitEditRow} key={f.key}>
+                    <span className={styles.limitEditIcon}>
+                      <i className={`bi ${f.icon}`} />
+                    </span>
+                    <span className={styles.limitEditLabel}>{f.label}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      className={styles.limitEditInput}
+                      disabled={newPlan.unlimited[f.key]}
+                      value={newPlan.limits[f.key]}
+                      onChange={(e) =>
+                        setNewPlan((p) => ({ ...p, limits: { ...p.limits, [f.key]: e.target.value } }))
+                      }
+                    />
+                    <label className={styles.toggleSwitch}>
+                      <input
+                        type="checkbox"
+                        checked={newPlan.unlimited[f.key]}
+                        onChange={(e) =>
+                          setNewPlan((p) => ({ ...p, unlimited: { ...p.unlimited, [f.key]: e.target.checked } }))
+                        }
+                      />
+                      <span className={styles.toggleTrack}>
+                        <span className={styles.toggleThumb} />
+                      </span>
+                      <span className={styles.toggleLabel}>∞ Illimité</span>
+                    </label>
+                  </div>
+                ))}
+              </div>
+              <button type="submit" className={styles.btn} disabled={createBusy}>
+                <i className="bi bi-plus-lg" />
+                {createBusy ? "Création..." : "Créer le plan"}
+              </button>
+            </form>
+
+            <div className={styles.newPlanPreviewWrap}>
+              <span className={styles.newPlanPreviewLabel}>
+                <i className="bi bi-eye" />
+                Aperçu en direct
+              </span>
+              {(() => {
+                const price = Number(newPlan.price || 0);
+                const previewPlan = {
+                  name: newPlan.name || "Nom du plan",
+                  description: newPlan.description,
+                  price,
+                  duration_days: Number(newPlan.duration_days || 30),
+                  is_trial: newPlan.is_trial,
+                  color: newPlan.color,
+                  ...Object.fromEntries(
+                    LIMIT_FIELDS.map((f) => [
+                      f.key,
+                      newPlan.unlimited[f.key] ? UNLIMITED : Number(newPlan.limits[f.key] || 0),
+                    ])
+                  ),
+                };
+                const tone = capitalizeTone(previewPlan.color);
+                return (
+                  <div className={`${styles.planCard} ${styles[`planCard${tone}`]} ${styles.planCardPreview}`}>
+                    <div className={styles.planCardHeader}>
+                      <span className={styles.planIcon}>
+                        <i className={`bi ${planIcon(previewPlan, false)}`} />
+                      </span>
+                      <div className={styles.planName}>{previewPlan.name}</div>
+                      <div className={styles.planPriceRow}>
+                        <span className={styles.planPrice}>{previewPlan.price} DH</span>
+                        {priceUnit(previewPlan) && <span className={styles.planPriceUnit}>{priceUnit(previewPlan)}</span>}
+                      </div>
+                      <div className={styles.planMeta}>{billingLabel(previewPlan)}</div>
+                    </div>
+                    <div className={styles.planCardBody}>
+                      {previewPlan.description && (
+                        <p className={styles.newPlanPreviewDesc}>{previewPlan.description}</p>
+                      )}
+                      <div className={styles.planLimitsList}>
+                        {LIMIT_FIELDS.map((f) => (
+                          <div className={styles.planLimitRow} key={f.key}>
+                            <span>{f.label}</span>
+                            <span className={styles.planLimitValue}>{formatLimit(previewPlan[f.key])}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
       </div>
 
       <ConfirmationDialog
@@ -792,15 +967,19 @@ export default function AdminAbonnementsPage() {
         </p>
 
         <div className={styles.filtersRow}>
-          <input
-            type="text"
-            placeholder="Rechercher par nom, e-mail, plan, statut..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setCurrentPage(1);
-            }}
-          />
+          <div className={styles.searchInputWrap}>
+            <i className={`bi bi-search ${styles.searchIcon}`} />
+            <input
+              type="text"
+              className={styles.searchInput}
+              placeholder="Rechercher par nom, e-mail, plan, statut..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+            />
+          </div>
           <FilterSelect
             value={planFilter}
             onChange={(v) => {
@@ -809,7 +988,7 @@ export default function AdminAbonnementsPage() {
             }}
             options={[
               { value: "", label: "Tous les plans" },
-              ...plans.map((plan) => ({ value: plan.id, label: plan.name })),
+              ...sortedPlans.map((plan) => ({ value: plan.id, label: plan.name })),
             ]}
           />
           <FilterSelect
@@ -893,7 +1072,9 @@ export default function AdminAbonnementsPage() {
                     </td>
                     <td>{user.email}</td>
                     <td>
-                      {subscription.plan.name}
+                      <span className={`${styles.planPill} ${styles[`planPill${planTones[subscription.plan_id] || "Charcoal"}`]}`}>
+                        {subscription.plan.name}
+                      </span>
                       {trial && (
                         <span className={`${styles.trialPill} ${trialPillClass(trial.state)}`}>
                           {trial.state === "expired" ? "Trial expiré" : `${trial.daysRemaining} j restants`}
@@ -966,10 +1147,26 @@ export default function AdminAbonnementsPage() {
         {selectedRow && (
           <div className={styles.detailCard}>
             <div className={styles.detailHeader}>
-              <h3 className={styles.detailTitle}>
-                <i className="bi bi-person-vcard-fill" style={{ color: "var(--primary)" }} />
-                Détail de l&apos;abonnement — {selectedRow.user.prenom} {selectedRow.user.nom}
-              </h3>
+              <div className={styles.detailHeaderIdentity}>
+                <span className={styles.detailAvatar}>
+                  {`${selectedRow.user.prenom?.[0] || ""}${selectedRow.user.nom?.[0] || ""}`.toUpperCase() || "?"}
+                </span>
+                <div>
+                  <h3 className={styles.detailTitle}>
+                    {selectedRow.user.prenom} {selectedRow.user.nom}
+                  </h3>
+                  <div className={styles.detailHeaderTags}>
+                    <span
+                      className={`${styles.planPill} ${styles[`planPill${planTones[selectedRow.subscription.plan_id] || "Charcoal"}`]}`}
+                    >
+                      {selectedRow.subscription.plan.name}
+                    </span>
+                    <span className={`${styles.badge} ${badgeClass(selectedRow.subscription.status)}`}>
+                      {SUBSCRIPTION_STATUS_LABELS[selectedRow.subscription.status]}
+                    </span>
+                  </div>
+                </div>
+              </div>
               <button type="button" className={styles.btnOutline} onClick={() => selectRow(null)}>
                 <i className="bi bi-x-lg" />
                 Fermer
@@ -984,15 +1181,38 @@ export default function AdminAbonnementsPage() {
                   <i className="bi bi-person-fill" />
                   Compte
                 </div>
-                <div className={styles.detailLine}>
-                  <strong>Nom :</strong> {selectedRow.user.prenom} {selectedRow.user.nom}
-                </div>
-                <div className={styles.detailLine}>
-                  <strong>Email :</strong> {selectedRow.user.email}
-                </div>
-                <div className={styles.detailLine}>
-                  <strong>Statut du compte :</strong>{" "}
-                  {ACCOUNT_STATUS_LABELS[selectedRow.user.statut_compte] || selectedRow.user.statut_compte}
+                <div className={styles.detailInfoList}>
+                  <div className={styles.detailInfoRow}>
+                    <span className={styles.detailInfoIcon}>
+                      <i className="bi bi-person" />
+                    </span>
+                    <span className={styles.detailInfoBody}>
+                      <span className={styles.detailInfoLabel}>Nom</span>
+                      <span className={styles.detailInfoValue}>
+                        {selectedRow.user.prenom} {selectedRow.user.nom}
+                      </span>
+                    </span>
+                  </div>
+                  <div className={styles.detailInfoRow}>
+                    <span className={styles.detailInfoIcon}>
+                      <i className="bi bi-envelope" />
+                    </span>
+                    <span className={styles.detailInfoBody}>
+                      <span className={styles.detailInfoLabel}>Email</span>
+                      <span className={styles.detailInfoValue}>{selectedRow.user.email}</span>
+                    </span>
+                  </div>
+                  <div className={styles.detailInfoRow}>
+                    <span className={styles.detailInfoIcon}>
+                      <i className="bi bi-toggle2-on" />
+                    </span>
+                    <span className={styles.detailInfoBody}>
+                      <span className={styles.detailInfoLabel}>Statut du compte</span>
+                      <span className={styles.detailInfoValue}>
+                        {ACCOUNT_STATUS_LABELS[selectedRow.user.statut_compte] || selectedRow.user.statut_compte}
+                      </span>
+                    </span>
+                  </div>
                 </div>
               </div>
               <div>
@@ -1000,36 +1220,59 @@ export default function AdminAbonnementsPage() {
                   <i className="bi bi-credit-card-2-front-fill" />
                   Abonnement
                 </div>
-                <div className={styles.detailLine}>
-                  <strong>Plan :</strong> {selectedRow.subscription.plan.name} ({selectedRow.subscription.plan.price} MAD)
-                </div>
-                <div className={styles.detailLine}>
-                  <strong>Statut :</strong>{" "}
-                  <span className={`${styles.badge} ${badgeClass(selectedRow.subscription.status)}`}>
-                    {SUBSCRIPTION_STATUS_LABELS[selectedRow.subscription.status]}
-                  </span>
-                </div>
-                <div className={styles.detailLine}>
-                  <strong>Début :</strong> {formatDate(selectedRow.subscription.start_date)}
-                </div>
-                <div className={styles.detailLine}>
-                  <strong>Expiration :</strong> {formatDate(selectedRow.subscription.end_date)}
-                </div>
-                {selectedRow.subscription.trial_start && (
-                  <div className={styles.detailLine}>
-                    <strong>Essai :</strong> {formatDate(selectedRow.subscription.trial_start)} →{" "}
-                    {formatDate(selectedRow.subscription.trial_end)}
-                    {(() => {
-                      const trial = trialInfo(selectedRow.subscription);
-                      if (!trial) return null;
-                      return (
-                        <span className={`${styles.trialPill} ${trialPillClass(trial.state)}`}>
-                          {trial.state === "expired" ? "TRIAL — Expiré" : `${trial.daysRemaining} jour(s) restant(s)`}
-                        </span>
-                      );
-                    })()}
+                <div className={styles.detailInfoList}>
+                  <div className={styles.detailInfoRow}>
+                    <span className={styles.detailInfoIcon}>
+                      <i className="bi bi-tag" />
+                    </span>
+                    <span className={styles.detailInfoBody}>
+                      <span className={styles.detailInfoLabel}>Plan</span>
+                      <span className={styles.detailInfoValue}>
+                        {selectedRow.subscription.plan.name} ({selectedRow.subscription.plan.price} MAD)
+                      </span>
+                    </span>
                   </div>
-                )}
+                  <div className={styles.detailInfoRow}>
+                    <span className={styles.detailInfoIcon}>
+                      <i className="bi bi-calendar-check" />
+                    </span>
+                    <span className={styles.detailInfoBody}>
+                      <span className={styles.detailInfoLabel}>Début</span>
+                      <span className={styles.detailInfoValue}>{formatDate(selectedRow.subscription.start_date)}</span>
+                    </span>
+                  </div>
+                  <div className={styles.detailInfoRow}>
+                    <span className={styles.detailInfoIcon}>
+                      <i className="bi bi-calendar-x" />
+                    </span>
+                    <span className={styles.detailInfoBody}>
+                      <span className={styles.detailInfoLabel}>Expiration</span>
+                      <span className={styles.detailInfoValue}>{formatDate(selectedRow.subscription.end_date)}</span>
+                    </span>
+                  </div>
+                  {selectedRow.subscription.trial_start && (
+                    <div className={styles.detailInfoRow}>
+                      <span className={styles.detailInfoIcon}>
+                        <i className="bi bi-hourglass-split" />
+                      </span>
+                      <span className={styles.detailInfoBody}>
+                        <span className={styles.detailInfoLabel}>Essai</span>
+                        <span className={styles.detailInfoValue}>
+                          {formatDate(selectedRow.subscription.trial_start)} → {formatDate(selectedRow.subscription.trial_end)}
+                        </span>
+                        {(() => {
+                          const trial = trialInfo(selectedRow.subscription);
+                          if (!trial) return null;
+                          return (
+                            <span className={`${styles.trialPill} ${trialPillClass(trial.state)}`} style={{ marginTop: "0.4rem" }}>
+                              {trial.state === "expired" ? "TRIAL — Expiré" : `${trial.daysRemaining} jour(s) restant(s)`}
+                            </span>
+                          );
+                        })()}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1048,7 +1291,9 @@ export default function AdminAbonnementsPage() {
                     <div className={styles.usageItem} key={f.key}>
                       <div className={styles.usageLabelRow}>
                         <span className={styles.usageLabelText}>
-                          <i className={`bi ${f.icon}`} />
+                          <span className={styles.usageIcon}>
+                            <i className={`bi ${f.icon}`} />
+                          </span>
                           {f.label}
                         </span>
                         <span className={styles.usageCount}>
@@ -1093,15 +1338,39 @@ export default function AdminAbonnementsPage() {
 
             {changePlanOpen && (
               <div className={styles.changePlanPanel}>
+                <div className={styles.editFormTitle} style={{ marginBottom: "0.9rem" }}>
+                  <i className="bi bi-arrow-left-right" />
+                  Choisir un nouveau plan
+                </div>
                 <Banner banner={changePlanBanner} />
-                <div className={styles.changePlanRow}>
-                  <span>Plan actuel : {selectedRow.subscription.plan.name}</span>
-                  <i className="bi bi-arrow-right" />
-                  <FilterSelect
-                    value={changePlanTargetId}
-                    onChange={setChangePlanTargetId}
-                    options={activePlans.map((plan) => ({ value: plan.id, label: plan.name }))}
-                  />
+
+                <div className={styles.planPickerGrid}>
+                  {activePlans.map((plan) => {
+                    const isCurrent = plan.id === selectedRow.subscription.plan_id;
+                    const isSelected = String(plan.id) === String(changePlanTargetId);
+                    const tone = planTones[plan.id] || "Charcoal";
+                    return (
+                      <button
+                        type="button"
+                        key={plan.id}
+                        className={`${styles.planPickerCard} ${styles[`planPickerCard${tone}`]} ${
+                          isSelected ? styles.planPickerCardSelected : ""
+                        }`}
+                        onClick={() => setChangePlanTargetId(String(plan.id))}
+                      >
+                        {isCurrent && <span className={styles.planPickerCurrentBadge}>Plan actuel</span>}
+                        <span className={styles.planPickerRadio}>
+                          <i className={`bi ${isSelected ? "bi-check-circle-fill" : "bi-circle"}`} />
+                        </span>
+                        <span className={styles.planPickerName}>{plan.name}</span>
+                        <span className={styles.planPickerPrice}>
+                          {plan.price} DH
+                          {priceUnit(plan) && <span className={styles.planPickerUnit}>{priceUnit(plan)}</span>}
+                        </span>
+                        <span className={styles.planPickerMeta}>{billingLabel(plan)}</span>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {changePlanTarget && (

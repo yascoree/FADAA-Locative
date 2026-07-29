@@ -15,6 +15,7 @@ import {
   TYPE_BIEN,
   TYPE_BIEN_LABELS,
 } from "@/lib/properties";
+import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
@@ -67,6 +68,7 @@ export default function ProprietaireBiensPage() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [sortBy, setSortBy] = useState("recent");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -112,7 +114,7 @@ export default function ProprietaireBiensPage() {
 
   const filteredBiens = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return biens.filter((b) => {
+    const filtered = biens.filter((b) => {
       if (term) {
         const haystack = `${b.designation || ""} ${b.description || ""} ${b.adresse || ""} ${TYPE_BIEN_LABELS[b.type] || ""}`.toLowerCase();
         if (!haystack.includes(term)) return false;
@@ -120,7 +122,8 @@ export default function ProprietaireBiensPage() {
       if (statusFilter && String(b.statut) !== statusFilter) return false;
       return true;
     });
-  }, [biens, search, statusFilter]);
+    return sortList(filtered, sortBy, { dateOf: (b) => b.created_at, nameOf: (b) => b.designation });
+  }, [biens, search, statusFilter, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredBiens.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -331,6 +334,7 @@ export default function ProprietaireBiensPage() {
             }}
             options={[{ value: "", label: "Tous les statuts" }, ...STATUS_OPTIONS]}
           />
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>

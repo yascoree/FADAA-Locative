@@ -16,6 +16,7 @@ import {
   FREQUENCE_PAIEMENT_LABELS,
 } from "@/lib/properties";
 import { fetchLocataires } from "@/lib/tenants";
+import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
@@ -80,6 +81,7 @@ export default function ProprietaireBauxPage() {
   const [search, setSearch] = useState("");
   const [lotFilter, setLotFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [sortBy, setSortBy] = useState("recent");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -184,7 +186,7 @@ export default function ProprietaireBauxPage() {
 
   const filteredBaux = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return baux.filter((b) => {
+    const filtered = baux.filter((b) => {
       if (term) {
         const bien = biens.find((bi) => bi.id === b.lot?.bien_id);
         const haystack = [
@@ -209,7 +211,11 @@ export default function ProprietaireBauxPage() {
       if (statusFilter && String(b.statut) !== statusFilter) return false;
       return true;
     });
-  }, [baux, search, lotFilter, statusFilter, biens]);
+    return sortList(filtered, sortBy, {
+      dateOf: (b) => b.date_debut,
+      nameOf: (b) => `${b.locataire?.prenom || ""} ${b.locataire?.nom || ""}`,
+    });
+  }, [baux, search, lotFilter, statusFilter, sortBy, biens]);
 
   const totalPages = Math.max(1, Math.ceil(filteredBaux.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -399,6 +405,7 @@ export default function ProprietaireBauxPage() {
             }}
             options={[{ value: "", label: "Tous les statuts" }, ...STATUS_OPTIONS]}
           />
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>

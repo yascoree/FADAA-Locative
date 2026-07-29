@@ -469,6 +469,47 @@
   color: var(--text-muted);
 }
 
+.overdueBtn {
+  font-size: 0.73rem;
+  font-weight: 650;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  border: none;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: 0.5rem;
+  background: var(--danger-soft);
+  color: var(--danger);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, transform 0.12s ease;
+}
+
+.overdueBtn:hover:not(:disabled) {
+  background: var(--danger);
+  color: #fff;
+}
+
+.overdueBtn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.overdueBtn:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.overdueBtn i.bi-arrow-repeat {
+  animation: overdueSpin 0.8s linear infinite;
+}
+
+@keyframes overdueSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* ---------- Stats cards ---------- */
 
 .statsGrid {

@@ -12,6 +12,7 @@ import {
   LOT_STATUS,
   LOT_STATUS_LABELS,
 } from "@/lib/properties";
+import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
@@ -63,6 +64,7 @@ export default function ProprietaireLotsPage() {
   const [search, setSearch] = useState("");
   const [bienFilter, setBienFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [sortBy, setSortBy] = useState("recent");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -105,7 +107,7 @@ export default function ProprietaireLotsPage() {
 
   const filteredLots = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return lots.filter((l) => {
+    const filtered = lots.filter((l) => {
       if (term) {
         const haystack = `${l.reference || ""} ${l.description || ""} ${bienName(l.bien_id)} ${l.loyer_reference ?? ""}`.toLowerCase();
         if (!haystack.includes(term)) return false;
@@ -114,8 +116,9 @@ export default function ProprietaireLotsPage() {
       if (statusFilter && String(l.statut) !== statusFilter) return false;
       return true;
     });
+    return sortList(filtered, sortBy, { dateOf: (l) => l.created_at, nameOf: (l) => l.reference });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lots, search, bienFilter, statusFilter, biens]);
+  }, [lots, search, bienFilter, statusFilter, sortBy, biens]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLots.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -289,6 +292,7 @@ export default function ProprietaireLotsPage() {
             }}
             options={[{ value: "", label: "Tous les statuts" }, ...STATUS_OPTIONS]}
           />
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>

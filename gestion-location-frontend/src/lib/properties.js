@@ -153,6 +153,11 @@ export async function deleteEcheance(echeanceId) {
   await apiClient.delete(`/due-dates/${echeanceId}`);
 }
 
+export async function relanceEcheance(echeanceId) {
+  const { data } = await apiClient.post(`/due-dates/${echeanceId}/relance`);
+  return data;
+}
+
 export async function fetchPaiements() {
   const { data } = await apiClient.get("/payments/");
   return data;

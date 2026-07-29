@@ -1,4 +1,4 @@
-"""seed PRO and ENTERPRISE subscription plans
+"""seed Trial, PRO and ENTERPRISE subscription plans
 
 Revision ID: 5db2b8b92c09
 Revises: c1d2e3f4a5b6
@@ -22,7 +22,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Les plans PRO et ENTERPRISE avaient été créés à la main depuis l'interface
+    # Les plans Trial, PRO et ENTERPRISE avaient été créés à la main depuis l'interface
     # admin (Abonnements) plutôt que par migration, donc absents d'une base neuve
     # après `alembic upgrade head`. On les rejoue ici à l'identique des valeurs
     # actuellement en prod/dev (ON CONFLICT DO NOTHING = idempotent si un plan du
@@ -48,6 +48,22 @@ def upgrade() -> None:
     now = datetime.utcnow()
     stmt = pg_insert(subscription_plans_table).values(
         [
+            {
+                "name": "Trial",
+                "description": "Essai gratuit de 30 jours.",
+                "price": 0,
+                "duration_days": 30,
+                "is_trial": True,
+                "is_active": True,
+                "max_biens": 10,
+                "max_lots": 50,
+                "max_baux_actifs": 50,
+                "max_gestionnaires": 3,
+                "max_locataires": 50,
+                "max_quittances_mois": 100,
+                "created_at": now,
+                "updated_at": now,
+            },
             {
                 "name": "PRO",
                 "description": "Pour les propriétaires avec un portefeuille en croissance.",
@@ -87,4 +103,4 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.execute("DELETE FROM subscription_plans WHERE name IN ('PRO', 'ENTERPRISE')")
+    op.execute("DELETE FROM subscription_plans WHERE name IN ('Trial', 'PRO', 'ENTERPRISE')")

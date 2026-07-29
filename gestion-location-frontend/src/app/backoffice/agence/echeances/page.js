@@ -10,12 +10,14 @@ import {
   createPaiement,
   updateEcheance,
   deleteEcheance,
+  relanceEcheance,
   ECHEANCE_STATUS,
   ECHEANCE_STATUS_LABELS,
   PAIEMENT_STATUS,
   MODE_PAIEMENT,
   MODE_PAIEMENT_LABELS,
 } from "@/lib/properties";
+import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
@@ -73,6 +75,7 @@ export default function AgenceEcheancesPage() {
   const [bailFilter, setBailFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [sortBy, setSortBy] = useState("recent");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [editTarget, setEditTarget] = useState(null);
@@ -88,6 +91,9 @@ export default function AgenceEcheancesPage() {
   const [payDraft, setPayDraft] = useState(null);
   const [payBusy, setPayBusy] = useState(false);
   const [payBanner, setPayBanner] = useState(null);
+
+  const [relanceBusyId, setRelanceBusyId] = useState(null);
+  const [relanceBanner, setRelanceBanner] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -140,7 +146,7 @@ export default function AgenceEcheancesPage() {
 
   const filteredEcheances = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return echeances.filter((e) => {
+    const filtered = echeances.filter((e) => {
       if (term) {
         const haystack = [
           e.reference,
@@ -163,7 +169,11 @@ export default function AgenceEcheancesPage() {
       if (overdueOnly && !isOverdue(e)) return false;
       return true;
     });
-  }, [echeances, search, bailFilter, statusFilter, overdueOnly, biens]);
+    return sortList(filtered, sortBy, {
+      dateOf: (e) => e.date_echeance,
+      nameOf: (e) => (e.bail?.locataire ? `${e.bail.locataire.prenom} ${e.bail.locataire.nom}` : e.reference),
+    });
+  }, [echeances, search, bailFilter, statusFilter, overdueOnly, sortBy, biens]);
 
   const totalPages = Math.max(1, Math.ceil(filteredEcheances.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -274,6 +284,23 @@ export default function AgenceEcheancesPage() {
     }
   }
 
+  async function handleSendRelance(echeance) {
+    setRelanceBusyId(echeance.id);
+    setRelanceBanner(null);
+    try {
+      await relanceEcheance(echeance.id);
+      const locataire = echeance.bail?.locataire;
+      setRelanceBanner({
+        type: "success",
+        message: `Rappel de paiement envoyé${locataire ? ` à ${locataire.prenom} ${locataire.nom}` : ""}.`,
+      });
+    } catch (err) {
+      setRelanceBanner({ type: "error", message: extractErrorMessage(err) });
+    } finally {
+      setRelanceBusyId(null);
+    }
+  }
+
   if (isLoading) {
     return <p>Chargement...</p>;
   }
@@ -306,6 +333,8 @@ export default function AgenceEcheancesPage() {
             </p>
           </div>
         </div>
+
+        <Banner banner={relanceBanner} />
 
         <div className={styles.filtersRow}>
           <input
@@ -342,6 +371,7 @@ export default function AgenceEcheancesPage() {
           >
             En retard uniquement
           </FilterChip>
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>
@@ -367,6 +397,9 @@ export default function AgenceEcheancesPage() {
               )}
               {paginatedEcheances.map((e) => {
                 const overdue = isOverdue(e);
+                const bienId = e.bail?.lot?.bien_id;
+                const proprietaireId = biens.find((b) => b.id === bienId)?.proprietaire_id;
+                const canRelance = permIndex?.hasForBien(bienId, proprietaireId, "VIEW_DUE_DATE");
                 return (
                   <tr key={e.id}>
                     <td className={styles.mono}>{e.reference}</td>
@@ -385,7 +418,19 @@ export default function AgenceEcheancesPage() {
                     <td>{bailLabel(e.bail)}</td>
                     <td>
                       {formatDate(e.date_echeance)}
-                      {overdue && (
+                      {overdue && canRelance && (
+                        <button
+                          type="button"
+                          className={styles.overdueBtn}
+                          onClick={() => handleSendRelance(e)}
+                          disabled={relanceBusyId === e.id}
+                          title="Envoyer un rappel de paiement au locataire"
+                        >
+                          <i className={`bi ${relanceBusyId === e.id ? "bi-arrow-repeat" : "bi-bell"}`} />
+                          {relanceBusyId === e.id ? "Envoi..." : "En retard"}
+                        </button>
+                      )}
+                      {overdue && !canRelance && (
                         <span className={styles.badge} style={{ marginLeft: "0.5rem", background: "var(--danger-soft)", color: "var(--danger)" }}>
                           En retard
                         </span>
@@ -399,8 +444,6 @@ export default function AgenceEcheancesPage() {
                     </td>
                     <td>
                       {(() => {
-                        const bienId = e.bail?.lot?.bien_id;
-                        const proprietaireId = biens.find((b) => b.id === bienId)?.proprietaire_id;
                         const notPaid = e.statut !== ECHEANCE_STATUS.PAYE;
                         const canPay = permIndex?.hasForBien(bienId, proprietaireId, "CREATE_PAYMENT") && notPaid;
                         const canUpdate =

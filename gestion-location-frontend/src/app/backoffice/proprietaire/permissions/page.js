@@ -16,6 +16,7 @@ import {
   MANDAT_STATUS,
 } from "@/lib/mandates";
 import { fetchBiens } from "@/lib/properties";
+import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import SearchableSelect from "@/components/SearchableSelect";
 import FilterSelect from "@/components/FilterSelect";
@@ -70,6 +71,7 @@ export default function GestionPermissionPage() {
   const [gestionnaires, setGestionnaires] = useState([]);
   const [selectedGestionnaire, setSelectedGestionnaire] = useState(null);
   const [scopeBienId, setScopeBienId] = useState("all");
+  const [sortBy, setSortBy] = useState("recent");
   const [inviteBusy, setInviteBusy] = useState(false);
   const [banner, setBanner] = useState(null);
 
@@ -200,8 +202,18 @@ export default function GestionPermissionPage() {
       }
       map.get(gid).mandats.push(mandat);
     });
-    return Array.from(map.values());
-  }, [mandates]);
+    const groups = Array.from(map.values());
+    return sortList(groups, sortBy, {
+      // Le plus récent mandat du groupe (date de début, ou date de mise à jour à
+      // défaut) sert de date de référence pour le gestionnaire dans son ensemble.
+      dateOf: (g) =>
+        g.mandats.reduce((latest, m) => {
+          const d = m.date_debut || m.updated_at;
+          return d && (!latest || new Date(d) > new Date(latest)) ? d : latest;
+        }, null),
+      nameOf: (g) => `${g.gestionnaire?.prenom || ""} ${g.gestionnaire?.nom || ""}`,
+    });
+  }, [mandates, sortBy]);
 
   function toggleExpand(gestionnaireId, firstMandatId) {
     setExpandedGestionnaireId((prev) => (prev === gestionnaireId ? null : gestionnaireId));
@@ -277,7 +289,7 @@ export default function GestionPermissionPage() {
 
         <p className={styles.note}>
           <i className="bi bi-info-circle-fill" />
-          Un nouveau mandat reçoit automatiquement le droit de <strong>voir</strong> le(s) bien(s) concerné(s). Pour
+          Un nouveau mandat reçoit automatiquement le droit de voir le(s) bien(s) concerné(s). Pour
           ajouter un autre bien à un gestionnaire déjà présent, réinvitez-le ci-dessus avec une portée différente,
           puis ouvrez ses permissions pour choisir le bien à configurer.
         </p>
@@ -290,6 +302,15 @@ export default function GestionPermissionPage() {
           <i className="bi bi-person-x" style={{ display: "block", fontSize: "1.6rem", marginBottom: "0.5rem" }} />
           Vous n&apos;avez pas encore de gestionnaire. Ajoutez-en un ci-dessus.
         </p>
+      )}
+
+      {gestionnaireGroups.length > 0 && (
+        <div className={styles.listToolbar}>
+          <span className={styles.listCount}>
+            {gestionnaireGroups.length} gestionnaire{gestionnaireGroups.length > 1 ? "s" : ""}
+          </span>
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
+        </div>
       )}
 
       <div className={styles.list}>

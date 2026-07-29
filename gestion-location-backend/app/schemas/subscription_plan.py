@@ -7,6 +7,10 @@ from pydantic import BaseModel, ConfigDict, Field
 # -1 = illimité pour chacune de ces limites d'usage.
 UNLIMITED = -1
 
+# Palette fermée pour la carte plan (voir --tone-* dans globals.css côté front) :
+# on ne stocke pas de couleur libre pour garder les cartes cohérentes avec la charte.
+PLAN_COLORS = ("olive", "navy", "charcoal", "terracotta")
+
 
 class SubscriptionPlanLimits(BaseModel):
     max_biens: int = Field(default=UNLIMITED, ge=-1)
@@ -23,6 +27,7 @@ class SubscriptionPlanBase(SubscriptionPlanLimits):
     price: Decimal = Field(ge=0, max_digits=10, decimal_places=2)
     duration_days: int = Field(gt=0)
     is_trial: bool = False
+    color: str = Field(default="olive", pattern="^(" + "|".join(PLAN_COLORS) + ")$")
 
 
 class SubscriptionPlanCreate(SubscriptionPlanBase):
@@ -35,6 +40,7 @@ class SubscriptionPlanUpdate(BaseModel):
     price: Optional[Decimal] = Field(default=None, ge=0, max_digits=10, decimal_places=2)
     duration_days: Optional[int] = Field(default=None, gt=0)
     is_trial: Optional[bool] = None
+    color: Optional[str] = Field(default=None, pattern="^(" + "|".join(PLAN_COLORS) + ")$")
     max_biens: Optional[int] = Field(default=None, ge=-1)
     max_lots: Optional[int] = Field(default=None, ge=-1)
     max_baux_actifs: Optional[int] = Field(default=None, ge=-1)
