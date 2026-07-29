@@ -1,7 +1,8 @@
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from jose import jwt
+from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
@@ -37,3 +38,28 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
 
 def decode_access_token(token: str) -> dict:
     return jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+
+
+def password_fingerprint(password_hash: str) -> str:
+    """Short fingerprint of the current password hash, embedded in reset tokens so
+    that a token is auto-invalidated the moment the password actually changes —
+    no separate token-tracking table needed."""
+    return hashlib.sha256(password_hash.encode()).hexdigest()[:16]
+
+
+def create_password_reset_token(user_id: int, current_password_hash: str) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.password_reset_token_expire_minutes)
+    payload = {
+        "sub": str(user_id),
+        "type": "password_reset",
+        "pwd_fp": password_fingerprint(current_password_hash),
+        "exp": expire,
+    }
+    return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
+
+
+def decode_password_reset_token(token: str) -> dict:
+    payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+    if payload.get("type") != "password_reset":
+        raise JWTError("Not a password reset token")
+    return payload

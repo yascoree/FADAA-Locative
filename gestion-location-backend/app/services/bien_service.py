@@ -5,14 +5,15 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import bien_ids_with_permission, has_permission, has_permission_for_bien
 from app.models.bail import Bail, BailStatus
-from app.models.bien import Bien
+from app.models.bien import Bien, BienStatus
 from app.models.bien_photo import BienPhoto
-from app.models.lot import Lot
+from app.models.lot import Lot, LotStatus
 from app.models.notification import NotificationType
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.bien import BienCreate, BienUpdate
 from app.services.exceptions import BadRequest, Forbidden, NotFound
 from app.services.push_service import send_push_to_user
+from app.services.usage_service import enforce_limit
 from datetime import datetime
 
 
@@ -45,6 +46,31 @@ def _is_tenant_of_bien(db: Session, user_id: int, bien_id: int) -> bool:
         .first()
         is not None
     )
+
+
+def _has_occupying_lot_or_bail(db: Session, bien_id: int) -> bool:
+    """Vrai si un lot de ce bien est loué (occupé) ou possède un bail actif ou
+    en attente — utilisé pour bloquer la suppression et les changements de
+    statut incohérents (bien archivé/inactif alors qu'il est encore habité)."""
+    occupied_lot = (
+        db.query(Lot)
+        .filter(Lot.bien_id == bien_id, Lot.deleted_at.is_(None), Lot.statut == LotStatus.LOUE)
+        .first()
+    )
+    if occupied_lot:
+        return True
+    occupying_bail = (
+        db.query(Bail)
+        .join(Lot, Lot.id == Bail.lot_id)
+        .filter(
+            Lot.bien_id == bien_id,
+            Lot.deleted_at.is_(None),
+            Bail.deleted_at.is_(None),
+            Bail.statut.in_((BailStatus.ACTIF, BailStatus.EN_ATTENTE)),
+        )
+        .first()
+    )
+    return occupying_bail is not None
 
 
 def _can_view_bien(db: Session, user: Utilisateur, bien: Bien) -> bool:
@@ -88,6 +114,7 @@ def get_bien(db: Session, current_user: Utilisateur, bien_id: int) -> Bien:
 def create_bien(db: Session, current_user: Utilisateur, bien_in: BienCreate) -> Bien:
     if not has_permission(db, current_user, bien_in.proprietaire_id, "CREATE_PROPERTY"):
         raise Forbidden("Cannot create a property for this proprietaire")
+    enforce_limit(db, bien_in.proprietaire_id, "biens")
     bien = Bien(**bien_in.model_dump())
     db.add(bien)
     db.commit()
@@ -108,7 +135,14 @@ def update_bien(db: Session, current_user: Utilisateur, bien_id: int, bien_in: B
         raise NotFound("Property not found")
     if not has_permission_for_bien(db, current_user, bien, "UPDATE_PROPERTY"):
         raise Forbidden("Not allowed to modify this property")
-    for field, value in bien_in.model_dump(exclude_unset=True).items():
+    update_data = bien_in.model_dump(exclude_unset=True)
+    new_statut = update_data.get("statut")
+    if new_statut in (BienStatus.INACTIF, BienStatus.ARCHIVE) and _has_occupying_lot_or_bail(db, bien.id):
+        raise BadRequest(
+            "Impossible de passer ce bien en inactif/archivé : un de ses lots est loué "
+            "ou possède un bail actif ou en attente."
+        )
+    for field, value in update_data.items():
         setattr(bien, field, value)
     db.commit()
     db.refresh(bien)
@@ -128,19 +162,10 @@ def delete_bien(db: Session, current_user: Utilisateur, bien_id: int) -> None:
         raise NotFound("Property not found")
     if not has_permission_for_bien(db, current_user, bien, "DELETE_PROPERTY"):
         raise Forbidden("Not allowed to delete this property")
-    has_active_bail = (
-        db.query(Bail)
-        .join(Lot, Lot.id == Bail.lot_id)
-        .filter(
-            Lot.bien_id == bien.id,
-            Lot.deleted_at.is_(None),
-            Bail.deleted_at.is_(None),
-            Bail.statut == BailStatus.ACTIF,
+    if _has_occupying_lot_or_bail(db, bien.id):
+        raise BadRequest(
+            "Impossible de supprimer ce bien : un de ses lots est loué ou possède un bail actif ou en attente."
         )
-        .first()
-    )
-    if has_active_bail:
-        raise BadRequest("Impossible de supprimer ce bien : un de ses lots possède un bail actif.")
     bien.deleted_at = datetime.utcnow()
     db.commit()
     _notify_proprietaire_of_activity(

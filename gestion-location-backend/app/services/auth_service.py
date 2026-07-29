@@ -1,17 +1,24 @@
+from typing import Optional
+
 from jose import JWTError
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.security import (
     create_access_token,
+    create_password_reset_token,
     create_refresh_token,
     decode_access_token,
+    decode_password_reset_token,
     hash_password,
+    password_fingerprint,
     verify_password,
 )
 from app.models.utilisateur import StatutCompte, Utilisateur, UtilisateurRole
 from app.schemas.auth import Token
 from app.schemas.utilisateur import UtilisateurCreate
 from app.services import subscription_service
+from app.services.email_service import send_email
 from app.services.exceptions import BadRequest, Forbidden, NotFound
 
 PUBLIC_REGISTER_ROLES = (UtilisateurRole.PROPRIETAIRE, UtilisateurRole.GESTIONNAIRE)
@@ -75,3 +82,48 @@ def refresh(db: Session, refresh_token: str) -> Token:
 
     access_token = create_access_token(data={"sub": utilisateur_id})
     return Token(access_token=access_token)
+
+
+def request_password_reset(db: Session, email: str) -> Optional[str]:
+    """Never reveals whether the email is registered (anti-enumeration): the caller
+    always gets the same generic response regardless of what happens here.
+
+    Returns the reset link only when it could NOT be emailed (SMTP not configured,
+    or send failure) — the API surfaces that as a test-mode convenience. Once SMTP
+    is configured, this returns None on the happy path, exactly like production."""
+    utilisateur = db.query(Utilisateur).filter(Utilisateur.email == email).first()
+    if not utilisateur:
+        return None
+
+    token = create_password_reset_token(utilisateur.id, utilisateur.mot_de_passe)
+    reset_link = f"{settings.frontend_base_url}/front/reset-password?token={token}"
+
+    html_body = f"""
+    <p>Bonjour {utilisateur.prenom},</p>
+    <p>Cliquez sur le lien ci-dessous pour choisir un nouveau mot de passe
+    (valable {settings.password_reset_token_expire_minutes} minutes) :</p>
+    <p><a href="{reset_link}">{reset_link}</a></p>
+    <p>Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>
+    """
+    sent = send_email(utilisateur.email, "Réinitialisation de votre mot de passe FADAA Locative", html_body)
+    return None if sent else reset_link
+
+
+def reset_password(db: Session, token: str, new_password: str) -> None:
+    try:
+        payload = decode_password_reset_token(token)
+    except JWTError:
+        raise BadRequest("Invalid or expired link")
+
+    utilisateur_id = payload.get("sub")
+    utilisateur = db.get(Utilisateur, int(utilisateur_id)) if utilisateur_id is not None else None
+    if utilisateur is None:
+        raise BadRequest("Invalid or expired link")
+
+    if password_fingerprint(utilisateur.mot_de_passe) != payload.get("pwd_fp"):
+        # Password already changed since this link was issued (via this same flow,
+        # or any other) — the fingerprint no longer matches, so the link is dead.
+        raise BadRequest("This link has already been used")
+
+    utilisateur.mot_de_passe = hash_password(new_password)
+    db.commit()

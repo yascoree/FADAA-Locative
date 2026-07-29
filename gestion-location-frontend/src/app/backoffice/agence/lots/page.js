@@ -22,8 +22,9 @@ function Banner({ banner }) {
 }
 
 function badgeClass(statut) {
-  if (statut === LOT_STATUS.LIBRE) return styles.badgeActive;
-  if (statut === LOT_STATUS.OCCUPE) return styles.badgeNeutral;
+  if (statut === LOT_STATUS.DISPONIBLE) return styles.badgeActive;
+  if (statut === LOT_STATUS.LOUE) return styles.badgeNeutral;
+  if (statut === LOT_STATUS.HORS_SERVICE) return styles.badgeDanger;
   return styles.badgeWarning;
 }
 
@@ -40,7 +41,7 @@ const EMPTY_FORM = {
   reference: "",
   description: "",
   loyer_reference: "",
-  statut: String(LOT_STATUS.LIBRE),
+  statut: String(LOT_STATUS.DISPONIBLE),
 };
 
 export default function AgenceLotsPage() {
@@ -91,9 +92,10 @@ export default function AgenceLotsPage() {
   const stats = useMemo(() => {
     return {
       total: lots.length,
-      libres: lots.filter((l) => l.statut === LOT_STATUS.LIBRE).length,
-      occupes: lots.filter((l) => l.statut === LOT_STATUS.OCCUPE).length,
-      reserves: lots.filter((l) => l.statut === LOT_STATUS.RESERVE).length,
+      disponibles: lots.filter((l) => l.statut === LOT_STATUS.DISPONIBLE).length,
+      loues: lots.filter((l) => l.statut === LOT_STATUS.LOUE).length,
+      enMaintenance: lots.filter((l) => l.statut === LOT_STATUS.EN_MAINTENANCE).length,
+      horsService: lots.filter((l) => l.statut === LOT_STATUS.HORS_SERVICE).length,
     };
   }, [lots]);
 
@@ -105,13 +107,17 @@ export default function AgenceLotsPage() {
   const filteredLots = useMemo(() => {
     const term = search.trim().toLowerCase();
     const filtered = lots.filter((l) => {
-      if (term && !(l.reference || "").toLowerCase().includes(term)) return false;
+      if (term) {
+        const haystack = `${l.reference || ""} ${l.description || ""} ${bienName(l.bien_id)} ${l.loyer_reference ?? ""}`.toLowerCase();
+        if (!haystack.includes(term)) return false;
+      }
       if (bienFilter && String(l.bien_id) !== bienFilter) return false;
       if (statusFilter && String(l.statut) !== statusFilter) return false;
       return true;
     });
     return sortList(filtered, sortBy, { dateOf: (l) => l.created_at, nameOf: (l) => l.reference });
-  }, [lots, search, bienFilter, statusFilter, sortBy]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lots, search, bienFilter, statusFilter, sortBy, biens]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLots.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -208,9 +214,10 @@ export default function AgenceLotsPage() {
       <div className={styles.section}>
         <div className={styles.statsGrid}>
           <StatCard icon="bi-grid-3x3-gap-fill" tone="primary" label="Lots gérés" value={stats.total} />
-          <StatCard icon="bi-check-circle-fill" tone="accent" label="Libres" value={stats.libres} />
-          <StatCard icon="bi-key-fill" tone="primary" label="Occupés" value={stats.occupes} />
-          <StatCard icon="bi-bookmark-star-fill" tone="warning" label="Réservés" value={stats.reserves} />
+          <StatCard icon="bi-check-circle-fill" tone="accent" label="Disponibles" value={stats.disponibles} />
+          <StatCard icon="bi-key-fill" tone="primary" label="Loués" value={stats.loues} />
+          <StatCard icon="bi-tools" tone="warning" label="En maintenance" value={stats.enMaintenance} />
+          <StatCard icon="bi-slash-circle" tone="danger" label="Hors service" value={stats.horsService} />
         </div>
       </div>
 
@@ -243,7 +250,7 @@ export default function AgenceLotsPage() {
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher par référence..."
+            placeholder="Rechercher par référence, bien, loyer, description..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -453,13 +460,13 @@ export default function AgenceLotsPage() {
           setDeleteError(null);
         }}
         onConfirm={handleConfirmDelete}
-        title="Supprimer le lot"
+        title="Masquer le lot"
         message={
           deleteTarget
-            ? `Masquer "${deleteTarget.reference || `Lot #${deleteTarget.id}`}" ? Il n'apparaîtra plus dans vos listes, mais ses baux sont conservés (non supprimés). Impossible s'il a un bail actif.`
+            ? `Masquer "${deleteTarget.reference || `Lot #${deleteTarget.id}`}" ? Il ne sera plus visible dans vos listes (ses baux restent conservés).`
             : ""
         }
-        confirmLabel="Supprimer"
+        confirmLabel="Masquer"
         danger
         isBusy={deleteBusy}
         error={deleteError}

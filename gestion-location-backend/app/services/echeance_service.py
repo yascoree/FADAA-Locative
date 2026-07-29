@@ -1,16 +1,45 @@
 from datetime import datetime
+from decimal import Decimal
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import bien_ids_with_permission, has_permission_for_bien
 from app.models.bail import Bail
 from app.models.bien import Bien
-from app.models.echeance import Echeance
+from app.models.echeance import Echeance, EcheanceStatus
 from app.models.lot import Lot
 from app.models.paiement import Paiement, PaiementStatus
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.echeance import EcheanceCreate, EcheanceUpdate
 from app.services.exceptions import BadRequest, Forbidden, NotFound
+
+
+def sync_echeance_statut(db: Session, echeance: Echeance) -> None:
+    """Recomputes Echeance.statut from the sum of its validated paiements —
+    the only source of truth for this field, it is never set by hand.
+    Call after creating/cancelling/deleting a paiement on this échéance."""
+    total_paid = (
+        db.query(func.coalesce(func.sum(Paiement.montant), 0))
+        .filter(
+            Paiement.echeance_id == echeance.id,
+            Paiement.deleted_at.is_(None),
+            Paiement.statut == PaiementStatus.VALIDE,
+        )
+        .scalar()
+    ) or Decimal("0")
+    montant_du = echeance.montant_du or Decimal("0")
+
+    if total_paid <= 0:
+        new_statut = EcheanceStatus.IMPAYE
+    elif total_paid < montant_du:
+        new_statut = EcheanceStatus.PARTIEL
+    else:
+        new_statut = EcheanceStatus.PAYE
+
+    if echeance.statut != new_statut:
+        echeance.statut = new_statut
+        db.commit()
 
 
 def _bail_and_bien(db: Session, echeance: Echeance):
@@ -107,7 +136,20 @@ def create_echeance(db: Session, current_user: Utilisateur, echeance_in: Echeanc
     )
     if not has_permission_for_bien(db, current_user, bien, "CREATE_DUE_DATE"):
         raise Forbidden("Not allowed to add a due date to this lease")
-    echeance = Echeance(**echeance_in.model_dump())
+    if echeance_in.date_echeance is not None:
+        duplicate = (
+            db.query(Echeance)
+            .filter(
+                Echeance.bail_id == echeance_in.bail_id,
+                Echeance.date_echeance == echeance_in.date_echeance,
+                Echeance.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if duplicate:
+            raise BadRequest("Une échéance existe déjà pour ce bail à cette date.")
+    # statut is never client-supplied — a brand-new échéance has no paiement yet.
+    echeance = Echeance(**echeance_in.model_dump(), statut=EcheanceStatus.IMPAYE)
     db.add(echeance)
     db.commit()
     db.refresh(echeance)
@@ -125,6 +167,10 @@ def update_echeance(db: Session, current_user: Utilisateur, echeance_id: int, ec
     _, bien = _bail_and_bien(db, echeance)
     if not has_permission_for_bien(db, current_user, bien, "UPDATE_DUE_DATE"):
         raise Forbidden("Not allowed to modify this due date")
+    # Once a paiement (partiel ou total) est rattaché, la date et le montant sont
+    # figés — les modifier romprait la cohérence avec les paiements/quittances déjà émis.
+    if echeance.statut in (EcheanceStatus.PAYE, EcheanceStatus.PARTIEL):
+        raise BadRequest("Impossible de modifier cette échéance : un paiement y est déjà associé.")
     for field, value in echeance_in.model_dump(exclude_unset=True).items():
         setattr(echeance, field, value)
     db.commit()
@@ -143,16 +189,15 @@ def delete_echeance(db: Session, current_user: Utilisateur, echeance_id: int) ->
     _, bien = _bail_and_bien(db, echeance)
     if not has_permission_for_bien(db, current_user, bien, "DELETE_DUE_DATE"):
         raise Forbidden("Not allowed to delete this due date")
-    has_valid_paiement = (
+    # Bloqué dès qu'un paiement existe (validé ou annulé) : un paiement annulé reste
+    # une pièce d'historique qui référence cette échéance, elle ne doit pas devenir
+    # orpheline. Couvre aussi bien les paiements partiels que les paiements complets.
+    has_paiement = (
         db.query(Paiement)
-        .filter(
-            Paiement.echeance_id == echeance.id,
-            Paiement.deleted_at.is_(None),
-            Paiement.statut == PaiementStatus.VALIDE,
-        )
+        .filter(Paiement.echeance_id == echeance.id, Paiement.deleted_at.is_(None))
         .first()
     )
-    if has_valid_paiement:
+    if has_paiement:
         raise BadRequest("Impossible de supprimer cette échéance : un paiement y est associé.")
     echeance.deleted_at = datetime.utcnow()
     db.commit()

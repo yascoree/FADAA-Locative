@@ -7,9 +7,7 @@ import {
   fetchEcheances,
   fetchPaiements,
   createPaiement,
-  updatePaiement,
   annulerPaiement,
-  updateEcheance,
   downloadQuittance,
   ECHEANCE_STATUS,
   MODE_PAIEMENT,
@@ -24,6 +22,7 @@ import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
+import FilterChip from "@/components/FilterChip";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -74,16 +73,13 @@ export default function AgencePaiementsPage() {
   const [createBusy, setCreateBusy] = useState(false);
   const [createBanner, setCreateBanner] = useState(null);
 
-  const [editTarget, setEditTarget] = useState(null);
-  const [editDraft, setEditDraft] = useState(null);
-  const [editBusy, setEditBusy] = useState(false);
-  const [editBanner, setEditBanner] = useState(null);
-
   const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelMotif, setCancelMotif] = useState("");
   const [cancelBusy, setCancelBusy] = useState(false);
   const [cancelError, setCancelError] = useState(null);
   const [listBanner, setListBanner] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
+  const [detailsTarget, setDetailsTarget] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -214,7 +210,11 @@ export default function AgencePaiementsPage() {
   const safePage = Math.min(currentPage, totalPages);
   const paginatedPaiements = filteredPaiements.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  async function reconcileEcheance(echeanceId, newMontantForPaiementId, newMontantValue) {
+  // Le statut de l'échéance est recalculé et persisté côté serveur (voir
+  // sync_echeance_statut), automatiquement à chaque paiement créé/annulé — on se
+  // contente ici de refléter la même valeur localement, sans appel réseau, pour
+  // que l'UI reste cohérente sans attendre un rechargement complet.
+  function reconcileEcheance(echeanceId, newMontantForPaiementId, newMontantValue) {
     const echeance = echeances.find((e) => e.id === echeanceId);
     if (!echeance || echeance.montant_du === null || echeance.montant_du === undefined) return;
     const paidTotal = paidSoFar(echeanceId, newMontantForPaiementId) + Number(newMontantValue || 0);
@@ -225,8 +225,7 @@ export default function AgencePaiementsPage() {
           ? ECHEANCE_STATUS.PARTIEL
           : ECHEANCE_STATUS.IMPAYE;
     if (newStatus === echeance.statut) return;
-    const updated = await updateEcheance(echeanceId, { statut: newStatus });
-    setEcheances((prev) => prev.map((e) => (e.id === updated.id ? { ...e, ...updated } : e)));
+    setEcheances((prev) => prev.map((e) => (e.id === echeanceId ? { ...e, statut: newStatus } : e)));
     return newStatus;
   }
 
@@ -269,62 +268,13 @@ export default function AgencePaiementsPage() {
         modePaiement: Number(createDraft.mode_paiement),
       });
       setPaiements((prev) => [...prev, { ...created, echeance }]);
-
-      if (echeance && echeance.montant_du !== null && echeance.montant_du !== undefined) {
-        const paidTotal = paidSoFar(echeanceId) + Number(createDraft.montant || 0);
-        const newStatus =
-          paidTotal >= Number(echeance.montant_du)
-            ? ECHEANCE_STATUS.PAYE
-            : paidTotal > 0
-              ? ECHEANCE_STATUS.PARTIEL
-              : ECHEANCE_STATUS.IMPAYE;
-        if (newStatus !== echeance.statut) {
-          const updatedEcheance = await updateEcheance(echeanceId, { statut: newStatus });
-          setEcheances((prev) => prev.map((ec) => (ec.id === updatedEcheance.id ? { ...ec, ...updatedEcheance } : ec)));
-        }
-      }
+      reconcileEcheance(echeanceId, null, createDraft.montant);
 
       setCreateOpen(false);
     } catch (err) {
       setCreateBanner({ type: "error", message: extractErrorMessage(err) });
     } finally {
       setCreateBusy(false);
-    }
-  }
-
-  function openEdit(paiement) {
-    setEditTarget(paiement);
-    setEditDraft({
-      montant: paiement.montant ?? "",
-      mode_paiement: String(paiement.mode_paiement || MODE_PAIEMENT.VIREMENT),
-    });
-    setEditBanner(null);
-  }
-
-  function closeEdit() {
-    if (editBusy) return;
-    setEditTarget(null);
-    setEditDraft(null);
-  }
-
-  async function handleSubmitEdit(e) {
-    e.preventDefault();
-    if (!editTarget) return;
-    setEditBusy(true);
-    setEditBanner(null);
-    try {
-      const updated = await updatePaiement(editTarget.id, {
-        montant: editDraft.montant === "" ? null : Number(editDraft.montant),
-        mode_paiement: Number(editDraft.mode_paiement),
-      });
-      setPaiements((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
-      await reconcileEcheance(editTarget.echeance_id, editTarget.id, editDraft.montant);
-      setEditTarget(null);
-      setEditDraft(null);
-    } catch (err) {
-      setEditBanner({ type: "error", message: extractErrorMessage(err) });
-    } finally {
-      setEditBusy(false);
     }
   }
 
@@ -345,12 +295,13 @@ export default function AgencePaiementsPage() {
     setCancelBusy(true);
     setCancelError(null);
     try {
-      const updated = await annulerPaiement(cancelTarget.id);
+      const updated = await annulerPaiement(cancelTarget.id, cancelMotif.trim() || undefined);
       setPaiements((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
       // Un paiement annulé ne doit plus compter pour l'échéance : son statut
       // (payée/partielle/impayée) est recalculé comme si ce paiement n'existait plus.
-      await reconcileEcheance(cancelTarget.echeance_id, cancelTarget.id, 0);
+      reconcileEcheance(cancelTarget.echeance_id, cancelTarget.id, 0);
       setCancelTarget(null);
+      setCancelMotif("");
     } catch (err) {
       setCancelError(extractErrorMessage(err));
     } finally {
@@ -429,17 +380,15 @@ export default function AgencePaiementsPage() {
               </option>
             ))}
           </select>
-          <label className={styles.checkFilter}>
-            <input
-              type="checkbox"
-              checked={monthOnly}
-              onChange={(e) => {
-                setMonthOnly(e.target.checked);
-                setCurrentPage(1);
-              }}
-            />
+          <FilterChip
+            checked={monthOnly}
+            onChange={(checked) => {
+              setMonthOnly(checked);
+              setCurrentPage(1);
+            }}
+          >
             Ce mois uniquement
-          </label>
+          </FilterChip>
         </div>
 
         <div className={styles.tableWrap}>
@@ -481,7 +430,12 @@ export default function AgencePaiementsPage() {
                   </td>
                   <td>{bienLotLabel(p.echeance)}</td>
                   <td>{formatDate(p.echeance?.date_echeance)}</td>
-                  <td>{formatCurrency(p.montant)}</td>
+                  <td>
+                    {formatCurrency(p.montant)}
+                    {p.echeance?.montant_du !== null && p.echeance?.montant_du !== undefined && (
+                      <span className={styles.recentEmail}> / {formatCurrency(p.echeance.montant_du)} dû</span>
+                    )}
+                  </td>
                   <td>{MODE_PAIEMENT_LABELS[p.mode_paiement] || "—"}</td>
                   <td>{formatDate(p.date_paiement)}</td>
                   <td>
@@ -506,28 +460,33 @@ export default function AgencePaiementsPage() {
                   </td>
                   <td>
                     {(() => {
-                      if (p.statut === PAIEMENT_STATUS.ANNULE) return <span className={styles.empty}>—</span>;
                       const bienId = p.echeance?.bail?.lot?.bien_id;
                       const bien = biens.find((b) => b.id === bienId);
                       const proprietaireId = bien?.proprietaire_id;
                       const canUpdate = permIndex?.hasForBien(bienId, proprietaireId, "UPDATE_PAYMENT");
-                      if (!canUpdate) return <span className={styles.empty}>—</span>;
                       return (
                         <div className={styles.tableActions}>
-                          <button type="button" className={styles.iconBtn} onClick={() => openEdit(p)} title="Modifier">
-                            <i className="bi bi-pencil" />
-                          </button>
                           <button
                             type="button"
-                            className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                            onClick={() => {
-                              setCancelTarget(p);
-                              setCancelError(null);
-                            }}
-                            title="Annuler ce paiement"
+                            className={styles.iconBtn}
+                            onClick={() => setDetailsTarget(p)}
+                            title="Voir les détails"
                           >
-                            <i className="bi bi-x-circle" />
+                            <i className="bi bi-info-circle" />
                           </button>
+                          {p.statut !== PAIEMENT_STATUS.ANNULE && canUpdate && (
+                            <button
+                              type="button"
+                              className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                              onClick={() => {
+                                setCancelTarget(p);
+                                setCancelError(null);
+                              }}
+                              title="Annuler ce paiement"
+                            >
+                              <i className="bi bi-x-circle" />
+                            </button>
+                          )}
                         </div>
                       );
                     })()}
@@ -627,44 +586,80 @@ export default function AgencePaiementsPage() {
         </form>
       </Modal>
 
-      {/* ---- Modifier un paiement ---- */}
-      <Modal isOpen={!!editTarget} onClose={closeEdit} title="Modifier le paiement">
-        {editTarget && editDraft && (
-          <form onSubmit={handleSubmitEdit}>
-            <Banner banner={editBanner} />
-            <p className={styles.sectionSubtitle} style={{ marginBottom: "1rem" }}>
-              {bienLotLabel(editTarget.echeance)} · {editTarget.echeance?.bail?.locataire?.prenom}{" "}
-              {editTarget.echeance?.bail?.locataire?.nom}
-            </p>
-            <TextField
-              label="Montant (MAD)"
-              name="montant"
-              type="number"
-              step="0.01"
-              min="0"
-              value={editDraft.montant}
-              onChange={(e) => setEditDraft((d) => ({ ...d, montant: e.target.value }))}
-              required
-            />
-            <SelectField
-              label="Mode de paiement"
-              name="mode_paiement"
-              options={MODE_OPTIONS}
-              value={editDraft.mode_paiement}
-              onChange={(e) => setEditDraft((d) => ({ ...d, mode_paiement: e.target.value }))}
-            />
-
-            <div className={styles.editActions} style={{ marginTop: "1.2rem" }}>
-              <button type="submit" className={styles.btn} disabled={editBusy}>
-                <i className="bi bi-check-lg" />
-                {editBusy ? "Enregistrement..." : "Enregistrer"}
-              </button>
-              <button type="button" className={styles.btnOutline} onClick={closeEdit} disabled={editBusy}>
-                <i className="bi bi-x-lg" />
-                Annuler
-              </button>
+      {/* ---- Détails d'un paiement ---- */}
+      <Modal isOpen={!!detailsTarget} onClose={() => setDetailsTarget(null)} title="Détails du paiement">
+        {detailsTarget && (
+          <div>
+            <div className={styles.detailBlockTitle}>
+              <i className="bi bi-person-fill" />
+              Locataire
             </div>
-          </form>
+            <div className={styles.detailLine}>
+              <strong>Nom :</strong>{" "}
+              {detailsTarget.echeance?.bail?.locataire
+                ? `${detailsTarget.echeance.bail.locataire.prenom} ${detailsTarget.echeance.bail.locataire.nom}`
+                : "—"}
+            </div>
+            <div className={styles.detailLine}>
+              <strong>Bien / Lot :</strong> {bienLotLabel(detailsTarget.echeance)}
+            </div>
+
+            <div className={styles.detailBlockTitle} style={{ marginTop: "1rem" }}>
+              <i className="bi bi-cash-stack" />
+              Paiement
+            </div>
+            <div className={styles.detailLine}>
+              <strong>Montant payé (ce paiement) :</strong> {formatCurrency(detailsTarget.montant)}
+            </div>
+            <div className={styles.detailLine}>
+              <strong>Total payé sur cette échéance :</strong>{" "}
+              {formatCurrency(paidSoFar(detailsTarget.echeance_id))}
+            </div>
+            <div className={styles.detailLine}>
+              <strong>Montant total dû :</strong> {formatCurrency(detailsTarget.echeance?.montant_du)}
+            </div>
+            <div className={styles.detailLine}>
+              <strong>Mode :</strong> {MODE_PAIEMENT_LABELS[detailsTarget.mode_paiement] || "—"}
+            </div>
+            <div className={styles.detailLine}>
+              <strong>Date de paiement :</strong> {formatDate(detailsTarget.date_paiement)}
+            </div>
+            <div className={styles.detailLine}>
+              <strong>Encaissé par :</strong>{" "}
+              {detailsTarget.encaisseur
+                ? `${detailsTarget.encaisseur.prenom} ${detailsTarget.encaisseur.nom} (${detailsTarget.encaisseur.email})`
+                : "—"}
+            </div>
+            <div className={styles.detailLine}>
+              <strong>Statut :</strong>{" "}
+              <span
+                className={`${styles.badge} ${detailsTarget.statut === PAIEMENT_STATUS.ANNULE ? styles.badgeDanger : styles.badgeActive}`}
+              >
+                {PAIEMENT_STATUS_LABELS[detailsTarget.statut] || "—"}
+              </span>
+            </div>
+
+            {detailsTarget.statut === PAIEMENT_STATUS.ANNULE && (
+              <>
+                <div className={styles.detailBlockTitle} style={{ marginTop: "1rem" }}>
+                  <i className="bi bi-x-circle" />
+                  Annulation
+                </div>
+                <div className={styles.detailLine}>
+                  <strong>Annulé par :</strong>{" "}
+                  {detailsTarget.annulateur
+                    ? `${detailsTarget.annulateur.prenom} ${detailsTarget.annulateur.nom}`
+                    : "—"}
+                </div>
+                <div className={styles.detailLine}>
+                  <strong>Date d&apos;annulation :</strong> {formatDate(detailsTarget.date_annulation)}
+                </div>
+                <div className={styles.detailLine}>
+                  <strong>Motif :</strong> {detailsTarget.motif_annulation || "—"}
+                </div>
+              </>
+            )}
+          </div>
         )}
       </Modal>
 
@@ -672,20 +667,31 @@ export default function AgencePaiementsPage() {
         isOpen={!!cancelTarget}
         onClose={() => {
           setCancelTarget(null);
+          setCancelMotif("");
           setCancelError(null);
         }}
         onConfirm={handleConfirmCancel}
         title="Annuler le paiement"
         message={
           cancelTarget
-            ? `Annuler ce paiement de ${formatCurrency(cancelTarget.montant)}, lié à l'échéance du ${formatDate(cancelTarget.echeance?.date_echeance)} pour ${bienLotLabel(cancelTarget.echeance)} ? Le statut de cette échéance sera recalculé et la quittance associée sera aussi annulée. Le paiement reste visible dans l'historique avec le statut "Annulé".`
+            ? `Annuler ce paiement de ${formatCurrency(cancelTarget.montant)} du ${formatDate(cancelTarget.echeance?.date_echeance)} ? La quittance associée sera annulée et l'échéance redeviendra impayée.`
             : ""
         }
         confirmLabel="Annuler le paiement"
         danger
         isBusy={cancelBusy}
         error={cancelError}
-      />
+      >
+        <TextField
+          as="textarea"
+          label="Motif (optionnel)"
+          name="cancel_motif"
+          rows={2}
+          value={cancelMotif}
+          onChange={(e) => setCancelMotif(e.target.value)}
+          placeholder="Ex : erreur de saisie, chèque impayé..."
+        />
+      </ConfirmationDialog>
     </div>
   );
 }

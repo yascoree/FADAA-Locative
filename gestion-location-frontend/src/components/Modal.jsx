@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import styles from "./ui.module.css";
 
 /** Fenêtre modale générique (overlay + fermeture Échap/clic sur le fond). */
-export default function Modal({ isOpen, onClose, title, children }) {
+export default function Modal({ isOpen, onClose, title, children, bodyRef }) {
   useEffect(() => {
     if (!isOpen) return undefined;
     function handleKeyDown(e) {
@@ -27,7 +27,9 @@ export default function Modal({ isOpen, onClose, title, children }) {
             </button>
           </div>
         )}
-        <div className={styles.modalBody}>{children}</div>
+        <div className={styles.modalBody} ref={bodyRef}>
+          {children}
+        </div>
       </div>
     </div>
   );

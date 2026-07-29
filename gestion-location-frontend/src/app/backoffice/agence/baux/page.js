@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { extractErrorMessage } from "@/lib/apiClient";
 import {
   fetchBiens,
@@ -27,9 +28,11 @@ import styles from "../agence.module.css";
 
 function Banner({ banner }) {
   if (!banner) return null;
+  const isError = banner.type !== "success";
   return (
-    <div className={`${styles.banner} ${banner.type === "success" ? styles.bannerSuccess : styles.bannerError}`}>
-      {banner.message}
+    <div className={`${styles.banner} ${isError ? styles.bannerError : styles.bannerSuccess}`}>
+      {isError && <i className="bi bi-exclamation-triangle-fill" style={{ fontSize: "1.1rem" }} />}
+      <span style={isError ? { fontWeight: 700 } : undefined}>{banner.message}</span>
     </div>
   );
 }
@@ -86,6 +89,7 @@ export default function AgenceBauxPage() {
   const [createDraft, setCreateDraft] = useState(EMPTY_CREATE_FORM);
   const [createBusy, setCreateBusy] = useState(false);
   const [createBanner, setCreateBanner] = useState(null);
+  const createModalBodyRef = useRef(null);
 
   const [editTarget, setEditTarget] = useState(null);
   const [editDraft, setEditDraft] = useState(null);
@@ -137,6 +141,19 @@ export default function AgenceBauxPage() {
     return `${bienName} — ${lot.reference || `Lot #${lot.id}`}`;
   }
 
+  // Un lot est indisponible s'il a déjà un bail actif/planifié dont la période
+  // chevauche celle en cours de saisie (dates non renseignées = pas de filtre).
+  function isLotAvailable(lotId, dateDebut, dateFin, excludeBailId) {
+    if (!dateDebut && !dateFin) return true;
+    return !baux.some((b) => {
+      if (b.lot_id !== lotId || b.id === excludeBailId) return false;
+      if (b.statut !== BAIL_STATUS.ACTIF && b.statut !== BAIL_STATUS.EN_ATTENTE) return false;
+      const startsBeforeOrEq = !b.date_debut || !dateFin || b.date_debut <= dateFin;
+      const endsAfterOrEq = !b.date_fin || !dateDebut || dateDebut <= b.date_fin;
+      return startsBeforeOrEq && endsAfterOrEq;
+    });
+  }
+
   const creatableLots = useMemo(() => {
     if (!permIndex) return [];
     return lots.filter((l) => {
@@ -144,6 +161,39 @@ export default function AgenceBauxPage() {
       return permIndex.hasForBien(l.bien_id, proprietaireId, "CREATE_LEASE");
     });
   }, [lots, biens, permIndex]);
+
+  const lotOptions = useMemo(
+    () => [
+      { value: "", label: "Sélectionner un lot...", disabled: true },
+      ...creatableLots.map((l) => {
+        const available = isLotAvailable(l.id, createDraft.date_debut, createDraft.date_fin);
+        return {
+          value: l.id,
+          label: available ? lotLabel(l) : `${lotLabel(l)} — indisponible sur cette période`,
+          disabled: !available,
+        };
+      }),
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [creatableLots, biens, baux, createDraft.date_debut, createDraft.date_fin]
+  );
+
+  // Dès que les dates vident la sélection de lot (voir updateCreateDraftDate), on
+  // l'explique immédiatement — pas seulement au moment de cliquer sur "Créer".
+  const lotUnavailableBanner =
+    !createDraft.lot_id && (createDraft.date_debut || createDraft.date_fin)
+      ? { type: "error", message: "Ce lot est déjà occupé sur cette période. Choisissez un autre lot ou d'autres dates." }
+      : null;
+
+  function updateCreateDraftDate(field, value) {
+    setCreateDraft((d) => {
+      const next = { ...d, [field]: value };
+      if (next.lot_id && !isLotAvailable(Number(next.lot_id), next.date_debut, next.date_fin)) {
+        next.lot_id = "";
+      }
+      return next;
+    });
+  }
 
   const filteredBaux = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -199,8 +249,12 @@ export default function AgenceBauxPage() {
 
   async function handleSubmitCreate(e) {
     e.preventDefault();
-    setCreateBusy(true);
     setCreateBanner(null);
+    if (!createDraft.lot_id) {
+      createModalBodyRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    setCreateBusy(true);
     try {
       const locataire = locataires.find((l) => l.id === Number(createDraft.locataire_id));
       const created = await createBail({
@@ -310,29 +364,30 @@ export default function AgenceBauxPage() {
               {filteredBaux.length} bail(aux) affiché(s) sur {baux.length}, tous propriétaires confondus.
             </p>
           </div>
-          <button
-            type="button"
-            className={styles.btn}
-            onClick={openCreate}
-            disabled={creatableLots.length === 0 || locataires.length === 0}
-            title={
-              creatableLots.length === 0
-                ? "Aucun lot disponible (mandat manquant ou aucun lot enregistré)"
-                : locataires.length === 0
-                  ? "Aucun locataire disponible pour créer un bail"
-                  : undefined
-            }
-          >
-            <i className="bi bi-plus-lg" />
-            Nouveau bail
-          </button>
+          {creatableLots.length > 0 && locataires.length === 0 ? (
+            <Link href="/backoffice/agence/locataires?create=1" className={styles.btn}>
+              <i className="bi bi-person-plus" />
+              Créer un locataire
+            </Link>
+          ) : (
+            <button
+              type="button"
+              className={styles.btn}
+              onClick={openCreate}
+              disabled={creatableLots.length === 0}
+              title={creatableLots.length === 0 ? "Aucun lot disponible (mandat manquant ou aucun lot enregistré)" : undefined}
+            >
+              <i className="bi bi-plus-lg" />
+              Nouveau bail
+            </button>
+          )}
         </div>
 
         {lots.length === 0 && (
           <p className={styles.empty}>Aucun lot disponible pour l&apos;instant (mandat manquant ou aucun lot enregistré).</p>
         )}
         {lots.length > 0 && locataires.length === 0 && (
-          <p className={styles.empty}>Aucun locataire disponible pour créer un bail.</p>
+          <p className={styles.empty}>Aucun locataire disponible pour le moment. Créez-en un pour pouvoir ajouter un bail.</p>
         )}
 
         <div className={styles.filtersRow}>
@@ -502,15 +557,18 @@ export default function AgenceBauxPage() {
       </div>
 
       {/* ---- Créer un bail ---- */}
-      <Modal isOpen={createOpen} onClose={closeCreate} title="Nouveau bail">
+      <Modal isOpen={createOpen} onClose={closeCreate} title="Nouveau bail" bodyRef={createModalBodyRef}>
         <form onSubmit={handleSubmitCreate}>
-          <Banner banner={createBanner} />
+          <div style={{ position: "sticky", top: 0, zIndex: 2, background: "var(--brand-surface)" }}>
+            <Banner banner={createBanner || lotUnavailableBanner} />
+          </div>
           <SelectField
             label="Lot"
             name="lot_id"
-            options={creatableLots.map((l) => ({ value: l.id, label: lotLabel(l) }))}
+            options={lotOptions}
             value={createDraft.lot_id}
             onChange={(e) => setCreateDraft((d) => ({ ...d, lot_id: e.target.value }))}
+            hint="Choisissez les dates pour exclure les lots déjà occupés sur cette période."
             required
           />
           <SelectField
@@ -526,14 +584,14 @@ export default function AgenceBauxPage() {
             name="date_debut"
             type="date"
             value={createDraft.date_debut}
-            onChange={(e) => setCreateDraft((d) => ({ ...d, date_debut: e.target.value }))}
+            onChange={(e) => updateCreateDraftDate("date_debut", e.target.value)}
           />
           <TextField
             label="Date de fin"
             name="date_fin"
             type="date"
             value={createDraft.date_fin}
-            onChange={(e) => setCreateDraft((d) => ({ ...d, date_fin: e.target.value }))}
+            onChange={(e) => updateCreateDraftDate("date_fin", e.target.value)}
           />
           <TextField
             label="Loyer (MAD)"
@@ -663,13 +721,13 @@ export default function AgenceBauxPage() {
           setDeleteError(null);
         }}
         onConfirm={handleConfirmDelete}
-        title="Supprimer le bail"
+        title="Masquer le bail"
         message={
           deleteTarget
-            ? `Masquer ce bail (${deleteTarget.locataire?.prenom || ""} ${deleteTarget.locataire?.nom || ""}) ? Ses échéances, paiements et quittances sont conservés (non supprimés). Impossible tant que le bail est actif : terminez-le ou résiliez-le d'abord.`
+            ? `Masquer le bail de ${deleteTarget.locataire?.prenom || ""} ${deleteTarget.locataire?.nom || ""} ? Il ne sera plus visible dans vos listes (échéances, paiements et quittances restent conservés).`
             : ""
         }
-        confirmLabel="Supprimer"
+        confirmLabel="Masquer"
         danger
         isBusy={deleteBusy}
         error={deleteError}

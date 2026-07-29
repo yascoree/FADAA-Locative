@@ -45,7 +45,12 @@ def update_categorie(db: Session, categorie_id: int, categorie_in: CategorieUpda
     )
     if not categorie:
         raise NotFound("Category not found")
-    for field, value in categorie_in.model_dump(exclude_unset=True).items():
+
+    # Renommer une catégorie n'affecte pas les biens qui la référencent (même
+    # categorie_id) : autorisé même si elle est utilisée. Seule la suppression
+    # est bloquée dans ce cas (voir delete_categorie).
+    updates = categorie_in.model_dump(exclude_unset=True)
+    for field, value in updates.items():
         setattr(categorie, field, value)
     db.commit()
     db.refresh(categorie)

@@ -79,8 +79,18 @@ export default function AdminHistoriquePage() {
     const term = search.trim().toLowerCase();
     const filtered = entries.filter((e) => {
       if (term) {
-        const name = `${e.utilisateur?.prenom || ""} ${e.utilisateur?.nom || ""} ${e.utilisateur?.email || ""}`.toLowerCase();
-        if (!name.includes(term)) return false;
+        const haystack = [
+          e.utilisateur?.prenom,
+          e.utilisateur?.nom,
+          e.utilisateur?.email,
+          e.module,
+          ACTION_LABELS[e.action] || e.action,
+          elementCell(e),
+        ]
+          .filter((v) => v !== null && v !== undefined && v !== "")
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(term)) return false;
       }
       if (moduleFilter && e.module !== moduleFilter) return false;
       if (actionFilter && e.action !== actionFilter) return false;
@@ -128,7 +138,7 @@ export default function AdminHistoriquePage() {
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher par utilisateur..."
+            placeholder="Rechercher par utilisateur, module, élément..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);

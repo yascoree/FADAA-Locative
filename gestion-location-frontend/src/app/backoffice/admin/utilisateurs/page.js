@@ -115,8 +115,11 @@ export default function AdminUtilisateursPage() {
     const term = search.trim().toLowerCase();
     return users.filter((u) => {
       if (term) {
-        const matches = `${u.prenom} ${u.nom}`.toLowerCase().includes(term) || u.email.toLowerCase().includes(term);
-        if (!matches) return false;
+        const haystack = [u.prenom, u.nom, u.email, ROLE_LABELS[u.role], formatDate(u.date_creation)]
+          .filter((v) => v !== null && v !== undefined && v !== "")
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(term)) return false;
       }
       if (roleFilter && String(u.role) !== roleFilter) return false;
       if (statusFilter && String(u.statut_compte) !== statusFilter) return false;
@@ -286,7 +289,7 @@ export default function AdminUtilisateursPage() {
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher par nom ou e-mail..."
+            placeholder="Rechercher par nom, e-mail, rôle..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);

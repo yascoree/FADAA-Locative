@@ -16,9 +16,11 @@ from app.models.paiement import Paiement, PaiementStatus
 from app.models.quittance import Quittance, QuittanceStatus
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.paiement import PaiementCreate
+from app.services.echeance_service import sync_echeance_statut
 from app.services.exceptions import BadRequest, Forbidden, NotFound
 from app.services.push_service import send_push_to_user
 from app.services.receipt_service import generate_receipt_pdf
+from app.services.usage_service import enforce_limit
 
 
 def _chain_for_paiement(db: Session, echeance_id: int):
@@ -114,10 +116,21 @@ def create_paiement(db: Session, current_user: Utilisateur, paiement_in: Paiemen
     if not is_tenant and not has_permission_for_bien(db, current_user, bien, "CREATE_PAYMENT"):
         raise Forbidden("Not allowed to record this payment")
 
+    # Chaque paiement génère systématiquement une quittance (voir plus bas) : la
+    # limite mensuelle de quittances du plan gate donc la création du paiement
+    # lui-même, avant toute écriture, pour ne jamais laisser un paiement orphelin
+    # sans quittance.
+    if bien:
+        enforce_limit(db, bien.proprietaire_id, "quittances_mois")
+
     paiement = Paiement(**paiement_in.model_dump(), encaisse_par=current_user.id)
     db.add(paiement)
     db.commit()
     db.refresh(paiement)
+
+    echeance = db.get(Echeance, paiement.echeance_id)
+    if echeance:
+        sync_echeance_statut(db, echeance)
 
     # A receipt (quittance) is auto-generated for every payment, PDF included.
     quittance = Quittance(paiement_id=paiement.id)
@@ -162,24 +175,6 @@ def create_paiement(db: Session, current_user: Utilisateur, paiement_in: Paiemen
     return paiement
 
 
-# def update_paiement(db: Session, current_user: Utilisateur, paiement_id: int, paiement_in: PaiementUpdate) -> Paiement:
-#     paiement = (
-#         db.query(Paiement)
-#         .filter(Paiement.id == paiement_id, Paiement.deleted_at.is_(None))
-#         .first()
-#     )
-#     if not paiement:
-#         raise NotFound("Payment not found")
-#     _, bien = _chain_for_paiement(db, paiement.echeance_id)
-#     if not has_permission_for_bien(db, current_user, bien, "UPDATE_PAYMENT"):
-#         raise Forbidden("Not allowed to modify this payment")
-#     for field, value in paiement_in.model_dump(exclude_unset=True).items():
-#         setattr(paiement, field, value)
-#     db.commit()
-#     db.refresh(paiement)
-#     return paiement
-
-
 def delete_paiement(db: Session, current_user: Utilisateur, paiement_id: int) -> None:
     paiement = (
         db.query(Paiement)
@@ -191,6 +186,10 @@ def delete_paiement(db: Session, current_user: Utilisateur, paiement_id: int) ->
     _, bien = _chain_for_paiement(db, paiement.echeance_id)
     if not has_permission_for_bien(db, current_user, bien, "DELETE_PAYMENT"):
         raise Forbidden("Not allowed to delete this payment")
+    # Un paiement validé ne se supprime jamais physiquement — seule l'annulation
+    # (statut ANNULE) est permise, pour préserver l'historique financier.
+    if paiement.statut == PaiementStatus.VALIDE:
+        raise BadRequest("Impossible de supprimer un paiement validé. Utilisez plutôt l'action Annuler.")
     # Une quittance est une preuve documentaire : on ne la cascade-supprime jamais.
     # Si une quittance existe, le paiement doit être annulé (voir annuler_paiement),
     # pas supprimé — l'historique financier reste intact.
@@ -199,11 +198,16 @@ def delete_paiement(db: Session, current_user: Utilisateur, paiement_id: int) ->
         raise BadRequest("Impossible de supprimer ce paiement : une quittance y est associée. Utilisez plutôt l'action Annuler.")
     paiement.deleted_at = datetime.utcnow()
     db.commit()
+    echeance = db.get(Echeance, paiement.echeance_id)
+    if echeance:
+        sync_echeance_statut(db, echeance)
 
 
-def annuler_paiement(db: Session, current_user: Utilisateur, paiement_id: int) -> Paiement:
+def annuler_paiement(db: Session, current_user: Utilisateur, paiement_id: int, motif: str | None = None) -> Paiement:
     """Action métier distincte du Delete : marque le paiement comme ANNULE sans le
-    retirer de l'historique, et annule la quittance associée le cas échéant."""
+    retirer de l'historique, et annule la quittance associée le cas échéant.
+    Trace qui a annulé, quand, et pourquoi (annule_par/date_annulation/motif) —
+    l'action elle-même est déjà journalisée dans l'audit par HistoriqueMiddleware."""
     paiement = (
         db.query(Paiement)
         .filter(Paiement.id == paiement_id, Paiement.deleted_at.is_(None))
@@ -211,15 +215,36 @@ def annuler_paiement(db: Session, current_user: Utilisateur, paiement_id: int) -
     )
     if not paiement:
         raise NotFound("Payment not found")
-    _, bien = _chain_for_paiement(db, paiement.echeance_id)
+    bail, bien = _chain_for_paiement(db, paiement.echeance_id)
     if not has_permission_for_bien(db, current_user, bien, "UPDATE_PAYMENT"):
         raise Forbidden("Not allowed to modify this payment")
     if paiement.statut == PaiementStatus.ANNULE:
         raise BadRequest("Impossible d'annuler ce paiement : il est déjà annulé.")
     paiement.statut = PaiementStatus.ANNULE
+    paiement.annule_par = current_user.id
+    paiement.date_annulation = datetime.utcnow()
+    paiement.motif_annulation = motif
     quittance = db.query(Quittance).filter(Quittance.paiement_id == paiement.id, Quittance.deleted_at.is_(None)).first()
     if quittance and quittance.statut == QuittanceStatus.EMISE:
         quittance.statut = QuittanceStatus.ANNULEE
+        db.commit()
+        db.refresh(quittance)
+        # Même document, régénéré pour afficher la référence d'annulation
+        # (qui a annulé, quand) sans créer de second fichier.
+        quittance.fichier_pdf = generate_receipt_pdf(db, quittance)
     db.commit()
     db.refresh(paiement)
+    echeance = db.get(Echeance, paiement.echeance_id)
+    if echeance:
+        sync_echeance_statut(db, echeance)
+
+    if bail and current_user.id != bail.locataire_id:
+        send_push_to_user(
+            db,
+            user_id=bail.locataire_id,
+            title="Paiement annulé",
+            body=f"Votre paiement de {paiement.montant} MAD a été annulé par {current_user.prenom} {current_user.nom}.",
+            notif_type=NotificationType.PAIEMENT,
+            reference_id=paiement.id,
+        )
     return paiement

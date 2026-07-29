@@ -18,5 +18,16 @@ class Settings(BaseSettings):
     push_alert_days_before: int = 3
     push_overdue_reminder_every_days: int = 3
 
+    # SMTP pour l'email "mot de passe oublié". Tant que non renseigné, aucun email
+    # n'est réellement envoyé — le lien de réinitialisation est retourné directement
+    # dans la réponse API (mode test) pour permettre de développer/tester le flux.
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from_email: str | None = None
+    frontend_base_url: str = "http://localhost:3000"
+    password_reset_token_expire_minutes: int = 30
+
 
 settings = Settings()

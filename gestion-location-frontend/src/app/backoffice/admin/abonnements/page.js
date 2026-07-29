@@ -19,10 +19,13 @@ import {
   cancelSubscription,
   createPlan,
   updatePlan,
+  deletePlan,
   setPlanActive,
 } from "@/lib/subscriptions";
 import StatCard from "@/components/StatCard";
 import CountUp from "@/components/CountUp";
+import ConfirmationDialog from "@/components/ConfirmationDialog";
+import FilterChip from "@/components/FilterChip";
 import styles from "../admin.module.css";
 
 function Banner({ banner }) {
@@ -155,6 +158,10 @@ export default function AdminAbonnementsPage() {
   const [planSaving, setPlanSaving] = useState(false);
   const [planBanner, setPlanBanner] = useState(null);
 
+  const [planDeleteTarget, setPlanDeleteTarget] = useState(null);
+  const [planDeleteBusy, setPlanDeleteBusy] = useState(false);
+  const [planDeleteError, setPlanDeleteError] = useState(null);
+
   const [newPlan, setNewPlan] = useState({
     name: "",
     description: "",
@@ -232,9 +239,11 @@ export default function AdminAbonnementsPage() {
     const term = search.trim().toLowerCase();
     return rows.filter(({ subscription, user }) => {
       if (term) {
-        const matches =
-          `${user.prenom} ${user.nom}`.toLowerCase().includes(term) || user.email.toLowerCase().includes(term);
-        if (!matches) return false;
+        const haystack = [user.prenom, user.nom, user.email, subscription.plan?.name, SUBSCRIPTION_STATUS_LABELS[subscription.status]]
+          .filter((v) => v !== null && v !== undefined && v !== "")
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(term)) return false;
       }
       if (planFilter && String(subscription.plan_id) !== planFilter) return false;
       if (statusFilter && String(subscription.status) !== statusFilter) return false;
@@ -324,6 +333,21 @@ export default function AdminAbonnementsPage() {
       setPlans((prev) => prev.map((p) => (p.id === plan.id ? updated : p)));
     } catch (err) {
       setPlanBanner({ type: "error", message: extractErrorMessage(err) });
+    }
+  }
+
+  async function handleConfirmDeletePlan() {
+    if (!planDeleteTarget) return;
+    setPlanDeleteBusy(true);
+    setPlanDeleteError(null);
+    try {
+      await deletePlan(planDeleteTarget.id);
+      setPlans((prev) => prev.filter((p) => p.id !== planDeleteTarget.id));
+      setPlanDeleteTarget(null);
+    } catch (err) {
+      setPlanDeleteError(extractErrorMessage(err));
+    } finally {
+      setPlanDeleteBusy(false);
     }
   }
 
@@ -417,6 +441,10 @@ export default function AdminAbonnementsPage() {
   }
 
   const changePlanTarget = plans.find((p) => p.id === Number(changePlanTargetId)) || null;
+
+  const planDeleteTargetCount = planDeleteTarget
+    ? subscriptions.filter((s) => s.plan_id === planDeleteTarget.id).length
+    : 0;
 
   if (isLoading) {
     return <p>Chargement...</p>;
@@ -513,9 +541,22 @@ export default function AdminAbonnementsPage() {
                         <span className={styles.planStatusDot} />
                         {plan.is_active ? "Actif" : "Inactif"}
                       </button>
-                      <button type="button" className={styles.planModifyLink} onClick={() => startEdit(plan)}>
-                        Modifier
-                      </button>
+                      <div className={styles.planFooterActions}>
+                        <button type="button" className={styles.planModifyLink} onClick={() => startEdit(plan)}>
+                          Modifier
+                        </button>
+                        <button
+                          type="button"
+                          className={`${styles.planModifyLink} ${styles.planDeleteLink}`}
+                          onClick={() => {
+                            setPlanDeleteError(null);
+                            setPlanDeleteTarget(plan);
+                          }}
+                          title={impactCount > 0 ? "Utilisé par des abonnements existants" : "Supprimer"}
+                        >
+                          <i className="bi bi-trash" />
+                        </button>
+                      </div>
                     </div>
                     <div className={styles.planUsersLine}>{usersLine(impactCount, plan)}</div>
                   </>
@@ -720,6 +761,25 @@ export default function AdminAbonnementsPage() {
         </form>
       </div>
 
+      <ConfirmationDialog
+        isOpen={!!planDeleteTarget}
+        onClose={() => setPlanDeleteTarget(null)}
+        onConfirm={handleConfirmDeletePlan}
+        title="Supprimer le plan"
+        message={
+          planDeleteTarget
+            ? planDeleteTargetCount > 0
+              ? `Impossible de supprimer "${planDeleteTarget.name}" : ce plan est utilisé par ${planDeleteTargetCount} abonnement${planDeleteTargetCount > 1 ? "s" : ""} existant${planDeleteTargetCount > 1 ? "s" : ""}.`
+              : `Supprimer définitivement le plan "${planDeleteTarget.name}" ?`
+            : ""
+        }
+        confirmLabel="Supprimer"
+        danger
+        isBusy={planDeleteBusy}
+        error={planDeleteError}
+        hideConfirm={planDeleteTargetCount > 0}
+      />
+
       {/* ---- Abonnements par compte ---- */}
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>
@@ -733,7 +793,7 @@ export default function AdminAbonnementsPage() {
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher par nom ou e-mail..."
+            placeholder="Rechercher par nom, e-mail, plan, statut..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -768,28 +828,24 @@ export default function AdminAbonnementsPage() {
               </option>
             ))}
           </select>
-          <label className={styles.checkFilter}>
-            <input
-              type="checkbox"
-              checked={trialOnly}
-              onChange={(e) => {
-                setTrialOnly(e.target.checked);
-                setCurrentPage(1);
-              }}
-            />
+          <FilterChip
+            checked={trialOnly}
+            onChange={(checked) => {
+              setTrialOnly(checked);
+              setCurrentPage(1);
+            }}
+          >
             Free Trial uniquement
-          </label>
-          <label className={styles.checkFilter}>
-            <input
-              type="checkbox"
-              checked={expiredOnly}
-              onChange={(e) => {
-                setExpiredOnly(e.target.checked);
-                setCurrentPage(1);
-              }}
-            />
+          </FilterChip>
+          <FilterChip
+            checked={expiredOnly}
+            onChange={(checked) => {
+              setExpiredOnly(checked);
+              setCurrentPage(1);
+            }}
+          >
             Expirés uniquement
-          </label>
+          </FilterChip>
         </div>
 
         <div className={styles.tableWrap}>

@@ -127,7 +127,7 @@ def _proprietaire_counts(db: Session, owner_ids: list[int]):
 
     lots_query = db.query(Lot).join(Bien, Bien.id == Lot.bien_id).filter(Bien.proprietaire_id.in_(owner_ids))
     total_lots = lots_query.with_entities(func.count(Lot.id)).scalar() or 0
-    lots_occupes = lots_query.filter(Lot.statut == LotStatus.OCCUPE).with_entities(func.count(Lot.id)).scalar() or 0
+    lots_occupes = lots_query.filter(Lot.statut == LotStatus.LOUE).with_entities(func.count(Lot.id)).scalar() or 0
     lots_by_status_rows = (
         db.query(Lot.statut.label("status"), func.count(Lot.id).label("count"))
         .join(Bien, Bien.id == Lot.bien_id)

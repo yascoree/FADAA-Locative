@@ -8,7 +8,7 @@ export default function SelectField({ label, error, hint, id, options, ...select
       {label}
       <select id={fieldId} className={`${styles.fieldSelect} ${error ? styles.fieldInputError : ""}`} {...selectProps}>
         {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
+          <option key={opt.value} value={opt.value} disabled={opt.disabled}>
             {opt.label}
           </option>
         ))}

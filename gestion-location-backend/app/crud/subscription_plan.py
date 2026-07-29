@@ -1,5 +1,8 @@
+from datetime import datetime
+
 from sqlalchemy.orm import Session
 
+from app.models.subscription import Subscription, SubscriptionStatus
 from app.models.subscription_plan import SubscriptionPlan
 from app.schemas.subscription_plan import SubscriptionPlanCreate, SubscriptionPlanUpdate
 
@@ -62,3 +65,23 @@ def set_active(db: Session, plan: SubscriptionPlan, is_active: bool) -> Subscrip
     db.commit()
     db.refresh(plan)
     return plan
+
+
+def count_subscriptions(db: Session, plan_id: int) -> int:
+    """Compte les abonnements encore "en jeu" sur ce plan (actifs ou suspendus,
+    donc réactivables) — un plan qui n'a plus que des abonnements résiliés/expirés
+    peut être supprimé sans casser personne."""
+    return (
+        db.query(Subscription)
+        .filter(
+            Subscription.plan_id == plan_id,
+            Subscription.deleted_at.is_(None),
+            Subscription.status.in_((SubscriptionStatus.ACTIF, SubscriptionStatus.SUSPENDU)),
+        )
+        .count()
+    )
+
+
+def remove(db: Session, plan: SubscriptionPlan) -> None:
+    plan.deleted_at = datetime.utcnow()
+    db.commit()

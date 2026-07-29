@@ -17,15 +17,19 @@ export default function CountUp({ value, duration = 900, decimals = 0, formatter
   const fromRef = useRef(PREFERS_REDUCED_MOTION ? target : 0);
 
   useEffect(() => {
-    if (PREFERS_REDUCED_MOTION) {
+    function snapToTarget() {
       setDisplay(target);
       fromRef.current = target;
+    }
+
+    if (PREFERS_REDUCED_MOTION) {
+      snapToTarget();
       return undefined;
     }
 
     const from = fromRef.current;
     if (from === target) {
-      setDisplay(target);
+      snapToTarget();
       return undefined;
     }
 

@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DECIMAL, Column, DateTime, Enum, ForeignKey, Integer
+from sqlalchemy import DECIMAL, Column, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -35,6 +35,9 @@ class Paiement(Base):
         server_default="VALIDE",
     )
     encaisse_par = Column(Integer, ForeignKey("utilisateurs.id"), nullable=False)
+    annule_par = Column(Integer, ForeignKey("utilisateurs.id"), nullable=True)
+    date_annulation = Column(DateTime, nullable=True)
+    motif_annulation = Column(String(255), nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted_at = Column(DateTime, nullable=True)
@@ -46,7 +49,8 @@ class Paiement(Base):
     )
 
     encaisseur = relationship(
-    "Utilisateur",
-    back_populates="paiements",
-    foreign_keys=[encaisse_par]
+        "Utilisateur",
+        back_populates="paiements",
+        foreign_keys=[encaisse_par],
     )
+    annulateur = relationship("Utilisateur", foreign_keys=[annule_par])

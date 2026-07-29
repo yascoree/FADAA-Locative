@@ -6,7 +6,15 @@ from app.api.deps import get_current_user
 from app.core.security import verify_password
 from app.database import get_db
 from app.models.utilisateur import Utilisateur
-from app.schemas.auth import PasswordVerifyRequest, PasswordVerifyResponse, RefreshRequest, Token
+from app.schemas.auth import (
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    PasswordVerifyRequest,
+    PasswordVerifyResponse,
+    RefreshRequest,
+    ResetPasswordRequest,
+    Token,
+)
 from app.schemas.utilisateur import UtilisateurCreate, UtilisateurRead
 from app.services import auth_service
 from app.services.exceptions import BadRequest, Forbidden
@@ -68,3 +76,21 @@ def verify_current_password(
     settings page to confirm identity before allowing a password change, without
     ever trusting a client-side-only check."""
     return PasswordVerifyResponse(valid=verify_password(payload.password, current_user.mot_de_passe))
+
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    debug_link = auth_service.request_password_reset(db, payload.email)
+    return ForgotPasswordResponse(
+        message="Si un compte existe avec cette adresse, un email de réinitialisation a été envoyé.",
+        debug_link=debug_link,
+    )
+
+
+@router.post("/reset-password")
+def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+    try:
+        auth_service.reset_password(db, payload.token, payload.new_password)
+    except BadRequest as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return {"message": "Mot de passe réinitialisé avec succès."}
