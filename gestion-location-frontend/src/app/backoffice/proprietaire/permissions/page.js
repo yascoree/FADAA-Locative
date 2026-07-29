@@ -277,7 +277,7 @@ export default function GestionPermissionPage() {
 
         <p className={styles.note}>
           <i className="bi bi-info-circle-fill" />
-          Un nouveau mandat reçoit automatiquement le droit de <strong>voir</strong> le(s) bien(s) concerné(s). Pour
+          Un nouveau mandat reçoit automatiquement le droit de voir le(s) bien(s) concerné(s). Pour
           ajouter un autre bien à un gestionnaire déjà présent, réinvitez-le ci-dessus avec une portée différente,
           puis ouvrez ses permissions pour choisir le bien à configurer.
         </p>
