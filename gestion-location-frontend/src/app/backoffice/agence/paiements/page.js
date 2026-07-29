@@ -23,6 +23,7 @@ import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import FilterChip from "@/components/FilterChip";
+import FilterSelect from "@/components/FilterSelect";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -374,20 +375,14 @@ export default function AgencePaiementsPage() {
               setCurrentPage(1);
             }}
           />
-          <select
+          <FilterSelect
             value={modeFilter}
-            onChange={(e) => {
-              setModeFilter(e.target.value);
+            onChange={(v) => {
+              setModeFilter(v);
               setCurrentPage(1);
             }}
-          >
-            <option value="">Tous les modes</option>
-            {MODE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            options={[{ value: "", label: "Tous les modes" }, ...MODE_OPTIONS]}
+          />
           <FilterChip
             checked={monthOnly}
             onChange={(checked) => {

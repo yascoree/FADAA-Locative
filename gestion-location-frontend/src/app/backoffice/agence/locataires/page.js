@@ -12,6 +12,7 @@ import Modal from "@/components/Modal";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import FilterChip from "@/components/FilterChip";
+import FilterSelect from "@/components/FilterSelect";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -265,13 +266,7 @@ export default function AgenceLocatairesPage() {
           >
             En retard uniquement
           </FilterChip>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            {SORT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>

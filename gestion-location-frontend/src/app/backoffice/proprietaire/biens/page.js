@@ -20,6 +20,7 @@ import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
+import FilterSelect from "@/components/FilterSelect";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -301,20 +302,14 @@ export default function ProprietaireBiensPage() {
               setCurrentPage(1);
             }}
           />
-          <select
+          <FilterSelect
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
+            onChange={(v) => {
+              setStatusFilter(v);
               setCurrentPage(1);
             }}
-          >
-            <option value="">Tous les statuts</option>
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            options={[{ value: "", label: "Tous les statuts" }, ...STATUS_OPTIONS]}
+          />
         </div>
 
         <div className={styles.tableWrap}>

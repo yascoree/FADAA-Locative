@@ -26,6 +26,7 @@ import StatCard from "@/components/StatCard";
 import CountUp from "@/components/CountUp";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import FilterChip from "@/components/FilterChip";
+import FilterSelect from "@/components/FilterSelect";
 import styles from "../admin.module.css";
 
 function Banner({ banner }) {
@@ -800,34 +801,28 @@ export default function AdminAbonnementsPage() {
               setCurrentPage(1);
             }}
           />
-          <select
+          <FilterSelect
             value={planFilter}
-            onChange={(e) => {
-              setPlanFilter(e.target.value);
+            onChange={(v) => {
+              setPlanFilter(v);
               setCurrentPage(1);
             }}
-          >
-            <option value="">Tous les plans</option>
-            {plans.map((plan) => (
-              <option key={plan.id} value={plan.id}>
-                {plan.name}
-              </option>
-            ))}
-          </select>
-          <select
+            options={[
+              { value: "", label: "Tous les plans" },
+              ...plans.map((plan) => ({ value: plan.id, label: plan.name })),
+            ]}
+          />
+          <FilterSelect
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
+            onChange={(v) => {
+              setStatusFilter(v);
               setCurrentPage(1);
             }}
-          >
-            <option value="">Tous les statuts</option>
-            {Object.entries(SUBSCRIPTION_STATUS_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
+            options={[
+              { value: "", label: "Tous les statuts" },
+              ...Object.entries(SUBSCRIPTION_STATUS_LABELS).map(([value, label]) => ({ value, label })),
+            ]}
+          />
           <FilterChip
             checked={trialOnly}
             onChange={(checked) => {
@@ -1102,13 +1097,11 @@ export default function AdminAbonnementsPage() {
                 <div className={styles.changePlanRow}>
                   <span>Plan actuel : {selectedRow.subscription.plan.name}</span>
                   <i className="bi bi-arrow-right" />
-                  <select value={changePlanTargetId} onChange={(e) => setChangePlanTargetId(e.target.value)}>
-                    {activePlans.map((plan) => (
-                      <option key={plan.id} value={plan.id}>
-                        {plan.name}
-                      </option>
-                    ))}
-                  </select>
+                  <FilterSelect
+                    value={changePlanTargetId}
+                    onChange={setChangePlanTargetId}
+                    options={activePlans.map((plan) => ({ value: plan.id, label: plan.name }))}
+                  />
                 </div>
 
                 {changePlanTarget && (

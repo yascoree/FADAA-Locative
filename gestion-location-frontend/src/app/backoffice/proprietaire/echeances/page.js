@@ -22,6 +22,7 @@ import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import FilterChip from "@/components/FilterChip";
+import FilterSelect from "@/components/FilterSelect";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -312,34 +313,22 @@ export default function ProprietaireEcheancesPage() {
               setCurrentPage(1);
             }}
           />
-          <select
+          <FilterSelect
             value={bailFilter}
-            onChange={(e) => {
-              setBailFilter(e.target.value);
+            onChange={(v) => {
+              setBailFilter(v);
               setCurrentPage(1);
             }}
-          >
-            <option value="">Tous les baux</option>
-            {baux.map((b) => (
-              <option key={b.id} value={b.id}>
-                {bailLabel(b)}
-              </option>
-            ))}
-          </select>
-          <select
+            options={[{ value: "", label: "Tous les baux" }, ...baux.map((b) => ({ value: b.id, label: bailLabel(b) }))]}
+          />
+          <FilterSelect
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
+            onChange={(v) => {
+              setStatusFilter(v);
               setCurrentPage(1);
             }}
-          >
-            <option value="">Tous les statuts</option>
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            options={[{ value: "", label: "Tous les statuts" }, ...STATUS_OPTIONS]}
+          />
           <FilterChip
             checked={overdueOnly}
             onChange={(checked) => {

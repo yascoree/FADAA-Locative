@@ -49,7 +49,8 @@ export default function ProprietaireMessageriePage() {
   const [activeView, setActiveView] = useState("messagerie");
   const viewTabRefs = useRef({});
   const [viewTabIndicator, setViewTabIndicator] = useState(null);
-  const [contacts, setContacts] = useState([]);
+  const [locataires, setLocataires] = useState([]);
+  const [mandates, setMandates] = useState([]);
   const [messages, setMessages] = useState([]);
   const [reclamations, setReclamations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,49 +73,14 @@ export default function ProprietaireMessageriePage() {
     async function init() {
       setIsLoading(true);
       try {
-        const [locataires, mandates, discussions, reclamationsList] = await Promise.all([
+        const [locatairesList, mandatesList, discussions, reclamationsList] = await Promise.all([
           fetchLocataires(),
           fetchMandates(),
           fetchDiscussions(),
           fetchReclamations(),
         ]);
-        const tenantContacts = locataires.map((l) => ({
-          id: l.id,
-          nom: l.nom,
-          prenom: l.prenom,
-          email: l.email,
-          photo: l.photo,
-          role: "Locataire",
-        }));
-        const managerContacts = mandates
-          .filter((m) => m.statut === MANDAT_STATUS.ACTIF && m.gestionnaire)
-          .map((m) => ({
-            id: m.gestionnaire.id,
-            nom: m.gestionnaire.nom,
-            prenom: m.gestionnaire.prenom,
-            email: m.gestionnaire.email,
-            photo: m.gestionnaire.photo,
-            role: "Gestionnaire",
-          }));
-        const acceptedReclamation = reclamationsList.find(
-          (r) => r.statut === RECLAMATION_STATUS.ACCEPTEE && !r.expiree && r.traite_par
-        );
-        const adminContact = acceptedReclamation
-          ? [
-              {
-                id: acceptedReclamation.traite_par.id,
-                nom: acceptedReclamation.traite_par.nom,
-                prenom: acceptedReclamation.traite_par.prenom,
-                email: acceptedReclamation.traite_par.email,
-                photo: acceptedReclamation.traite_par.photo,
-                role: "Administration",
-              },
-            ]
-          : [];
-        const merged = [...tenantContacts, ...managerContacts, ...adminContact].filter(
-          (c, i, arr) => arr.findIndex((o) => o.id === c.id) === i
-        );
-        setContacts(merged);
+        setLocataires(locatairesList);
+        setMandates(mandatesList);
         setMessages(discussions);
         setReclamations(reclamationsList);
       } catch (err) {
@@ -125,6 +91,59 @@ export default function ProprietaireMessageriePage() {
     }
     init();
   }, []);
+
+  useEffect(() => {
+    // Rafraîchit les réclamations en tâche de fond : dès que l'admin accepte,
+    // le contact "Administration" doit apparaître sans recharger la page.
+    const interval = setInterval(async () => {
+      try {
+        const reclamationsList = await fetchReclamations();
+        setReclamations(reclamationsList);
+      } catch {
+        // Silencieux : un échec de polling ne doit pas perturber la conversation en cours.
+      }
+    }, 6000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const contacts = useMemo(() => {
+    const tenantContacts = locataires.map((l) => ({
+      id: l.id,
+      nom: l.nom,
+      prenom: l.prenom,
+      email: l.email,
+      photo: l.photo,
+      role: "Locataire",
+    }));
+    const managerContacts = mandates
+      .filter((m) => m.statut === MANDAT_STATUS.ACTIF && m.gestionnaire)
+      .map((m) => ({
+        id: m.gestionnaire.id,
+        nom: m.gestionnaire.nom,
+        prenom: m.gestionnaire.prenom,
+        email: m.gestionnaire.email,
+        photo: m.gestionnaire.photo,
+        role: "Gestionnaire",
+      }));
+    const acceptedReclamation = reclamations.find(
+      (r) => r.statut === RECLAMATION_STATUS.ACCEPTEE && r.traite_par
+    );
+    const adminContact = acceptedReclamation
+      ? [
+          {
+            id: acceptedReclamation.traite_par.id,
+            nom: acceptedReclamation.traite_par.nom,
+            prenom: acceptedReclamation.traite_par.prenom,
+            email: acceptedReclamation.traite_par.email,
+            photo: acceptedReclamation.traite_par.photo,
+            role: "Administration",
+          },
+        ]
+      : [];
+    return [...tenantContacts, ...managerContacts, ...adminContact].filter(
+      (c, i, arr) => arr.findIndex((o) => o.id === c.id) === i
+    );
+  }, [locataires, mandates, reclamations]);
 
   useEffect(() => {
     // Ouvrir la messagerie vaut lecture : on marque les notifications de type
@@ -165,7 +184,7 @@ export default function ProprietaireMessageriePage() {
   }, [activeView, isLoading]);
 
   const latestReclamation = reclamations[0] || null;
-  const adminUnlocked = reclamations.some((r) => r.statut === RECLAMATION_STATUS.ACCEPTEE && !r.expiree);
+  const adminUnlocked = reclamations.some((r) => r.statut === RECLAMATION_STATUS.ACCEPTEE);
   const hasPendingReclamation = reclamations.some((r) => r.statut === RECLAMATION_STATUS.EN_ATTENTE);
 
   async function handleSubmitReclamation(e) {
@@ -559,12 +578,6 @@ export default function ProprietaireMessageriePage() {
                     Votre dernière réclamation («&nbsp;{latestReclamation.sujet}&nbsp;») a été{" "}
                     <strong>{RECLAMATION_STATUS_LABELS[latestReclamation.statut].toLowerCase()}</strong>. Vous pouvez
                     en soumettre une nouvelle ci-dessous.
-                  </p>
-                )}
-                {latestReclamation?.statut === RECLAMATION_STATUS.ACCEPTEE && latestReclamation.expiree && (
-                  <p className={styles.sectionSubtitle} style={{ marginTop: "0.5rem" }}>
-                    Votre réclamation a expiré après 24h sans message échangé avec l&apos;administration.
-                    Soumettez-en une nouvelle ci-dessous pour la recontacter.
                   </p>
                 )}
                 <form onSubmit={handleSubmitReclamation} style={{ marginTop: "0.75rem" }}>

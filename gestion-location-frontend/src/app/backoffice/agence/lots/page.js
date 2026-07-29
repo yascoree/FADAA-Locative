@@ -19,6 +19,7 @@ import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
+import FilterSelect from "@/components/FilterSelect";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -280,41 +281,26 @@ export default function AgenceLotsPage() {
               setCurrentPage(1);
             }}
           />
-          <select
+          <FilterSelect
             value={bienFilter}
-            onChange={(e) => {
-              setBienFilter(e.target.value);
+            onChange={(v) => {
+              setBienFilter(v);
               setCurrentPage(1);
             }}
-          >
-            <option value="">Tous les biens</option>
-            {biens.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.designation || `Bien #${b.id}`}
-              </option>
-            ))}
-          </select>
-          <select
+            options={[
+              { value: "", label: "Tous les biens" },
+              ...biens.map((b) => ({ value: b.id, label: b.designation || `Bien #${b.id}` })),
+            ]}
+          />
+          <FilterSelect
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
+            onChange={(v) => {
+              setStatusFilter(v);
               setCurrentPage(1);
             }}
-          >
-            <option value="">Tous les statuts</option>
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            {SORT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            options={[{ value: "", label: "Tous les statuts" }, ...STATUS_OPTIONS]}
+          />
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>
