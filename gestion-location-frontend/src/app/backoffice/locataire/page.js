@@ -94,7 +94,7 @@ export default function LocataireDashboardPage() {
   const activeBaux = useMemo(() => baux.filter((b) => b.statut === BAIL_STATUS.ACTIF), [baux]);
   const activeBail = activeBaux[0] || null;
   const bien = biens.find((b) => b.id === activeBail?.lot?.bien_id) || null;
-  const category = categories.find((c) => c.id === bien?.categorie_id);
+  const category = categories.find((c) => c.id === activeBail?.lot?.categorie_id);
 
   const bailEcheances = useMemo(
     () => (activeBail ? echeances.filter((e) => e.bail_id === activeBail.id) : []),

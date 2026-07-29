@@ -2,20 +2,20 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.models.bien import Bien
+from app.models.bien import TypeBien
 from app.models.categorie import Categorie
+from app.models.lot import Lot
 from app.schemas.categorie import CategorieCreate, CategorieUpdate
 from app.services.exceptions import BadRequest, NotFound
 
 
-def list_categories(db: Session, skip: int = 0, limit: int = 100) -> list[Categorie]:
-    return (
-        db.query(Categorie)
-        .filter(Categorie.deleted_at.is_(None))
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
+def list_categories(
+    db: Session, skip: int = 0, limit: int = 100, type_bien: TypeBien | None = None
+) -> list[Categorie]:
+    query = db.query(Categorie).filter(Categorie.deleted_at.is_(None))
+    if type_bien is not None:
+        query = query.filter(Categorie.type_bien == type_bien)
+    return query.offset(skip).limit(limit).all()
 
 
 def get_categorie(db: Session, categorie_id: int) -> Categorie:
@@ -67,13 +67,13 @@ def delete_categorie(db: Session, categorie_id: int) -> None:
         raise NotFound("Category not found")
 
     in_use = (
-        db.query(Bien)
-        .filter(Bien.categorie_id == categorie_id, Bien.deleted_at.is_(None))
+        db.query(Lot)
+        .filter(Lot.categorie_id == categorie_id, Lot.deleted_at.is_(None))
         .first()
         is not None
     )
     if in_use:
-        raise BadRequest("Category is used by existing properties")
+        raise BadRequest("Category is used by existing lots")
 
     categorie.deleted_at = datetime.utcnow()
     db.commit()

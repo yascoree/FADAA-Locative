@@ -6,6 +6,11 @@ import apiClient from "@/lib/apiClient";
 export const BIEN_STATUS = { ACTIF: 1, INACTIF: 2, ARCHIVE: 3 };
 export const BIEN_STATUS_LABELS = { 1: "Actif", 2: "Inactif", 3: "Archivé" };
 
+// Type général de l'actif loué. Détermine les sous-catégories (Categorie)
+// proposables sur les Lots de ce bien — voir fetchCategories(typeBien).
+export const TYPE_BIEN = { IMMOBILIER: 1, VEHICULE: 2, MATERIEL: 3, AUTRE: 4 };
+export const TYPE_BIEN_LABELS = { 1: "Immobilier", 2: "Véhicule", 3: "Matériel", 4: "Autre" };
+
 export const LOT_STATUS = { DISPONIBLE: 1, LOUE: 2, EN_MAINTENANCE: 3, HORS_SERVICE: 4 };
 export const LOT_STATUS_LABELS = { 1: "Disponible", 2: "Loué", 3: "En maintenance", 4: "Hors service" };
 
@@ -18,13 +23,19 @@ export const FREQUENCE_PAIEMENT_LABELS = { 1: "Jour", 2: "Semaine", 3: "Mois", 4
 export const ECHEANCE_STATUS = { PAYE: 1, PARTIEL: 2, IMPAYE: 3 };
 export const ECHEANCE_STATUS_LABELS = { 1: "Payé", 2: "Partiel", 3: "Impayé" };
 
-export async function fetchCategories() {
-  const { data } = await apiClient.get("/categories/");
+export async function fetchCategories(typeBien) {
+  const { data } = await apiClient.get("/categories/", {
+    params: typeBien ? { type_bien: typeBien } : undefined,
+  });
   return data;
 }
 
-export async function createCategorie({ libelle, description }) {
-  const { data } = await apiClient.post("/categories/", { libelle, description: description || null });
+export async function createCategorie({ libelle, typeBien, description }) {
+  const { data } = await apiClient.post("/categories/", {
+    libelle,
+    type_bien: typeBien,
+    description: description || null,
+  });
   return data;
 }
 
@@ -42,10 +53,10 @@ export async function fetchBiens() {
   return data;
 }
 
-export async function createBien({ proprietaireId, categorieId, designation, description, statut }) {
+export async function createBien({ proprietaireId, type, designation, description, statut }) {
   const { data } = await apiClient.post("/properties/", {
     proprietaire_id: proprietaireId,
-    categorie_id: categorieId,
+    type,
     designation: designation || null,
     description: description || null,
     statut: statut || null,
@@ -80,9 +91,10 @@ export async function fetchLots() {
   return data;
 }
 
-export async function createLot({ bienId, reference, description, loyerReference, statut }) {
+export async function createLot({ bienId, categorieId, reference, description, loyerReference, statut }) {
   const { data } = await apiClient.post("/lots/", {
     bien_id: bienId,
+    categorie_id: categorieId || null,
     reference: reference || null,
     description: description || null,
     loyer_reference: loyerReference || null,

@@ -5,7 +5,7 @@ from app.api.deps import get_current_user
 from app.database import get_db
 from app.models.utilisateur import Utilisateur
 from app.schemas.echeance import EcheanceCreate, EcheanceRead, EcheanceUpdate
-from app.services import echeance_service
+from app.services import echeance_service, reminder_service
 from app.services.exceptions import BadRequest, Forbidden, NotFound
 
 router = APIRouter(prefix="/due-dates", tags=["due-dates"])
@@ -66,6 +66,26 @@ def update_echeance(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
     except BadRequest as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+
+@router.post("/{echeance_id}/relance", status_code=status.HTTP_200_OK)
+def relance_echeance(
+    echeance_id: int,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(get_current_user),
+):
+    """Relance manuelle : propriétaire ou gestionnaire mandaté peut renvoyer
+    immédiatement une notification de retard pour une échéance en retard,
+    sans attendre le prochain passage du cron quotidien."""
+    try:
+        reminder_service.send_manual_relance(db, current_user, echeance_id)
+    except NotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except Forbidden as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except BadRequest as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return {"detail": "Relance envoyée."}
 
 
 @router.delete("/{echeance_id}", status_code=status.HTTP_204_NO_CONTENT)

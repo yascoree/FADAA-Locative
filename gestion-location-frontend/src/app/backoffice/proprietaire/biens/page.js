@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import { useAuth } from "@/context/AuthContext";
 import {
-  fetchCategories,
   fetchBiens,
   createBien,
   updateBien,
@@ -13,6 +12,8 @@ import {
   deleteBienPhoto,
   BIEN_STATUS,
   BIEN_STATUS_LABELS,
+  TYPE_BIEN,
+  TYPE_BIEN_LABELS,
 } from "@/lib/properties";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
@@ -41,15 +42,15 @@ function photoUrl(url) {
 }
 
 const STATUS_OPTIONS = Object.entries(BIEN_STATUS_LABELS).map(([value, label]) => ({ value, label }));
+const TYPE_OPTIONS = Object.entries(TYPE_BIEN_LABELS).map(([value, label]) => ({ value, label }));
 const PAGE_SIZE = 10;
 
-const EMPTY_FORM = { designation: "", description: "", categorie_id: "", statut: String(BIEN_STATUS.ACTIF) };
+const EMPTY_FORM = { designation: "", description: "", type: String(TYPE_BIEN.IMMOBILIER), statut: String(BIEN_STATUS.ACTIF) };
 
 export default function ProprietaireBiensPage() {
   const { user } = useAuth();
 
   const [biens, setBiens] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
@@ -76,9 +77,8 @@ export default function ProprietaireBiensPage() {
     async function init() {
       setIsLoading(true);
       try {
-        const [biensList, categoriesList] = await Promise.all([fetchBiens(), fetchCategories()]);
+        const biensList = await fetchBiens();
         setBiens(biensList);
-        setCategories(categoriesList);
       } catch (err) {
         setLoadError(extractErrorMessage(err));
       } finally {
@@ -101,27 +101,22 @@ export default function ProprietaireBiensPage() {
     const term = search.trim().toLowerCase();
     return biens.filter((b) => {
       if (term) {
-        const haystack = `${b.designation || ""} ${b.description || ""} ${categoryName(b.categorie_id)}`.toLowerCase();
+        const haystack = `${b.designation || ""} ${b.description || ""} ${TYPE_BIEN_LABELS[b.type] || ""}`.toLowerCase();
         if (!haystack.includes(term)) return false;
       }
       if (statusFilter && String(b.statut) !== statusFilter) return false;
       return true;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [biens, search, statusFilter, categories]);
+  }, [biens, search, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredBiens.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
   const paginatedBiens = filteredBiens.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  function categoryName(categorieId) {
-    return categories.find((c) => c.id === categorieId)?.libelle || "—";
-  }
-
   function openCreate() {
     setFormMode("create");
     setFormTargetId(null);
-    setFormDraft({ ...EMPTY_FORM, categorie_id: categories[0] ? String(categories[0].id) : "" });
+    setFormDraft({ ...EMPTY_FORM });
     setFormBanner(null);
     setStagedFiles([]);
     setEditingPhotos([]);
@@ -134,7 +129,7 @@ export default function ProprietaireBiensPage() {
     setFormDraft({
       designation: bien.designation || "",
       description: bien.description || "",
-      categorie_id: String(bien.categorie_id),
+      type: String(bien.type),
       statut: String(bien.statut),
     });
     setEditingPhotos(bien.photos || []);
@@ -214,7 +209,7 @@ export default function ProprietaireBiensPage() {
       if (formMode === "create") {
         const created = await createBien({
           proprietaireId: user.id,
-          categorieId: Number(formDraft.categorie_id),
+          type: Number(formDraft.type),
           designation: formDraft.designation,
           description: formDraft.description,
           statut: Number(formDraft.statut),
@@ -230,7 +225,7 @@ export default function ProprietaireBiensPage() {
         setBiens((prev) => [...prev, { ...created, photos }]);
       } else {
         const updated = await updateBien(formTargetId, {
-          categorie_id: Number(formDraft.categorie_id),
+          type: Number(formDraft.type),
           designation: formDraft.designation,
           description: formDraft.description || null,
           statut: Number(formDraft.statut),
@@ -299,7 +294,7 @@ export default function ProprietaireBiensPage() {
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher par désignation, catégorie, description..."
+            placeholder="Rechercher par désignation, type, description..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -327,7 +322,7 @@ export default function ProprietaireBiensPage() {
             <thead>
               <tr>
                 <th>Bien</th>
-                <th>Catégorie</th>
+                <th>Type</th>
                 <th>Statut</th>
                 <th>Photos</th>
                 <th>Actions</th>
@@ -357,7 +352,7 @@ export default function ProprietaireBiensPage() {
                         <span className={styles.userName}>{b.designation || `Bien #${b.id}`}</span>
                       </div>
                     </td>
-                    <td>{categoryName(b.categorie_id)}</td>
+                    <td>{TYPE_BIEN_LABELS[b.type] || "—"}</td>
                     <td>
                       <span className={`${styles.badge} ${badgeClass(b.statut)}`}>
                         {BIEN_STATUS_LABELS[b.statut] || "—"}
@@ -440,11 +435,11 @@ export default function ProprietaireBiensPage() {
             hint="Optionnel"
           />
           <SelectField
-            label="Catégorie"
-            name="categorie_id"
-            options={categories.map((c) => ({ value: c.id, label: c.libelle }))}
-            value={formDraft.categorie_id}
-            onChange={(e) => setFormDraft((d) => ({ ...d, categorie_id: e.target.value }))}
+            label="Type"
+            name="type"
+            options={TYPE_OPTIONS}
+            value={formDraft.type}
+            onChange={(e) => setFormDraft((d) => ({ ...d, type: e.target.value }))}
             required
           />
           <SelectField

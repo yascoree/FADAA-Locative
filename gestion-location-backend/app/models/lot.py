@@ -20,6 +20,9 @@ class Lot(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     bien_id = Column(Integer, ForeignKey("biens.id"), nullable=False)
+    # Sous-catégorie (Appartement, Voiture, ...) — doit appartenir au même
+    # type_bien que le Bien parent (voir Categorie.type_bien), vérifié en service.
+    categorie_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
 
     reference = Column(String(50), nullable=True)
     description = Column(Text, nullable=True)
@@ -39,6 +42,7 @@ class Lot(Base):
 
     # Relationships
     bien = relationship("Bien", back_populates="lots")
+    categorie = relationship("Categorie", back_populates="lots")
     baux = relationship(
         "Bail",
         back_populates="lot",

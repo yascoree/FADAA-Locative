@@ -3,7 +3,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.bien import BienStatus
+from app.models.bien import BienStatus, TypeBien
 from app.schemas.bien_photo import BienPhotoRead
 
 class BienMini(BaseModel):
@@ -17,7 +17,7 @@ class BienMini(BaseModel):
 
 class BienBase(BaseModel):
     proprietaire_id: int = Field(gt=0)
-    categorie_id: int = Field(gt=0)
+    type: TypeBien
     designation: Optional[str] = Field(default=None, max_length=150)
     description: Optional[str] = None
     statut: Optional[BienStatus] = None
@@ -27,7 +27,7 @@ class BienCreate(BienBase):
     pass
 
 class BienUpdate(BaseModel):
-    categorie_id: Optional[int] = Field(default=None, gt=0)
+    type: Optional[TypeBien] = None
     designation: Optional[str] = Field(default=None, max_length=150)
     description: Optional[str] = None
     statut: Optional[BienStatus] = None
