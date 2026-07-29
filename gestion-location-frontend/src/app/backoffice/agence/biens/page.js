@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import {
-  fetchCategories,
   fetchBiens,
   createBien,
   updateBien,
@@ -12,6 +11,8 @@ import {
   deleteBienPhoto,
   BIEN_STATUS,
   BIEN_STATUS_LABELS,
+  TYPE_BIEN,
+  TYPE_BIEN_LABELS,
 } from "@/lib/properties";
 import { fetchMandates, fetchGestionnairePermissionIndex, MANDAT_STATUS } from "@/lib/mandates";
 import { SORT_OPTIONS, sortList } from "@/lib/sort";
@@ -45,6 +46,7 @@ function photoUrl(url) {
 }
 
 const STATUS_OPTIONS = Object.entries(BIEN_STATUS_LABELS).map(([value, label]) => ({ value, label }));
+const TYPE_OPTIONS = Object.entries(TYPE_BIEN_LABELS).map(([value, label]) => ({ value, label }));
 const PAGE_SIZE = 10;
 
 const EMPTY_FORM = {
@@ -54,13 +56,12 @@ const EMPTY_FORM = {
   adresse: "",
   latitude: null,
   longitude: null,
-  categorie_id: "",
+  type: String(TYPE_BIEN.IMMOBILIER),
   statut: String(BIEN_STATUS.ACTIF),
 };
 
 export default function AgenceBiensPage() {
   const [biens, setBiens] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [proprietaires, setProprietaires] = useState([]);
   const [permIndex, setPermIndex] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -92,14 +93,12 @@ export default function AgenceBiensPage() {
     async function init() {
       setIsLoading(true);
       try {
-        const [biensList, categoriesList, mandatesList, permissionIndex] = await Promise.all([
+        const [biensList, mandatesList, permissionIndex] = await Promise.all([
           fetchBiens(),
-          fetchCategories(),
           fetchMandates(),
           fetchGestionnairePermissionIndex(),
         ]);
         setBiens(biensList);
-        setCategories(categoriesList);
         const proprietairesById = new Map();
         mandatesList
           .filter((m) => m.statut === MANDAT_STATUS.ACTIF && m.proprietaire)
@@ -133,7 +132,7 @@ export default function AgenceBiensPage() {
     const term = search.trim().toLowerCase();
     const filtered = biens.filter((b) => {
       if (term) {
-        const haystack = `${b.designation || ""} ${b.description || ""} ${b.adresse || ""} ${categoryName(b.categorie_id)} ${proprietaireName(b.proprietaire_id)}`.toLowerCase();
+        const haystack = `${b.designation || ""} ${b.description || ""} ${b.adresse || ""} ${TYPE_BIEN_LABELS[b.type] || ""} ${proprietaireName(b.proprietaire_id)}`.toLowerCase();
         if (!haystack.includes(term)) return false;
       }
       if (statusFilter && String(b.statut) !== statusFilter) return false;
@@ -141,15 +140,11 @@ export default function AgenceBiensPage() {
     });
     return sortList(filtered, sortBy, { dateOf: (b) => b.created_at, nameOf: (b) => b.designation });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [biens, search, statusFilter, sortBy, categories, proprietaires]);
+  }, [biens, search, statusFilter, sortBy, proprietaires]);
 
   const totalPages = Math.max(1, Math.ceil(filteredBiens.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
   const paginatedBiens = filteredBiens.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-
-  function categoryName(categorieId) {
-    return categories.find((c) => c.id === categorieId)?.libelle || "—";
-  }
 
   function proprietaireName(proprietaireId) {
     const p = proprietaires.find((p) => p.id === proprietaireId);
@@ -162,7 +157,6 @@ export default function AgenceBiensPage() {
     setFormDraft({
       ...EMPTY_FORM,
       proprietaire_id: creatableProprietaires[0] ? String(creatableProprietaires[0].id) : "",
-      categorie_id: categories[0] ? String(categories[0].id) : "",
     });
     setFormBanner(null);
     setStagedFiles([]);
@@ -180,7 +174,7 @@ export default function AgenceBiensPage() {
       adresse: bien.adresse || "",
       latitude: bien.latitude ?? null,
       longitude: bien.longitude ?? null,
-      categorie_id: String(bien.categorie_id),
+      type: String(bien.type),
       statut: String(bien.statut),
     });
     setEditingPhotos(bien.photos || []);
@@ -260,7 +254,7 @@ export default function AgenceBiensPage() {
       if (formMode === "create") {
         const created = await createBien({
           proprietaireId: Number(formDraft.proprietaire_id),
-          categorieId: Number(formDraft.categorie_id),
+          type: Number(formDraft.type),
           designation: formDraft.designation,
           description: formDraft.description,
           adresse: formDraft.adresse,
@@ -279,7 +273,7 @@ export default function AgenceBiensPage() {
         setBiens((prev) => [...prev, { ...created, photos }]);
       } else {
         const updated = await updateBien(formTargetId, {
-          categorie_id: Number(formDraft.categorie_id),
+          type: Number(formDraft.type),
           designation: formDraft.designation,
           description: formDraft.description || null,
           adresse: formDraft.adresse || null,
@@ -361,7 +355,7 @@ export default function AgenceBiensPage() {
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher par désignation, propriétaire, catégorie, description..."
+            placeholder="Rechercher par désignation, propriétaire, type, description..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -385,7 +379,7 @@ export default function AgenceBiensPage() {
               <tr>
                 <th>Bien</th>
                 <th>Propriétaire</th>
-                <th>Catégorie</th>
+                <th>Type</th>
                 <th>Statut</th>
                 <th>Photos</th>
                 <th>Actions</th>
@@ -425,7 +419,7 @@ export default function AgenceBiensPage() {
                       </div>
                     </td>
                     <td>{proprietaireName(b.proprietaire_id)}</td>
-                    <td>{categoryName(b.categorie_id)}</td>
+                    <td>{TYPE_BIEN_LABELS[b.type] || "—"}</td>
                     <td>
                       <span className={`${styles.badge} ${badgeClass(b.statut)}`}>
                         {BIEN_STATUS_LABELS[b.statut] || "—"}
@@ -544,11 +538,11 @@ export default function AgenceBiensPage() {
             hint="Optionnel"
           />
           <SelectField
-            label="Catégorie"
-            name="categorie_id"
-            options={categories.map((c) => ({ value: c.id, label: c.libelle }))}
-            value={formDraft.categorie_id}
-            onChange={(e) => setFormDraft((d) => ({ ...d, categorie_id: e.target.value }))}
+            label="Type"
+            name="type"
+            options={TYPE_OPTIONS}
+            value={formDraft.type}
+            onChange={(e) => setFormDraft((d) => ({ ...d, type: e.target.value }))}
             required
           />
           <SelectField
@@ -641,7 +635,7 @@ export default function AgenceBiensPage() {
       />
 
       {/* ---- Détails d'un bien ---- */}
-      <BienDetailsModal bien={detailsTarget} categoryName={categoryName} onClose={() => setDetailsTarget(null)} />
+      <BienDetailsModal bien={detailsTarget} onClose={() => setDetailsTarget(null)} />
     </div>
   );
 }

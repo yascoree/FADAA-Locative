@@ -7,6 +7,7 @@ from app.api.deps import bien_ids_with_permission, has_permission, has_permissio
 from app.models.bail import Bail, BailStatus
 from app.models.bien import Bien, BienStatus
 from app.models.bien_photo import BienPhoto
+from app.models.categorie import Categorie
 from app.models.lot import Lot, LotStatus
 from app.models.notification import NotificationType
 from app.models.utilisateur import Utilisateur, UtilisateurRole
@@ -142,6 +143,19 @@ def update_bien(db: Session, current_user: Utilisateur, bien_id: int, bien_in: B
             "Impossible de passer ce bien en inactif/archivé : un de ses lots est loué "
             "ou possède un bail actif ou en attente."
         )
+    new_type = update_data.get("type")
+    if new_type is not None and new_type != bien.type:
+        mismatched_lot = (
+            db.query(Lot)
+            .join(Categorie, Categorie.id == Lot.categorie_id)
+            .filter(Lot.bien_id == bien.id, Lot.deleted_at.is_(None), Categorie.type_bien != new_type)
+            .first()
+        )
+        if mismatched_lot:
+            raise BadRequest(
+                "Impossible de changer le type de ce bien : au moins un de ses lots a une "
+                "sous-catégorie qui ne correspond pas au nouveau type."
+            )
     for field, value in update_data.items():
         setattr(bien, field, value)
     db.commit()

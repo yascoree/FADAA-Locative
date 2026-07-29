@@ -5,6 +5,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
 import {
   fetchBiens,
   fetchLots,
+  fetchCategories,
   createLot,
   updateLot,
   deleteLot,
@@ -45,6 +46,7 @@ const PAGE_SIZE = 10;
 
 const EMPTY_FORM = {
   bien_id: "",
+  categorie_id: "",
   reference: "",
   description: "",
   loyer_reference: "",
@@ -54,6 +56,7 @@ const EMPTY_FORM = {
 export default function ProprietaireLotsPage() {
   const [lots, setLots] = useState([]);
   const [biens, setBiens] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
@@ -77,9 +80,10 @@ export default function ProprietaireLotsPage() {
     async function init() {
       setIsLoading(true);
       try {
-        const [lotsList, biensList] = await Promise.all([fetchLots(), fetchBiens()]);
+        const [lotsList, biensList, categoriesList] = await Promise.all([fetchLots(), fetchBiens(), fetchCategories()]);
         setLots(lotsList);
         setBiens(biensList);
+        setCategories(categoriesList);
       } catch (err) {
         setLoadError(extractErrorMessage(err));
       } finally {
@@ -122,6 +126,16 @@ export default function ProprietaireLotsPage() {
     return bien ? bien.designation || `Bien #${bien.id}` : "—";
   }
 
+  function categoryName(categorieId) {
+    return categories.find((c) => c.id === categorieId)?.libelle || "—";
+  }
+
+  // Sous-catégories proposables pour le bien actuellement sélectionné dans le
+  // formulaire — filtrées sur le même type_bien que ce bien (voir logique
+  // Bien.type / Categorie.type_bien côté backend).
+  const formBienType = biens.find((b) => b.id === Number(formDraft.bien_id))?.type;
+  const availableCategories = categories.filter((c) => c.type_bien === formBienType);
+
   function openCreate() {
     setFormMode("create");
     setFormTargetId(null);
@@ -135,6 +149,7 @@ export default function ProprietaireLotsPage() {
     setFormTargetId(lot.id);
     setFormDraft({
       bien_id: String(lot.bien_id),
+      categorie_id: lot.categorie_id ? String(lot.categorie_id) : "",
       reference: lot.reference || "",
       description: lot.description || "",
       loyer_reference: lot.loyer_reference ?? "",
@@ -157,6 +172,7 @@ export default function ProprietaireLotsPage() {
       if (formMode === "create") {
         const created = await createLot({
           bienId: Number(formDraft.bien_id),
+          categorieId: formDraft.categorie_id === "" ? null : Number(formDraft.categorie_id),
           reference: formDraft.reference,
           description: formDraft.description,
           loyerReference: formDraft.loyer_reference === "" ? null : Number(formDraft.loyer_reference),
@@ -166,6 +182,7 @@ export default function ProprietaireLotsPage() {
       } else {
         const updated = await updateLot(formTargetId, {
           bien_id: Number(formDraft.bien_id),
+          categorie_id: formDraft.categorie_id === "" ? null : Number(formDraft.categorie_id),
           reference: formDraft.reference,
           description: formDraft.description || null,
           loyer_reference: formDraft.loyer_reference === "" ? null : Number(formDraft.loyer_reference),
@@ -280,6 +297,7 @@ export default function ProprietaireLotsPage() {
               <tr>
                 <th>Référence</th>
                 <th>Bien</th>
+                <th>Sous-catégorie</th>
                 <th>Loyer de référence</th>
                 <th>Statut</th>
                 <th>Actions</th>
@@ -288,7 +306,7 @@ export default function ProprietaireLotsPage() {
             <tbody>
               {filteredLots.length === 0 && (
                 <tr>
-                  <td colSpan={5} className={styles.empty}>
+                  <td colSpan={6} className={styles.empty}>
                     Aucun lot ne correspond à ces critères.
                   </td>
                 </tr>
@@ -299,6 +317,7 @@ export default function ProprietaireLotsPage() {
                     <span className={styles.userName}>{l.reference || `Lot #${l.id}`}</span>
                   </td>
                   <td>{bienName(l.bien_id)}</td>
+                  <td>{l.categorie_id ? categoryName(l.categorie_id) : "—"}</td>
                   <td>{formatCurrency(l.loyer_reference)}</td>
                   <td>
                     <span className={`${styles.badge} ${badgeClass(l.statut)}`}>
@@ -367,8 +386,19 @@ export default function ProprietaireLotsPage() {
             name="bien_id"
             options={biens.map((b) => ({ value: b.id, label: b.designation || `Bien #${b.id}` }))}
             value={formDraft.bien_id}
-            onChange={(e) => setFormDraft((d) => ({ ...d, bien_id: e.target.value }))}
+            onChange={(e) => setFormDraft((d) => ({ ...d, bien_id: e.target.value, categorie_id: "" }))}
             required
+          />
+          <SelectField
+            label="Sous-catégorie"
+            name="categorie_id"
+            options={[
+              { value: "", label: "Aucune" },
+              ...availableCategories.map((c) => ({ value: c.id, label: c.libelle })),
+            ]}
+            value={formDraft.categorie_id}
+            onChange={(e) => setFormDraft((d) => ({ ...d, categorie_id: e.target.value }))}
+            hint={availableCategories.length === 0 ? "Aucune sous-catégorie pour ce type de bien" : undefined}
           />
           <TextField
             label="Référence"

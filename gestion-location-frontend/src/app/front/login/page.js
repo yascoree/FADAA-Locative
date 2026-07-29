@@ -466,7 +466,7 @@ export default function LoginPage() {
             </form>
           )}
 
-          <p className={styles.securityNote}>🔒 Connexion sécurisée et chiffrée</p>
+         
 
           <p className={styles.legalNote}>
             {activeTab === "login" ? "En vous connectant" : "En créant votre compte"}, vous acceptez nos{" "}

@@ -5,7 +5,7 @@ import Modal from "@/components/Modal";
 import StatusBadge from "@/components/StatusBadge";
 import MapPicker from "@/components/MapPicker";
 import { API_BASE_URL } from "@/lib/apiClient";
-import { BIEN_STATUS, BIEN_STATUS_LABELS } from "@/lib/properties";
+import { BIEN_STATUS, BIEN_STATUS_LABELS, TYPE_BIEN_LABELS } from "@/lib/properties";
 import styles from "./ui.module.css";
 
 function photoUrl(url) {
@@ -84,7 +84,7 @@ function Gallery({ photos }) {
 /** Vue détaillée d'un bien (lecture seule) : galerie photo complète et
     localisation sur carte — pour consulter sans passer par le formulaire
     d'édition. Partagé entre les espaces propriétaire et agence. */
-export default function BienDetailsModal({ bien, categoryName, onClose }) {
+export default function BienDetailsModal({ bien, onClose }) {
   if (!bien) return null;
 
   const photos = bien.photos || [];
@@ -96,7 +96,7 @@ export default function BienDetailsModal({ bien, categoryName, onClose }) {
         <StatusBadge tone={STATUS_TONE[bien.statut] || "neutral"}>{BIEN_STATUS_LABELS[bien.statut] || "—"}</StatusBadge>
         <span className={styles.bienDetailsCategory}>
           <i className="bi bi-tag" />
-          {categoryName ? categoryName(bien.categorie_id) : "—"}
+          {TYPE_BIEN_LABELS[bien.type] || "—"}
         </span>
       </div>
 

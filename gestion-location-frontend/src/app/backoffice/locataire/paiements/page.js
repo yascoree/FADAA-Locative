@@ -1,4 +1,4 @@
-"use client";
+  "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { extractErrorMessage } from "@/lib/apiClient";
@@ -74,18 +74,21 @@ export default function LocatairePaiementsPage() {
 
   const stats = useMemo(() => {
     const now = new Date();
-    const total = paiements.reduce((sum, p) => sum + Number(p.montant || 0), 0);
-    const moisCourant = paiements
+    // Un paiement annulé ne doit plus compter dans les totaux affichés : on ne
+    // prend en compte que les paiements encore valides.
+    const valides = paiements.filter((p) => p.statut !== PAIEMENT_STATUS.ANNULE);
+    const total = valides.reduce((sum, p) => sum + Number(p.montant || 0), 0);
+    const moisCourant = valides
       .filter((p) => {
         const d = new Date(p.date_paiement);
         return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
       })
       .reduce((sum, p) => sum + Number(p.montant || 0), 0);
     return {
-      count: paiements.length,
+      count: valides.length,
       total,
       moisCourant,
-      moyenne: paiements.length > 0 ? total / paiements.length : 0,
+      moyenne: valides.length > 0 ? total / valides.length : 0,
     };
   }, [paiements]);
 

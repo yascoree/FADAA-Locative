@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 from app.api.deps import bien_ids_with_permission, has_permission_for_bien
 from app.models.bail import Bail, BailStatus
 from app.models.bien import Bien
-from app.models.lot import Lot, LotStatus
+from app.models.categorie import Categorie
+from app.models.lot import Lot
 from app.models.notification import NotificationType
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.lot import LotCreate, LotUpdate
@@ -38,6 +39,24 @@ def _has_occupying_bail(db: Session, lot_id: int, exclude_bail_id: int | None = 
     if exclude_bail_id is not None:
         query = query.filter(Bail.id != exclude_bail_id)
     return query.first() is not None
+
+
+def _check_categorie_matches_bien_type(db: Session, bien: Bien, categorie_id: int | None) -> None:
+    """La sous-catégorie d'un lot doit appartenir au même type_bien que son bien
+    parent (ex. un bien VEHICULE ne peut pas avoir un lot catégorisé Appartement)."""
+    if categorie_id is None:
+        return
+    categorie = (
+        db.query(Categorie)
+        .filter(Categorie.id == categorie_id, Categorie.deleted_at.is_(None))
+        .first()
+    )
+    if not categorie:
+        raise NotFound("Category not found")
+    if categorie.type_bien != bien.type:
+        raise BadRequest(
+            f'Cette catégorie ne correspond pas au type du bien ("{bien.type.name}").'
+        )
 
 
 def _is_tenant_of_lot(db: Session, user_id: int, lot_id: int) -> bool:
@@ -99,6 +118,7 @@ def create_lot(db: Session, current_user: Utilisateur, lot_in: LotCreate) -> Lot
         raise NotFound("Property not found")
     if not has_permission_for_bien(db, current_user, bien, "CREATE_LOT"):
         raise Forbidden("Not allowed to add a lot to this property")
+    _check_categorie_matches_bien_type(db, bien, lot_in.categorie_id)
     enforce_limit(db, bien.proprietaire_id, "lots")
     lot = Lot(**lot_in.model_dump())
     db.add(lot)
@@ -126,10 +146,13 @@ def update_lot(db: Session, current_user: Utilisateur, lot_id: int, lot_in: LotU
     if not has_permission_for_bien(db, current_user, bien, "UPDATE_LOT"):
         raise Forbidden("Not allowed to modify this lot")
     update_data = lot_in.model_dump(exclude_unset=True)
-    if update_data.get("statut") == LotStatus.DISPONIBLE and _has_occupying_bail(db, lot.id):
+    if "statut" in update_data and _has_occupying_bail(db, lot.id):
         raise BadRequest(
-            "Impossible de passer ce lot en disponible : un bail actif ou en attente existe encore."
+            "Impossible de modifier le statut de ce lot : un bail actif ou en attente "
+            "existe encore. Modifiez ou résiliez ce bail pour changer le statut du lot."
         )
+    if "categorie_id" in update_data:
+        _check_categorie_matches_bien_type(db, bien, update_data["categorie_id"])
     for field, value in update_data.items():
         setattr(lot, field, value)
     db.commit()

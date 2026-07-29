@@ -18,12 +18,24 @@ class BienStatus(int, enum.Enum):
     ARCHIVE = 3
 
 
+class TypeBien(int, enum.Enum):
+    """Catégorie générale de l'actif loué. Détermine quelles Categorie (voir
+    Categorie.type_bien) sont proposées comme sous-catégorie sur les Lots de
+    ce bien — ex. un bien VEHICULE ne propose que des sous-catégories Voiture/
+    Moto/... à ses lots, jamais Appartement/Villa/..."""
+
+    IMMOBILIER = 1
+    VEHICULE = 2
+    MATERIEL = 3
+    AUTRE = 4
+
+
 class Bien(Base):
     __tablename__ = "biens"
 
     id = Column(Integer, primary_key=True, index=True)
     proprietaire_id = Column(Integer, ForeignKey("utilisateurs.id"), nullable=False)
-    categorie_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
+    type = Column(Enum(TypeBien, name="type_bien"), nullable=False)
 
     designation = Column(String(150), nullable=True)
     description = Column(Text, nullable=True)
@@ -49,7 +61,6 @@ class Bien(Base):
         back_populates="biens",
         foreign_keys=[proprietaire_id]
     )
-    categorie = relationship("Categorie", back_populates="biens")
     lots = relationship(
         "Lot",
         back_populates="bien",

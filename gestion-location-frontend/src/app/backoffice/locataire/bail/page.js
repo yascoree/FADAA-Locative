@@ -102,7 +102,7 @@ export default function LocataireBailPage() {
   const bien = bienFor(activeBail);
   const progress = leaseProgress(activeBail);
   const remaining = daysRemaining(activeBail);
-  const category = categoryName(bien?.categorie_id);
+  const category = categoryName(activeBail?.lot?.categorie_id);
   const photos = bien?.photos || [];
 
   return (
