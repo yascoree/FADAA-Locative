@@ -20,6 +20,7 @@ from app.services.echeance_service import sync_echeance_statut
 from app.services.exceptions import BadRequest, Forbidden, NotFound
 from app.services.push_service import send_push_to_user
 from app.services.receipt_service import generate_receipt_pdf
+from app.services.usage_service import enforce_limit
 
 
 def _chain_for_paiement(db: Session, echeance_id: int):
@@ -114,6 +115,13 @@ def create_paiement(db: Session, current_user: Utilisateur, paiement_in: Paiemen
     is_tenant = current_user.role == UtilisateurRole.LOCATAIRE and current_user.id == bail.locataire_id
     if not is_tenant and not has_permission_for_bien(db, current_user, bien, "CREATE_PAYMENT"):
         raise Forbidden("Not allowed to record this payment")
+
+    # Chaque paiement génère systématiquement une quittance (voir plus bas) : la
+    # limite mensuelle de quittances du plan gate donc la création du paiement
+    # lui-même, avant toute écriture, pour ne jamais laisser un paiement orphelin
+    # sans quittance.
+    if bien:
+        enforce_limit(db, bien.proprietaire_id, "quittances_mois")
 
     paiement = Paiement(**paiement_in.model_dump(), encaisse_par=current_user.id)
     db.add(paiement)

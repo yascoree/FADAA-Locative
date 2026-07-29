@@ -46,17 +46,10 @@ def update_categorie(db: Session, categorie_id: int, categorie_in: CategorieUpda
     if not categorie:
         raise NotFound("Category not found")
 
+    # Renommer une catégorie n'affecte pas les biens qui la référencent (même
+    # categorie_id) : autorisé même si elle est utilisée. Seule la suppression
+    # est bloquée dans ce cas (voir delete_categorie).
     updates = categorie_in.model_dump(exclude_unset=True)
-    if "libelle" in updates and updates["libelle"] != categorie.libelle:
-        in_use = (
-            db.query(Bien)
-            .filter(Bien.categorie_id == categorie_id, Bien.deleted_at.is_(None))
-            .first()
-            is not None
-        )
-        if in_use:
-            raise BadRequest("Category is used by existing properties, its libelle cannot be changed")
-
     for field, value in updates.items():
         setattr(categorie, field, value)
     db.commit()

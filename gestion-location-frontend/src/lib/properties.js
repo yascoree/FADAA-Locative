@@ -3,8 +3,8 @@ import apiClient from "@/lib/apiClient";
 // Le bien (immeuble/propriété) ne porte plus de notion d'occupation — un bien
 // peut avoir plusieurs lots dans des états différents. L'occupation se lit sur
 // le Lot (LOT_STATUS), automatiquement synchronisé avec ses baux.
-export const BIEN_STATUS = { ACTIF: 1, EN_TRAVAUX: 2, HORS_SERVICE: 3 };
-export const BIEN_STATUS_LABELS = { 1: "Actif", 2: "En travaux", 3: "Hors service" };
+export const BIEN_STATUS = { ACTIF: 1, INACTIF: 2, ARCHIVE: 3 };
+export const BIEN_STATUS_LABELS = { 1: "Actif", 2: "Inactif", 3: "Archivé" };
 
 export const LOT_STATUS = { DISPONIBLE: 1, LOUE: 2, EN_MAINTENANCE: 3, HORS_SERVICE: 4 };
 export const LOT_STATUS_LABELS = { 1: "Disponible", 2: "Loué", 3: "En maintenance", 4: "Hors service" };

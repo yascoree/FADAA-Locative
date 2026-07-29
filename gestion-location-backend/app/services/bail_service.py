@@ -11,6 +11,12 @@ from app.models.lot import Lot, LotStatus
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.bail import BailCreate, BailUpdate
 from app.services.exceptions import BadRequest, Forbidden, NotFound
+from app.services.usage_service import enforce_limit
+
+# Modifier ces champs romprait la cohérence avec des échéances déjà réglées
+# (montants générés à partir de l'ancien loyer, dates hors de la nouvelle
+# période) : verrouillés dès qu'un paiement existe sur une échéance du bail.
+FIELDS_LOCKED_ONCE_PAID = {"date_debut", "date_fin", "loyer", "charges", "frequence_paiement"}
 
 # Statuses that mean the lot is genuinely committed to a tenant for a period —
 # used both to detect date-range conflicts and to decide whether a lot counts
@@ -120,6 +126,19 @@ def _generate_echeances(bail: Bail) -> list[Echeance]:
     return echeances
 
 
+def _has_paid_echeances(db: Session, bail_id: int) -> bool:
+    return (
+        db.query(Echeance)
+        .filter(
+            Echeance.bail_id == bail_id,
+            Echeance.deleted_at.is_(None),
+            Echeance.statut.in_((EcheanceStatus.PAYE, EcheanceStatus.PARTIEL)),
+        )
+        .first()
+        is not None
+    )
+
+
 def _bien_for_bail(db: Session, bail: Bail) -> Bien:
     lot = db.get(Lot, bail.lot_id)
     return db.get(Bien, lot.bien_id)
@@ -184,6 +203,19 @@ def create_bail(db: Session, current_user: Utilisateur, bail_in: BailCreate) -> 
         if conflict:
             raise BadRequest("Ce lot a déjà un bail actif ou planifié sur cette période.")
 
+    if bail_in.statut == BailStatus.ACTIF:
+        enforce_limit(db, bien.proprietaire_id, "baux_actifs")
+    is_new_locataire = (
+        db.query(Bail)
+        .join(Lot, Lot.id == Bail.lot_id)
+        .join(Bien, Bien.id == Lot.bien_id)
+        .filter(Bien.proprietaire_id == bien.proprietaire_id, Bail.locataire_id == bail_in.locataire_id, Bail.deleted_at.is_(None))
+        .first()
+        is None
+    )
+    if is_new_locataire:
+        enforce_limit(db, bien.proprietaire_id, "locataires")
+
     bail = Bail(**bail_in.model_dump())
     db.add(bail)
     db.commit()
@@ -214,6 +246,14 @@ def update_bail(db: Session, current_user: Utilisateur, bail_id: int, bail_in: B
         conflict = _overlapping_bail(db, bail.lot_id, bail.date_debut, prospective_date_fin, exclude_bail_id=bail.id)
         if conflict:
             raise BadRequest("Ce lot a déjà un bail actif ou planifié sur cette période.")
+    if prospective_statut == BailStatus.ACTIF and bail.statut != BailStatus.ACTIF:
+        enforce_limit(db, bien.proprietaire_id, "baux_actifs")
+
+    if FIELDS_LOCKED_ONCE_PAID & update_data.keys() and _has_paid_echeances(db, bail.id):
+        raise BadRequest(
+            "Impossible de modifier les dates, le loyer ou les charges de ce bail : "
+            "des échéances ont déjà un paiement, cela rendrait l'historique incohérent."
+        )
 
     for field, value in update_data.items():
         setattr(bail, field, value)
@@ -238,6 +278,11 @@ def delete_bail(db: Session, current_user: Utilisateur, bail_id: int) -> None:
         raise Forbidden("Not allowed to delete this lease")
     if bail.statut == BailStatus.ACTIF:
         raise BadRequest("Impossible de supprimer ce bail : il est actif. Terminez-le ou résiliez-le d'abord.")
+    if _has_paid_echeances(db, bail.id):
+        raise BadRequest(
+            "Impossible de supprimer ce bail : des échéances payées ou partiellement payées existent. "
+            "L'historique financier doit être préservé."
+        )
     bail.deleted_at = datetime.utcnow()
     db.commit()
     lot = db.get(Lot, bail.lot_id)

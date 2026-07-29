@@ -22,6 +22,16 @@ MODE_PAIEMENT_LABELS = {
     ModePaiement.MOBILE_MONEY: "Mobile Money",
 }
 
+QUITTANCE_STATUS_LABELS = {
+    QuittanceStatus.EMISE: "Émise",
+    QuittanceStatus.ANNULEE: "Annulée",
+}
+
+QUITTANCE_STATUS_COLORS = {
+    QuittanceStatus.EMISE: "#3a7a3a",
+    QuittanceStatus.ANNULEE: "#c0392b",
+}
+
 # app/services/receipt_service.py -> parents[2] = racine du backend.
 # Volontairement HORS de uploads/ (qui est monté en statique, donc public) : une
 # quittance contient des données personnelles/financières et ne doit être
@@ -66,6 +76,12 @@ def generate_receipt_pdf(db: Session, quittance: Quittance) -> str:
 
     c.setFont("Helvetica", 10)
     c.drawString(left, y, f"Quittance n° {quittance.id} — générée le {_format_date(quittance.date_generation)}")
+    y -= 8 * mm
+
+    c.setFont("Helvetica-Bold", 10)
+    c.setFillColor(HexColor(QUITTANCE_STATUS_COLORS.get(quittance.statut, "#000000")))
+    c.drawString(left, y, f"Statut : {QUITTANCE_STATUS_LABELS.get(quittance.statut, '—')}")
+    c.setFillColor(HexColor("#000000"))
     y -= 14 * mm
 
     def line(label, value):

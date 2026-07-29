@@ -33,7 +33,7 @@ function Banner({ banner }) {
 
 function badgeClass(statut) {
   if (statut === BIEN_STATUS.ACTIF) return styles.badgeActive;
-  if (statut === BIEN_STATUS.EN_TRAVAUX) return styles.badgeWarning;
+  if (statut === BIEN_STATUS.INACTIF) return styles.badgeWarning;
   return styles.badgeDanger;
 }
 
@@ -111,8 +111,8 @@ export default function AgenceBiensPage() {
     return {
       total: biens.length,
       actifs: biens.filter((b) => b.statut === BIEN_STATUS.ACTIF).length,
-      enTravaux: biens.filter((b) => b.statut === BIEN_STATUS.EN_TRAVAUX).length,
-      horsService: biens.filter((b) => b.statut === BIEN_STATUS.HORS_SERVICE).length,
+      inactifs: biens.filter((b) => b.statut === BIEN_STATUS.INACTIF).length,
+      archives: biens.filter((b) => b.statut === BIEN_STATUS.ARCHIVE).length,
     };
   }, [biens]);
 
@@ -316,8 +316,8 @@ export default function AgenceBiensPage() {
         <div className={styles.statsGrid}>
           <StatCard icon="bi-house-door-fill" tone="primary" label="Biens gérés" value={stats.total} />
           <StatCard icon="bi-check-circle-fill" tone="accent" label="Actifs" value={stats.actifs} />
-          <StatCard icon="bi-tools" tone="warning" label="En travaux" value={stats.enTravaux} />
-          <StatCard icon="bi-slash-circle" tone="danger" label="Hors service" value={stats.horsService} />
+          <StatCard icon="bi-pause-circle" tone="warning" label="Inactifs" value={stats.inactifs} />
+          <StatCard icon="bi-archive-fill" tone="danger" label="Archivés" value={stats.archives} />
         </div>
       </div>
 

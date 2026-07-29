@@ -11,6 +11,7 @@ import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
+import FilterChip from "@/components/FilterChip";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -255,17 +256,15 @@ export default function AgenceLocatairesPage() {
               setCurrentPage(1);
             }}
           />
-          <label className={styles.checkFilter}>
-            <input
-              type="checkbox"
-              checked={overdueOnly}
-              onChange={(e) => {
-                setOverdueOnly(e.target.checked);
-                setCurrentPage(1);
-              }}
-            />
+          <FilterChip
+            checked={overdueOnly}
+            onChange={(checked) => {
+              setOverdueOnly(checked);
+              setCurrentPage(1);
+            }}
+          >
             En retard uniquement
-          </label>
+          </FilterChip>
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
             {SORT_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>

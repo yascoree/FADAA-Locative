@@ -1135,21 +1135,6 @@
   min-width: 220px;
 }
 
-.checkFilter {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.82rem;
-  color: var(--secondary);
-  white-space: nowrap;
-  font-weight: 500;
-}
-
-.checkFilter input {
-  width: 14px;
-  height: 14px;
-  accent-color: var(--primary);
-}
 
 .tableWrap {
   overflow-x: auto;

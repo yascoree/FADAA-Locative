@@ -12,6 +12,7 @@ import {
   PAIEMENT_STATUS_LABELS,
 } from "@/lib/properties";
 import StatCard from "@/components/StatCard";
+import FilterChip from "@/components/FilterChip";
 import styles from "../locataire.module.css";
 
 function Banner({ banner }) {
@@ -176,17 +177,15 @@ export default function LocatairePaiementsPage() {
               </option>
             ))}
           </select>
-          <label className={styles.checkFilter}>
-            <input
-              type="checkbox"
-              checked={monthOnly}
-              onChange={(e) => {
-                setMonthOnly(e.target.checked);
-                setCurrentPage(1);
-              }}
-            />
+          <FilterChip
+            checked={monthOnly}
+            onChange={(checked) => {
+              setMonthOnly(checked);
+              setCurrentPage(1);
+            }}
+          >
             Ce mois uniquement
-          </label>
+          </FilterChip>
         </div>
 
         <div className={styles.tableWrap}>

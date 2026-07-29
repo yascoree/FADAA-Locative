@@ -21,6 +21,7 @@ import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
+import FilterChip from "@/components/FilterChip";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -339,17 +340,15 @@ export default function ProprietaireEcheancesPage() {
               </option>
             ))}
           </select>
-          <label className={styles.checkFilter}>
-            <input
-              type="checkbox"
-              checked={overdueOnly}
-              onChange={(e) => {
-                setOverdueOnly(e.target.checked);
-                setCurrentPage(1);
-              }}
-            />
+          <FilterChip
+            checked={overdueOnly}
+            onChange={(checked) => {
+              setOverdueOnly(checked);
+              setCurrentPage(1);
+            }}
+          >
             En retard uniquement
-          </label>
+          </FilterChip>
         </div>
 
         <div className={styles.tableWrap}>

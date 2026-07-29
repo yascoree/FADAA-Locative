@@ -25,6 +25,7 @@ import {
 import StatCard from "@/components/StatCard";
 import CountUp from "@/components/CountUp";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
+import FilterChip from "@/components/FilterChip";
 import styles from "../admin.module.css";
 
 function Banner({ banner }) {
@@ -827,28 +828,24 @@ export default function AdminAbonnementsPage() {
               </option>
             ))}
           </select>
-          <label className={styles.checkFilter}>
-            <input
-              type="checkbox"
-              checked={trialOnly}
-              onChange={(e) => {
-                setTrialOnly(e.target.checked);
-                setCurrentPage(1);
-              }}
-            />
+          <FilterChip
+            checked={trialOnly}
+            onChange={(checked) => {
+              setTrialOnly(checked);
+              setCurrentPage(1);
+            }}
+          >
             Free Trial uniquement
-          </label>
-          <label className={styles.checkFilter}>
-            <input
-              type="checkbox"
-              checked={expiredOnly}
-              onChange={(e) => {
-                setExpiredOnly(e.target.checked);
-                setCurrentPage(1);
-              }}
-            />
+          </FilterChip>
+          <FilterChip
+            checked={expiredOnly}
+            onChange={(checked) => {
+              setExpiredOnly(checked);
+              setCurrentPage(1);
+            }}
+          >
             Expirés uniquement
-          </label>
+          </FilterChip>
         </div>
 
         <div className={styles.tableWrap}>

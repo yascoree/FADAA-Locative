@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { extractErrorMessage } from "@/lib/apiClient";
 import { fetchEcheances, fetchBiens, ECHEANCE_STATUS, ECHEANCE_STATUS_LABELS } from "@/lib/properties";
 import StatCard from "@/components/StatCard";
+import FilterChip from "@/components/FilterChip";
 import styles from "../locataire.module.css";
 
 function Banner({ banner }) {
@@ -141,17 +142,15 @@ export default function LocataireEcheancesPage() {
               </option>
             ))}
           </select>
-          <label className={styles.checkFilter}>
-            <input
-              type="checkbox"
-              checked={overdueOnly}
-              onChange={(e) => {
-                setOverdueOnly(e.target.checked);
-                setCurrentPage(1);
-              }}
-            />
+          <FilterChip
+            checked={overdueOnly}
+            onChange={(checked) => {
+              setOverdueOnly(checked);
+              setCurrentPage(1);
+            }}
+          >
             En retard uniquement
-          </label>
+          </FilterChip>
         </div>
 
         <div className={styles.tableWrap}>

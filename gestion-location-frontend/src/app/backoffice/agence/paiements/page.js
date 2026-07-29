@@ -22,6 +22,7 @@ import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
+import FilterChip from "@/components/FilterChip";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -379,17 +380,15 @@ export default function AgencePaiementsPage() {
               </option>
             ))}
           </select>
-          <label className={styles.checkFilter}>
-            <input
-              type="checkbox"
-              checked={monthOnly}
-              onChange={(e) => {
-                setMonthOnly(e.target.checked);
-                setCurrentPage(1);
-              }}
-            />
+          <FilterChip
+            checked={monthOnly}
+            onChange={(checked) => {
+              setMonthOnly(checked);
+              setCurrentPage(1);
+            }}
+          >
             Ce mois uniquement
-          </label>
+          </FilterChip>
         </div>
 
         <div className={styles.tableWrap}>

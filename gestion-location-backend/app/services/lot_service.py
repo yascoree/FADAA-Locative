@@ -5,12 +5,13 @@ from sqlalchemy.orm import Session
 from app.api.deps import bien_ids_with_permission, has_permission_for_bien
 from app.models.bail import Bail, BailStatus
 from app.models.bien import Bien
-from app.models.lot import Lot
+from app.models.lot import Lot, LotStatus
 from app.models.notification import NotificationType
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.lot import LotCreate, LotUpdate
 from app.services.exceptions import BadRequest, Forbidden, NotFound
 from app.services.push_service import send_push_to_user
+from app.services.usage_service import enforce_limit
 
 
 def _notify_proprietaire_of_activity(
@@ -26,6 +27,17 @@ def _notify_proprietaire_of_activity(
         body=f"{actor.prenom} {actor.nom} (gestionnaire) {verbe} {cible}.",
         notif_type=NotificationType.GESTION,
     )
+
+
+def _has_occupying_bail(db: Session, lot_id: int, exclude_bail_id: int | None = None) -> bool:
+    query = db.query(Bail).filter(
+        Bail.lot_id == lot_id,
+        Bail.deleted_at.is_(None),
+        Bail.statut.in_((BailStatus.ACTIF, BailStatus.EN_ATTENTE)),
+    )
+    if exclude_bail_id is not None:
+        query = query.filter(Bail.id != exclude_bail_id)
+    return query.first() is not None
 
 
 def _is_tenant_of_lot(db: Session, user_id: int, lot_id: int) -> bool:
@@ -87,6 +99,7 @@ def create_lot(db: Session, current_user: Utilisateur, lot_in: LotCreate) -> Lot
         raise NotFound("Property not found")
     if not has_permission_for_bien(db, current_user, bien, "CREATE_LOT"):
         raise Forbidden("Not allowed to add a lot to this property")
+    enforce_limit(db, bien.proprietaire_id, "lots")
     lot = Lot(**lot_in.model_dump())
     db.add(lot)
     db.commit()
@@ -112,7 +125,12 @@ def update_lot(db: Session, current_user: Utilisateur, lot_id: int, lot_in: LotU
     )
     if not has_permission_for_bien(db, current_user, bien, "UPDATE_LOT"):
         raise Forbidden("Not allowed to modify this lot")
-    for field, value in lot_in.model_dump(exclude_unset=True).items():
+    update_data = lot_in.model_dump(exclude_unset=True)
+    if update_data.get("statut") == LotStatus.DISPONIBLE and _has_occupying_bail(db, lot.id):
+        raise BadRequest(
+            "Impossible de passer ce lot en disponible : un bail actif ou en attente existe encore."
+        )
+    for field, value in update_data.items():
         setattr(lot, field, value)
     db.commit()
     db.refresh(lot)
@@ -137,13 +155,8 @@ def delete_lot(db: Session, current_user: Utilisateur, lot_id: int) -> None:
     )
     if not has_permission_for_bien(db, current_user, bien, "DELETE_LOT"):
         raise Forbidden("Not allowed to delete this lot")
-    has_active_bail = (
-        db.query(Bail)
-        .filter(Bail.lot_id == lot.id, Bail.deleted_at.is_(None), Bail.statut == BailStatus.ACTIF)
-        .first()
-    )
-    if has_active_bail:
-        raise BadRequest("Impossible de supprimer ce lot : il possède un bail actif.")
+    if _has_occupying_bail(db, lot.id):
+        raise BadRequest("Impossible de supprimer ce lot : un bail actif ou en attente existe encore.")
     lot.deleted_at = datetime.utcnow()
     db.commit()
     _notify_proprietaire_of_activity(

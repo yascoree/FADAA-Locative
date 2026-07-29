@@ -679,3 +679,72 @@
 .switchOn::before {
   transform: translateX(18px);
 }
+
+/* ---------- FilterChip ---------- */
+
+.filterChip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem 0.5rem 0.6rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--brand-border);
+  background: var(--brand-surface);
+  color: var(--brand-text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.filterChip:hover {
+  border-color: var(--brand-primary);
+  color: var(--brand-text);
+}
+
+.filterChip input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.filterChipDot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.filterChipDot i {
+  font-size: 11px;
+  color: #fff;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.filterChipActive {
+  border-color: var(--brand-primary);
+  background: var(--brand-primary-soft);
+  color: var(--brand-primary-dark);
+}
+
+.filterChipActive .filterChipDot {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+
+.filterChipActive .filterChipDot i {
+  opacity: 1;
+  transform: scale(1);
+}

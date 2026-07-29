@@ -14,8 +14,8 @@ class BienStatus(int, enum.Enum):
     plusieurs lots dans des états d'occupation différents."""
 
     ACTIF = 1
-    EN_TRAVAUX = 2
-    HORS_SERVICE = 3
+    INACTIF = 2
+    ARCHIVE = 3
 
 
 class Bien(Base):

@@ -10,6 +10,7 @@ from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.manager_permission import ManagerPermissionsUpdate
 from app.schemas.mandat import MandatCreate, MandatUpdate
 from app.services.exceptions import BadRequest, Forbidden, NotFound
+from app.services.usage_service import enforce_limit
 
 # Accordées automatiquement à la création d'un mandat : la lecture "vient avec le
 # mandat" par défaut (comportement historique), mais reste un vrai droit que le
@@ -90,6 +91,9 @@ def create_mandat(db: Session, current_user: Utilisateur, mandat_in: MandatCreat
     )
     if duplicate:
         raise BadRequest("An active mandate already exists for this gestionnaire on this scope")
+
+    if mandat_in.statut == MandatStatus.ACTIF:
+        enforce_limit(db, mandat_in.proprietaire_id, "gestionnaires")
 
     mandat = Mandat(**mandat_in.model_dump())
     db.add(mandat)
