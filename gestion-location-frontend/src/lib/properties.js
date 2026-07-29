@@ -53,12 +53,24 @@ export async function fetchBiens() {
   return data;
 }
 
-export async function createBien({ proprietaireId, type, designation, description, statut }) {
+export async function createBien({
+  proprietaireId,
+  type,
+  designation,
+  description,
+  adresse,
+  latitude,
+  longitude,
+  statut,
+}) {
   const { data } = await apiClient.post("/properties/", {
     proprietaire_id: proprietaireId,
     type,
     designation: designation || null,
     description: description || null,
+    adresse: adresse || null,
+    latitude: latitude ?? null,
+    longitude: longitude ?? null,
     statut: statut || null,
   });
   return data;
@@ -139,6 +151,11 @@ export async function updateEcheance(echeanceId, payload) {
 
 export async function deleteEcheance(echeanceId) {
   await apiClient.delete(`/due-dates/${echeanceId}`);
+}
+
+export async function relanceEcheance(echeanceId) {
+  const { data } = await apiClient.post(`/due-dates/${echeanceId}/relance`);
+  return data;
 }
 
 export async function fetchPaiements() {

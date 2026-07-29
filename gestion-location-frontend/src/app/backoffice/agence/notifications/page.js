@@ -12,6 +12,7 @@ import {
   NOTIFICATION_TYPE,
   NOTIFICATION_TYPE_LABELS,
 } from "@/lib/notifications";
+import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import ToggleSwitch from "@/components/ToggleSwitch";
 import FilterSelect from "@/components/FilterSelect";
@@ -79,6 +80,7 @@ export default function AgenceNotificationsPage() {
 
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [sortBy, setSortBy] = useState("recent");
   const [markingAll, setMarkingAll] = useState(false);
   const [showMasquees, setShowMasquees] = useState(false);
 
@@ -108,18 +110,17 @@ export default function AgenceNotificationsPage() {
     };
   }, [notifications]);
 
-  const sortedNotifications = useMemo(
-    () => [...notifications].sort((a, b) => new Date(b.date_creation) - new Date(a.date_creation)),
-    [notifications]
-  );
-
   const filteredNotifications = useMemo(() => {
-    return sortedNotifications.filter((n) => {
+    const filtered = notifications.filter((n) => {
       if (typeFilter && String(n.type) !== typeFilter) return false;
       if (statusFilter && String(n.statut) !== statusFilter) return false;
       return true;
     });
-  }, [sortedNotifications, typeFilter, statusFilter]);
+    return sortList(filtered, sortBy, {
+      dateOf: (n) => n.date_creation,
+      nameOf: (n) => n.titre || NOTIFICATION_TYPE_LABELS[n.type] || "",
+    });
+  }, [notifications, typeFilter, statusFilter, sortBy]);
 
   async function handleMarkRead(notification) {
     if (notification.statut === NOTIFICATION_STATUS.LUE) return;
@@ -223,6 +224,7 @@ export default function AgenceNotificationsPage() {
               { value: NOTIFICATION_STATUS.LUE, label: "Lues" },
             ]}
           />
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.card} style={{ padding: 0 }}>

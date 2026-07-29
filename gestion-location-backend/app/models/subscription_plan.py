@@ -16,6 +16,9 @@ class SubscriptionPlan(Base):
     duration_days = Column(Integer, nullable=False)
     is_trial = Column(Boolean, nullable=False, default=False)
     is_active = Column(Boolean, nullable=False, default=True)
+    # Teinte de la carte plan côté admin (voir PLAN_COLOR_OPTIONS côté front) :
+    # une des 4 teintes de la palette de marque, pas une couleur libre.
+    color = Column(String(20), nullable=False, default="olive")
 
     # Limites d'usage : combien de ressources un propriétaire sur ce plan peut
     # avoir. -1 = illimité. Ce ne sont PAS des permissions — les permissions

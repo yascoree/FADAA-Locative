@@ -2,7 +2,7 @@ import enum
 
 from datetime import datetime
 
-from sqlalchemy import Column, Enum, ForeignKey, Integer, String, DateTime, Text
+from sqlalchemy import Column, Enum, Float, ForeignKey, Integer, String, DateTime, Text
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -39,6 +39,9 @@ class Bien(Base):
 
     designation = Column(String(150), nullable=True)
     description = Column(Text, nullable=True)
+    adresse = Column(Text, nullable=True)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
 
     statut = Column(Enum(BienStatus, name="bien_status"), nullable=True)
     attachement = Column(String(255), nullable=True)

@@ -40,6 +40,15 @@ export function formatLimit(value) {
   return value === UNLIMITED ? "∞" : value;
 }
 
+// Palette fermée pour la carte plan (les 4 teintes --tone-* de globals.css) : on
+// laisse choisir laquelle, pas une couleur libre, pour rester cohérent avec la charte.
+export const PLAN_COLOR_OPTIONS = [
+  { value: "olive", label: "Olive" },
+  { value: "navy", label: "Sauge" },
+  { value: "charcoal", label: "Forêt" },
+  { value: "terracotta", label: "Menthe" },
+];
+
 export async function fetchUsers() {
   const { data } = await apiClient.get("/users/");
   return data;

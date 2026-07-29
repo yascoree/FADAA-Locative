@@ -3,8 +3,10 @@
 import { useEffect } from "react";
 import styles from "./ui.module.css";
 
-/** Fenêtre modale générique (overlay + fermeture Échap/clic sur le fond). */
-export default function Modal({ isOpen, onClose, title, children, bodyRef }) {
+/** Fenêtre modale générique (overlay + fermeture Échap/clic sur le fond).
+    `size="lg"` élargit la modale — pour les contenus riches (galerie photo,
+    carte...) à l'étroit dans la largeur par défaut. */
+export default function Modal({ isOpen, onClose, title, children, bodyRef, size }) {
   useEffect(() => {
     if (!isOpen) return undefined;
     function handleKeyDown(e) {
@@ -18,7 +20,12 @@ export default function Modal({ isOpen, onClose, title, children, bodyRef }) {
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+      <div
+        className={`${styles.modal} ${size === "lg" ? styles.modalLg : ""}`}
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+      >
         {title && (
           <div className={styles.modalHeader}>
             <h2 className={styles.modalTitle}>{title}</h2>

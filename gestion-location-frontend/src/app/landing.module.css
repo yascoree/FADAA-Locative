@@ -1157,95 +1157,6 @@
   }
 }
 
-/* ---------- Why FADAA (dark reliability card) ---------- */
-
-.whyCard {
-  max-width: 1180px;
-  margin: 0 auto;
-  border-radius: 24px;
-  padding: clamp(2.25rem, 5vw, 3.5rem) clamp(1.5rem, 4vw, 3rem);
-  background: radial-gradient(120% 140% at 100% 0%, rgba(207, 187, 153, 0.16), transparent 60%),
-    linear-gradient(160deg, #33311f 0%, var(--secondary) 55%, #302e1e 100%);
-}
-
-.eyebrowLight {
-  color: var(--accent);
-}
-
-.whyTitle {
-  font-size: clamp(1.6rem, 2.6vw, 2.1rem);
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  color: #fff;
-  text-wrap: balance;
-  margin: 0 0 0.6rem;
-}
-
-.whySub {
-  font-size: 0.98rem;
-  color: rgba(241, 236, 225, 0.68);
-  line-height: 1.55;
-}
-
-.whyGrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-  margin-top: clamp(2rem, 4vw, 2.75rem);
-}
-
-.whyTile {
-  background: rgba(245, 241, 234, 0.06);
-  border: 1px solid rgba(245, 241, 234, 0.12);
-  border-radius: 14px;
-  padding: 1.3rem 1.1rem;
-  text-align: center;
-  transition: background 0.18s ease, border-color 0.18s ease;
-}
-
-.whyTile:hover {
-  background: rgba(245, 241, 234, 0.11);
-  border-color: rgba(207, 187, 153, 0.4);
-}
-
-.whyIcon {
-  width: 2.4rem;
-  height: 2.4rem;
-  border-radius: 10px;
-  background: rgba(207, 187, 153, 0.18);
-  color: var(--accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-  margin: 0 auto 0.9rem;
-}
-
-.whyTileTitle {
-  font-size: 0.92rem;
-  font-weight: 650;
-  color: #fff;
-  margin: 0 0 0.4rem;
-}
-
-.whyTileText {
-  font-size: 0.78rem;
-  line-height: 1.5;
-  color: rgba(241, 236, 225, 0.62);
-}
-
-@media (max-width: 900px) {
-  .whyGrid {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-@media (max-width: 560px) {
-  .whyGrid {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* ---------- CTA banner ---------- */
 
 .ctaCard {
@@ -1271,6 +1182,66 @@
   color: rgba(241, 236, 225, 0.82);
   margin: 0 auto 1.75rem;
   max-width: 46ch;
+}
+
+.ctaWhyGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  max-width: 980px;
+  margin: 0 auto 2.25rem;
+}
+
+.ctaWhyTile {
+  background: rgba(245, 241, 234, 0.08);
+  border: 1px solid rgba(245, 241, 234, 0.14);
+  border-radius: 14px;
+  padding: 1.3rem 1.1rem;
+  text-align: center;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.ctaWhyTile:hover {
+  background: rgba(245, 241, 234, 0.13);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.ctaWhyIcon {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  margin: 0 auto 0.9rem;
+}
+
+.ctaWhyTitle {
+  font-size: 0.92rem;
+  font-weight: 650;
+  color: #fff;
+  margin: 0 0 0.4rem;
+}
+
+.ctaWhyText {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: rgba(241, 236, 225, 0.75);
+}
+
+@media (max-width: 900px) {
+  .ctaWhyGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .ctaWhyGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .ctaActions {
@@ -1485,133 +1456,6 @@
   font-size: 0.8rem;
   font-weight: 650;
   color: var(--secondary);
-}
-
-.miniCalendarWrap {
-  position: relative;
-}
-
-.miniCalendarTrigger {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  font-family: inherit;
-  font-size: 0.88rem;
-  color: var(--text);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 0.65rem 0.8rem;
-  cursor: pointer;
-  transition: border-color 0.15s ease;
-}
-
-.miniCalendarTrigger:hover {
-  border-color: var(--primary);
-}
-
-.miniCalendarTrigger i {
-  color: var(--primary);
-  font-size: 0.95rem;
-}
-
-.miniCalendarPlaceholder {
-  color: var(--text-muted);
-}
-
-.miniCalendarPanel {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  left: 0;
-  z-index: 20;
-  width: 280px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: 0 20px 45px -20px rgba(58, 56, 38, 0.35);
-  padding: 1rem;
-}
-
-.miniCalendarHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.7rem;
-  font-size: 0.85rem;
-  font-weight: 650;
-  color: var(--secondary);
-}
-
-.miniCalendarHeader button {
-  border: none;
-  background: var(--bg);
-  color: var(--secondary);
-  width: 1.8rem;
-  height: 1.8rem;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.miniCalendarHeader button:hover {
-  background: var(--accent-soft);
-}
-
-.miniCalendarWeekdays {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  margin-bottom: 0.3rem;
-}
-
-.miniCalendarWeekdays span {
-  text-align: center;
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-}
-
-.miniCalendarGrid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 0.2rem;
-}
-
-.miniCalendarDay {
-  aspect-ratio: 1;
-  border: none;
-  background: none;
-  border-radius: 50%;
-  font-size: 0.8rem;
-  color: var(--text);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.12s ease, color 0.12s ease;
-}
-
-.miniCalendarDay:hover:not(:disabled) {
-  background: var(--accent-soft);
-}
-
-.miniCalendarDay:disabled {
-  color: var(--border);
-  cursor: not-allowed;
-}
-
-.miniCalendarDaySelected {
-  background: var(--primary) !important;
-  color: #fff !important;
-  font-weight: 700;
-}
-
-.miniCalendarDayToday:not(.miniCalendarDaySelected) {
-  border: 1.5px solid var(--primary);
 }
 
 @media (max-width: 560px) {

@@ -12,6 +12,7 @@ import {
   NOTIFICATION_TYPE,
   NOTIFICATION_TYPE_LABELS,
 } from "@/lib/notifications";
+import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import ToggleSwitch from "@/components/ToggleSwitch";
 import FilterSelect from "@/components/FilterSelect";
@@ -31,6 +32,7 @@ const TYPE_ICON = {
   [NOTIFICATION_TYPE.AVIS]: "bi-chat-square-quote-fill",
   [NOTIFICATION_TYPE.RECLAMATION]: "bi-headset",
   [NOTIFICATION_TYPE.DEMANDE_DEMO]: "bi-calendar2-check-fill",
+  [NOTIFICATION_TYPE.CONTACT_MESSAGE]: "bi-envelope-paper-fill",
   [NOTIFICATION_TYPE.GESTION]: "bi-person-gear",
 };
 
@@ -39,6 +41,7 @@ const TYPE_TONE_CLASS = {
   [NOTIFICATION_TYPE.AVIS]: "notifIconAccent",
   [NOTIFICATION_TYPE.RECLAMATION]: "notifIconDanger",
   [NOTIFICATION_TYPE.DEMANDE_DEMO]: "notifIconAccent",
+  [NOTIFICATION_TYPE.CONTACT_MESSAGE]: "notifIconAccent",
   [NOTIFICATION_TYPE.GESTION]: "notifIconAccent",
 };
 
@@ -47,6 +50,7 @@ const TYPE_TARGET = {
   [NOTIFICATION_TYPE.AVIS]: "/backoffice/admin/avis",
   [NOTIFICATION_TYPE.RECLAMATION]: "/backoffice/admin/messagerie",
   [NOTIFICATION_TYPE.DEMANDE_DEMO]: "/backoffice/admin/demandes-demo",
+  [NOTIFICATION_TYPE.CONTACT_MESSAGE]: "/backoffice/admin/messages-contact",
   [NOTIFICATION_TYPE.GESTION]: "/backoffice/admin/utilisateurs",
 };
 
@@ -74,6 +78,7 @@ export default function AdminNotificationsPage() {
 
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [sortBy, setSortBy] = useState("recent");
   const [markingAll, setMarkingAll] = useState(false);
   const [showMasquees, setShowMasquees] = useState(false);
 
@@ -99,18 +104,17 @@ export default function AdminNotificationsPage() {
     };
   }, [notifications]);
 
-  const sortedNotifications = useMemo(
-    () => [...notifications].sort((a, b) => new Date(b.date_creation) - new Date(a.date_creation)),
-    [notifications]
-  );
-
   const filteredNotifications = useMemo(() => {
-    return sortedNotifications.filter((n) => {
+    const filtered = notifications.filter((n) => {
       if (typeFilter && String(n.type) !== typeFilter) return false;
       if (statusFilter && String(n.statut) !== statusFilter) return false;
       return true;
     });
-  }, [sortedNotifications, typeFilter, statusFilter]);
+    return sortList(filtered, sortBy, {
+      dateOf: (n) => n.date_creation,
+      nameOf: (n) => n.titre || NOTIFICATION_TYPE_LABELS[n.type] || "",
+    });
+  }, [notifications, typeFilter, statusFilter, sortBy]);
 
   async function handleMarkRead(notification) {
     if (notification.statut === NOTIFICATION_STATUS.LUE) return;
@@ -212,6 +216,7 @@ export default function AdminNotificationsPage() {
               { value: NOTIFICATION_STATUS.LUE, label: "Lues" },
             ]}
           />
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.card} style={{ padding: 0 }}>

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { extractErrorMessage } from "@/lib/apiClient";
 import { fetchEcheances, fetchBiens, ECHEANCE_STATUS, ECHEANCE_STATUS_LABELS } from "@/lib/properties";
+import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import FilterChip from "@/components/FilterChip";
 import FilterSelect from "@/components/FilterSelect";
@@ -49,6 +50,7 @@ export default function LocataireEcheancesPage() {
 
   const [statusFilter, setStatusFilter] = useState("");
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [sortBy, setSortBy] = useState("recent");
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
@@ -84,14 +86,13 @@ export default function LocataireEcheancesPage() {
   }
 
   const filteredEcheances = useMemo(() => {
-    return [...echeances]
-      .filter((e) => {
-        if (statusFilter && String(e.statut) !== statusFilter) return false;
-        if (overdueOnly && !isOverdue(e)) return false;
-        return true;
-      })
-      .sort((a, b) => new Date(b.date_echeance || 0) - new Date(a.date_echeance || 0));
-  }, [echeances, statusFilter, overdueOnly]);
+    const filtered = echeances.filter((e) => {
+      if (statusFilter && String(e.statut) !== statusFilter) return false;
+      if (overdueOnly && !isOverdue(e)) return false;
+      return true;
+    });
+    return sortList(filtered, sortBy, { dateOf: (e) => e.date_echeance, nameOf: (e) => e.reference });
+  }, [echeances, statusFilter, overdueOnly, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredEcheances.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -146,6 +147,7 @@ export default function LocataireEcheancesPage() {
           >
             En retard uniquement
           </FilterChip>
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>

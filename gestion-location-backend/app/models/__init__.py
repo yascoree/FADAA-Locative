@@ -22,6 +22,7 @@ from app.models.plan_permission import PlanPermission
 from app.models.subscription import Subscription
 from app.models.historique import Historique
 from app.models.demande_demo import DemandeDemo
+from app.models.contact_message import ContactMessage
 
 __all__ = [
     "Utilisateur",
@@ -48,4 +49,5 @@ __all__ = [
     "Subscription",
     "Historique",
     "DemandeDemo",
+    "ContactMessage",
 ]

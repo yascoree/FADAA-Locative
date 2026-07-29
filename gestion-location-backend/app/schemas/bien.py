@@ -20,6 +20,9 @@ class BienBase(BaseModel):
     type: TypeBien
     designation: Optional[str] = Field(default=None, max_length=150)
     description: Optional[str] = None
+    adresse: Optional[str] = None
+    latitude: Optional[float] = Field(default=None, ge=-90, le=90)
+    longitude: Optional[float] = Field(default=None, ge=-180, le=180)
     statut: Optional[BienStatus] = None
     attachement: Optional[str] = Field(default=None, max_length=255)
 
@@ -30,6 +33,9 @@ class BienUpdate(BaseModel):
     type: Optional[TypeBien] = None
     designation: Optional[str] = Field(default=None, max_length=150)
     description: Optional[str] = None
+    adresse: Optional[str] = None
+    latitude: Optional[float] = Field(default=None, ge=-90, le=90)
+    longitude: Optional[float] = Field(default=None, ge=-180, le=180)
     statut: Optional[BienStatus] = None
     attachement: Optional[str] = Field(default=None, max_length=255)
 

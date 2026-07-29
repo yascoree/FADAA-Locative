@@ -6,11 +6,13 @@ import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import { fetchLocataires, createLocataire } from "@/lib/tenants";
 import { fetchBiens, fetchBaux, fetchEcheances, fetchPaiements, BAIL_STATUS, BAIL_STATUS_LABELS, ECHEANCE_STATUS } from "@/lib/properties";
 import { ACCOUNT_STATUS, ACCOUNT_STATUS_LABELS } from "@/lib/users";
+import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import FilterChip from "@/components/FilterChip";
+import FilterSelect from "@/components/FilterSelect";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -67,6 +69,7 @@ export default function ProprietaireLocatairesPage() {
 
   const [search, setSearch] = useState("");
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [sortBy, setSortBy] = useState("recent");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -140,7 +143,7 @@ export default function ProprietaireLocatairesPage() {
 
   const filteredLocataires = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return locataires.filter((l) => {
+    const filtered = locataires.filter((l) => {
       if (term) {
         const activeBaux = bauxOf(l.id).filter((b) => b.statut === BAIL_STATUS.ACTIF);
         const haystack = [l.prenom, l.nom, l.email, ...activeBaux.map((b) => bienLotLabel(b))]
@@ -152,8 +155,9 @@ export default function ProprietaireLocatairesPage() {
       if (overdueOnly && !locataireHasOverdue.get(l.id)) return false;
       return true;
     });
+    return sortList(filtered, sortBy, { dateOf: (l) => l.date_creation, nameOf: (l) => `${l.prenom} ${l.nom}` });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locataires, search, overdueOnly, locataireHasOverdue, baux, biens]);
+  }, [locataires, search, overdueOnly, sortBy, locataireHasOverdue, baux, biens]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLocataires.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -258,6 +262,7 @@ export default function ProprietaireLocatairesPage() {
           >
             En retard uniquement
           </FilterChip>
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>

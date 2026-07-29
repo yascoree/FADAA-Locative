@@ -17,6 +17,7 @@ import {
 } from "@/lib/properties";
 import { fetchLocataires } from "@/lib/tenants";
 import { fetchGestionnairePermissionIndex } from "@/lib/mandates";
+import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
@@ -67,6 +68,7 @@ export default function AgencePaiementsPage() {
   const [search, setSearch] = useState("");
   const [modeFilter, setModeFilter] = useState("");
   const [monthOnly, setMonthOnly] = useState(false);
+  const [sortBy, setSortBy] = useState("recent");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -185,7 +187,7 @@ export default function AgencePaiementsPage() {
   const filteredPaiements = useMemo(() => {
     const term = search.trim().toLowerCase();
     const now = new Date();
-    return paiements.filter((p) => {
+    const filtered = paiements.filter((p) => {
       if (term) {
         const locataire = p.echeance?.bail?.locataire;
         const bien = biens.find((b) => b.id === p.echeance?.bail?.lot?.bien_id);
@@ -213,7 +215,14 @@ export default function AgencePaiementsPage() {
       }
       return true;
     });
-  }, [paiements, search, modeFilter, monthOnly, biens]);
+    return sortList(filtered, sortBy, {
+      dateOf: (p) => p.date_paiement,
+      nameOf: (p) => {
+        const l = p.echeance?.bail?.locataire;
+        return l ? `${l.prenom} ${l.nom}` : "";
+      },
+    });
+  }, [paiements, search, modeFilter, monthOnly, sortBy, biens]);
 
   const totalPages = Math.max(1, Math.ceil(filteredPaiements.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -392,6 +401,7 @@ export default function AgencePaiementsPage() {
           >
             Ce mois uniquement
           </FilterChip>
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>

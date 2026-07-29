@@ -11,6 +11,7 @@ import {
   PAIEMENT_STATUS,
   PAIEMENT_STATUS_LABELS,
 } from "@/lib/properties";
+import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import FilterChip from "@/components/FilterChip";
 import FilterSelect from "@/components/FilterSelect";
@@ -49,6 +50,7 @@ export default function LocatairePaiementsPage() {
 
   const [modeFilter, setModeFilter] = useState("");
   const [monthOnly, setMonthOnly] = useState(false);
+  const [sortBy, setSortBy] = useState("recent");
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
@@ -119,17 +121,17 @@ export default function LocatairePaiementsPage() {
 
   const filteredPaiements = useMemo(() => {
     const now = new Date();
-    return [...paiements]
-      .filter((p) => {
-        if (modeFilter && String(p.mode_paiement) !== modeFilter) return false;
-        if (monthOnly) {
-          const d = new Date(p.date_paiement);
-          if (d.getFullYear() !== now.getFullYear() || d.getMonth() !== now.getMonth()) return false;
-        }
-        return true;
-      })
-      .sort((a, b) => new Date(b.date_paiement || 0) - new Date(a.date_paiement || 0));
-  }, [paiements, modeFilter, monthOnly]);
+    const filtered = paiements.filter((p) => {
+      if (modeFilter && String(p.mode_paiement) !== modeFilter) return false;
+      if (monthOnly) {
+        const d = new Date(p.date_paiement);
+        if (d.getFullYear() !== now.getFullYear() || d.getMonth() !== now.getMonth()) return false;
+      }
+      return true;
+    });
+    return sortList(filtered, sortBy, { dateOf: (p) => p.date_paiement, nameOf: (p) => bienLotLabel(p.echeance) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paiements, modeFilter, monthOnly, sortBy, biens]);
 
   const totalPages = Math.max(1, Math.ceil(filteredPaiements.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -184,6 +186,7 @@ export default function LocatairePaiementsPage() {
           >
             Ce mois uniquement
           </FilterChip>
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>

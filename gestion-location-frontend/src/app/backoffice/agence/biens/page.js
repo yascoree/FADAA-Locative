@@ -22,6 +22,8 @@ import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import FilterSelect from "@/components/FilterSelect";
+import MapPicker from "@/components/MapPicker";
+import BienDetailsModal from "@/components/BienDetailsModal";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -51,6 +53,9 @@ const EMPTY_FORM = {
   proprietaire_id: "",
   designation: "",
   description: "",
+  adresse: "",
+  latitude: null,
+  longitude: null,
   type: String(TYPE_BIEN.IMMOBILIER),
   statut: String(BIEN_STATUS.ACTIF),
 };
@@ -81,6 +86,8 @@ export default function AgenceBiensPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+
+  const [detailsTarget, setDetailsTarget] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -125,7 +132,7 @@ export default function AgenceBiensPage() {
     const term = search.trim().toLowerCase();
     const filtered = biens.filter((b) => {
       if (term) {
-        const haystack = `${b.designation || ""} ${b.description || ""} ${TYPE_BIEN_LABELS[b.type] || ""} ${proprietaireName(b.proprietaire_id)}`.toLowerCase();
+        const haystack = `${b.designation || ""} ${b.description || ""} ${b.adresse || ""} ${TYPE_BIEN_LABELS[b.type] || ""} ${proprietaireName(b.proprietaire_id)}`.toLowerCase();
         if (!haystack.includes(term)) return false;
       }
       if (statusFilter && String(b.statut) !== statusFilter) return false;
@@ -164,6 +171,9 @@ export default function AgenceBiensPage() {
       proprietaire_id: String(bien.proprietaire_id),
       designation: bien.designation || "",
       description: bien.description || "",
+      adresse: bien.adresse || "",
+      latitude: bien.latitude ?? null,
+      longitude: bien.longitude ?? null,
       type: String(bien.type),
       statut: String(bien.statut),
     });
@@ -247,6 +257,9 @@ export default function AgenceBiensPage() {
           type: Number(formDraft.type),
           designation: formDraft.designation,
           description: formDraft.description,
+          adresse: formDraft.adresse,
+          latitude: formDraft.latitude,
+          longitude: formDraft.longitude,
           statut: Number(formDraft.statut),
         });
         const photos = [];
@@ -263,6 +276,9 @@ export default function AgenceBiensPage() {
           type: Number(formDraft.type),
           designation: formDraft.designation,
           description: formDraft.description || null,
+          adresse: formDraft.adresse || null,
+          latitude: formDraft.latitude,
+          longitude: formDraft.longitude,
           statut: Number(formDraft.statut),
         });
         setBiens((prev) => prev.map((b) => (b.id === updated.id ? { ...b, ...updated } : b)));
@@ -391,7 +407,15 @@ export default function AgenceBiensPage() {
                             <i className="bi bi-house" />
                           </span>
                         )}
-                        <span className={styles.userName}>{b.designation || `Bien #${b.id}`}</span>
+                        <div>
+                          <span className={styles.userName}>{b.designation || `Bien #${b.id}`}</span>
+                          {b.adresse && (
+                            <div style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>
+                              <i className="bi bi-geo-alt" style={{ marginRight: "0.25rem" }} />
+                              {b.adresse}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td>{proprietaireName(b.proprietaire_id)}</td>
@@ -406,9 +430,16 @@ export default function AgenceBiensPage() {
                       {(() => {
                         const canUpdate = permIndex?.hasForBien(b.id, b.proprietaire_id, "UPDATE_PROPERTY");
                         const canDelete = permIndex?.hasForBien(b.id, b.proprietaire_id, "DELETE_PROPERTY");
-                        if (!canUpdate && !canDelete) return <span className={styles.empty}>—</span>;
                         return (
                           <div className={styles.tableActions}>
+                            <button
+                              type="button"
+                              className={styles.iconBtn}
+                              onClick={() => setDetailsTarget(b)}
+                              title="Voir les détails"
+                            >
+                              <i className="bi bi-eye" />
+                            </button>
                             {canUpdate && (
                               <button type="button" className={styles.iconBtn} onClick={() => openEdit(b)} title="Modifier">
                                 <i className="bi bi-pencil" />
@@ -487,6 +518,14 @@ export default function AgenceBiensPage() {
             value={formDraft.designation}
             onChange={(e) => setFormDraft((d) => ({ ...d, designation: e.target.value }))}
             placeholder="Ex : Villa Anfa, Immeuble 12..."
+          />
+          <MapPicker
+            label="Localisation"
+            adresse={formDraft.adresse}
+            latitude={formDraft.latitude}
+            longitude={formDraft.longitude}
+            onChange={({ adresse, latitude, longitude }) => setFormDraft((d) => ({ ...d, adresse, latitude, longitude }))}
+            hint="Optionnel — recherchez une adresse ou placez le marqueur directement sur la carte."
           />
           <TextField
             label="Description"
@@ -594,6 +633,9 @@ export default function AgenceBiensPage() {
         isBusy={deleteBusy}
         error={deleteError}
       />
+
+      {/* ---- Détails d'un bien ---- */}
+      <BienDetailsModal bien={detailsTarget} onClose={() => setDetailsTarget(null)} />
     </div>
   );
 }

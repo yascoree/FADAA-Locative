@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { API_BASE_URL } from "@/lib/apiClient";
 import { fetchNotifications, NOTIFICATION_STATUS, NOTIFICATION_TYPE } from "@/lib/notifications";
 import { fetchDemandesDemo, DEMANDE_DEMO_STATUS } from "@/lib/demandesDemo";
+import { fetchContactMessages, CONTACT_MESSAGE_STATUS } from "@/lib/contactMessages";
 import LogoIcon from "@/components/LogoIcon";
 import styles from "./admin.module.css";
 
@@ -21,6 +22,12 @@ const NAV_SECTIONS = [
         label: "Demandes de démo",
         icon: "bi-calendar2-check",
         badgeKey: "demandesDemo",
+      },
+      {
+        href: "/backoffice/admin/messages-contact",
+        label: "Messages de contact",
+        icon: "bi-envelope-paper",
+        badgeKey: "messagesContact",
       },
       { href: "/backoffice/admin/notifications", label: "Notifications", icon: "bi-bell", badgeKey: "notifications" },
     ],
@@ -48,18 +55,23 @@ export default function AdminSidebar({ user, onLogout }) {
   const initial = `${user?.prenom?.[0] || ""}${user?.nom?.[0] || ""}`.toUpperCase();
   const itemRefs = useRef({});
   const [bubble, setBubble] = useState(null);
-  const [badges, setBadges] = useState({ discussions: 0, demandesDemo: 0, notifications: 0 });
+  const [badges, setBadges] = useState({ discussions: 0, demandesDemo: 0, messagesContact: 0, notifications: 0 });
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
-        const [list, demandes] = await Promise.all([fetchNotifications(), fetchDemandesDemo()]);
+        const [list, demandes, messages] = await Promise.all([
+          fetchNotifications(),
+          fetchDemandesDemo(),
+          fetchContactMessages(),
+        ]);
         if (cancelled) return;
         const unread = list.filter((n) => n.statut === NOTIFICATION_STATUS.NON_LUE);
         setBadges({
           discussions: unread.filter((n) => n.type === NOTIFICATION_TYPE.DISCUSSION).length,
           demandesDemo: demandes.filter((d) => d.statut === DEMANDE_DEMO_STATUS.NOUVELLE).length,
+          messagesContact: messages.filter((m) => m.statut === CONTACT_MESSAGE_STATUS.NOUVEAU).length,
           notifications: unread.filter((n) => n.type !== NOTIFICATION_TYPE.DISCUSSION).length,
         });
       } catch {
