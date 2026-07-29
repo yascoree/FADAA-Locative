@@ -690,9 +690,9 @@ function AvisSection() {
 
       <AvisForm />
 
-      {!isLoading && avisList.length === 0 && (
+     {/* {!isLoading && avisList.length === 0 && (
         <p className={styles.avisEmpty}>Aucun avis publié pour le moment — soyez le premier à en laisser un !</p>
-      )}
+      )} */}
 
       {avisList.length > 0 && (
         <div className={styles.testimonialsGrid} style={{ marginTop: "2.5rem" }}>
