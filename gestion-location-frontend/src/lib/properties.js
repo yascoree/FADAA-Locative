@@ -42,12 +42,24 @@ export async function fetchBiens() {
   return data;
 }
 
-export async function createBien({ proprietaireId, categorieId, designation, description, statut }) {
+export async function createBien({
+  proprietaireId,
+  categorieId,
+  designation,
+  description,
+  adresse,
+  latitude,
+  longitude,
+  statut,
+}) {
   const { data } = await apiClient.post("/properties/", {
     proprietaire_id: proprietaireId,
     categorie_id: categorieId,
     designation: designation || null,
     description: description || null,
+    adresse: adresse || null,
+    latitude: latitude ?? null,
+    longitude: longitude ?? null,
     statut: statut || null,
   });
   return data;

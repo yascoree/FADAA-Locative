@@ -8,7 +8,7 @@ from app.models.bien import Bien
 from app.models.echeance import Echeance, EcheanceStatus
 from app.models.lot import Lot, LotStatus
 from app.models.mandat import Mandat, MandatStatus
-from app.models.paiement import Paiement
+from app.models.paiement import Paiement, PaiementStatus
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.models.subscription_plan import SubscriptionPlan
 from app.models.utilisateur import StatutCompte, Utilisateur
@@ -178,7 +178,12 @@ def _proprietaire_counts(db: Session, owner_ids: list[int]):
         .join(Bail, Bail.id == Echeance.bail_id)
         .join(Lot, Lot.id == Bail.lot_id)
         .join(Bien, Bien.id == Lot.bien_id)
-        .filter(Bien.proprietaire_id.in_(owner_ids), Paiement.date_paiement >= month_start)
+        .filter(
+            Bien.proprietaire_id.in_(owner_ids),
+            Paiement.date_paiement >= month_start,
+            Paiement.statut == PaiementStatus.VALIDE,
+            Paiement.deleted_at.is_(None),
+        )
         .scalar()
         or 0
     )
@@ -269,7 +274,12 @@ def get_locataire_dashboard_stats(db: Session, locataire_id: int) -> LocataireDa
         db.query(func.coalesce(func.sum(Paiement.montant), 0))
         .join(Echeance, Echeance.id == Paiement.echeance_id)
         .join(Bail, Bail.id == Echeance.bail_id)
-        .filter(Bail.locataire_id == locataire_id, Paiement.date_paiement >= year_start)
+        .filter(
+            Bail.locataire_id == locataire_id,
+            Paiement.date_paiement >= year_start,
+            Paiement.statut == PaiementStatus.VALIDE,
+            Paiement.deleted_at.is_(None),
+        )
         .scalar()
         or 0
     )
@@ -319,7 +329,11 @@ def get_revenue_stats(db: Session, owner_ids: list[int]) -> RevenueStats:
             .join(Bail, Bail.id == Echeance.bail_id)
             .join(Lot, Lot.id == Bail.lot_id)
             .join(Bien, Bien.id == Lot.bien_id)
-            .filter(Bien.proprietaire_id.in_(owner_ids))
+            .filter(
+                Bien.proprietaire_id.in_(owner_ids),
+                Paiement.statut == PaiementStatus.VALIDE,
+                Paiement.deleted_at.is_(None),
+            )
         )
 
     def _monthly_rows(start: datetime, end: datetime):

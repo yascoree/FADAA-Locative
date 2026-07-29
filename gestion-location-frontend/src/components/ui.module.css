@@ -195,6 +195,10 @@
   animation: modalPopIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.modalLg {
+  max-width: 760px;
+}
+
 .modalHeader {
   display: flex;
   align-items: flex-start;
@@ -597,6 +601,733 @@
 .searchSelectEmpty i {
   font-size: 1.1rem;
   opacity: 0.6;
+}
+
+/* ---------- CalendarInput ---------- */
+
+.calendarWrap {
+  position: relative;
+}
+
+.calendarTrigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.72rem;
+  border: 1px solid var(--brand-border);
+  border-radius: var(--brand-radius-field);
+  background: var(--brand-surface);
+  color: var(--brand-text);
+  font-size: 0.86rem;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s ease;
+}
+
+.calendarTrigger:hover:not(:disabled) {
+  border-color: var(--brand-primary);
+}
+
+.calendarTrigger:focus-visible {
+  outline: none;
+  border-color: var(--brand-primary);
+}
+
+.calendarTrigger:disabled {
+  background: var(--brand-bg);
+  color: var(--brand-text-muted);
+  cursor: not-allowed;
+}
+
+.calendarTrigger > i.bi-calendar3 {
+  color: var(--brand-primary);
+  font-size: 0.9rem;
+}
+
+.calendarValue {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendarPlaceholder {
+  flex: 1;
+  color: var(--brand-text-muted);
+}
+
+.calendarClear {
+  color: var(--brand-text-muted);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.calendarClear:hover {
+  color: var(--brand-danger);
+}
+
+.calendarPanel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  width: 280px;
+  max-width: 90vw;
+  background: var(--brand-surface);
+  border: 1px solid var(--brand-border);
+  border-radius: var(--brand-radius-card);
+  box-shadow: var(--brand-shadow-lift);
+  padding: 0.85rem;
+}
+
+.calendarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+.calendarHeader > button {
+  width: 1.9rem;
+  height: 1.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  color: var(--brand-text);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.calendarHeader > button:hover {
+  background: var(--brand-primary-soft);
+}
+
+.calendarHeaderLabel {
+  font-size: 0.86rem;
+  font-weight: 650;
+  color: var(--brand-secondary);
+  background: none;
+  border: none;
+  border-radius: var(--brand-radius-field);
+  padding: 0.2rem 0.6rem;
+  cursor: pointer;
+}
+
+.calendarHeaderLabel:hover {
+  background: var(--brand-primary-soft);
+}
+
+.calendarWeekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 0.2rem;
+}
+
+.calendarWeekdays span {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 650;
+  color: var(--brand-text-muted);
+  text-transform: uppercase;
+}
+
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.calendarDay {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  font-size: 0.82rem;
+  color: var(--brand-text);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.calendarDay:hover:not(:disabled) {
+  background: var(--brand-primary-soft);
+}
+
+.calendarDay:disabled {
+  color: var(--brand-text-muted);
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.calendarDaySelected {
+  background: var(--brand-primary) !important;
+  color: #fff !important;
+  font-weight: 650;
+}
+
+.calendarDayToday {
+  box-shadow: inset 0 0 0 1.5px var(--brand-primary);
+}
+
+.calendarPickGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+}
+
+.calendarPickCell {
+  padding: 0.5rem 0.3rem;
+  border: none;
+  background: none;
+  border-radius: var(--brand-radius-field);
+  font-size: 0.82rem;
+  color: var(--brand-text);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.calendarPickCell:hover {
+  background: var(--brand-primary-soft);
+}
+
+.calendarPickCellMuted {
+  color: var(--brand-text-muted);
+  opacity: 0.55;
+}
+
+.calendarFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--brand-border);
+}
+
+.calendarFooterBtn {
+  border: none;
+  background: none;
+  color: var(--brand-text-muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--brand-radius-field);
+  cursor: pointer;
+}
+
+.calendarFooterBtn:hover {
+  background: var(--brand-bg);
+  color: var(--brand-text);
+}
+
+.calendarFooterBtnPrimary {
+  color: var(--brand-primary);
+}
+
+.calendarFooterBtnPrimary:hover {
+  background: var(--brand-primary-soft);
+  color: var(--brand-primary);
+}
+
+/* ---------- MapPicker ---------- */
+
+.mapPickerWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.mapPickerSearchWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.mapPickerSearchIcon {
+  position: absolute;
+  left: 0.72rem;
+  color: var(--brand-text-muted);
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
+.mapPickerSearchInput {
+  width: 100%;
+  padding-left: 2.1rem;
+  padding-right: 2.3rem;
+  box-shadow: var(--brand-shadow-sm);
+}
+
+.mapPickerSpinner {
+  position: absolute;
+  right: 0.75rem;
+  color: var(--brand-primary);
+  font-size: 0.9rem;
+  animation: mapPickerSpin 0.8s linear infinite;
+  pointer-events: none;
+}
+
+.mapPickerSpin {
+  animation: mapPickerSpin 0.8s linear infinite;
+}
+
+.mapPickerSearchClear {
+  position: absolute;
+  right: 0.6rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--brand-text-muted);
+  font-size: 0.72rem;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.mapPickerSearchClear:hover {
+  background: var(--brand-bg);
+  color: var(--brand-text);
+}
+
+@keyframes mapPickerSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.mapPickerDropdown {
+  position: absolute;
+  z-index: 500;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  right: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--brand-surface);
+  border: 1px solid var(--brand-border);
+  border-radius: var(--brand-radius-card);
+  box-shadow: var(--brand-shadow-lift);
+}
+
+.mapPickerOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.55rem 0.6rem;
+  border: none;
+  background: none;
+  border-radius: calc(var(--brand-radius-field) - 2px);
+  font-size: 0.82rem;
+  color: var(--brand-text);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.mapPickerOption i {
+  color: var(--brand-primary);
+  margin-top: 0.15rem;
+  flex: none;
+}
+
+.mapPickerOption:hover,
+.mapPickerOptionActive {
+  background: var(--brand-primary-soft);
+}
+
+.mapPickerCanvasWrap {
+  position: relative;
+  border-radius: var(--brand-radius-card);
+  box-shadow: var(--brand-shadow-md);
+  overflow: hidden;
+}
+
+.mapPickerCanvas {
+  width: 100%;
+  height: 240px;
+  border: 1px solid var(--brand-border);
+  background: var(--brand-bg);
+  cursor: crosshair;
+}
+
+.mapPickerCanvas :global(.leaflet-control-zoom) {
+  border: 1px solid var(--brand-border);
+  border-radius: var(--brand-radius-field);
+  box-shadow: var(--brand-shadow-md);
+  overflow: hidden;
+}
+
+.mapPickerCanvas :global(.leaflet-control-zoom a) {
+  width: 2.1rem;
+  height: 2.1rem;
+  line-height: 2.1rem;
+  color: var(--brand-secondary);
+  background: var(--brand-surface);
+}
+
+.mapPickerCanvas :global(.leaflet-control-zoom a:hover) {
+  background: var(--brand-primary-soft);
+  color: var(--brand-primary-dark);
+}
+
+.mapPickerCanvas :global(.leaflet-control-attribution) {
+  font-size: 0.65rem;
+  background: color-mix(in srgb, var(--brand-surface) 78%, transparent);
+}
+
+.mapPickerLoading {
+  position: absolute;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--brand-bg);
+  color: var(--brand-text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.mapPickerLoading i {
+  animation: mapPickerSpin 0.8s linear infinite;
+  color: var(--brand-primary);
+}
+
+.mapPickerLocateBtn {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  z-index: 401;
+  width: 2.3rem;
+  height: 2.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--brand-border);
+  border-radius: 50%;
+  background: var(--brand-surface);
+  color: var(--brand-primary-dark);
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: var(--brand-shadow-md);
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+
+.mapPickerLocateBtn:hover:not(:disabled) {
+  background: var(--brand-primary-soft);
+  transform: translateY(-1px);
+}
+
+.mapPickerLocateBtn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.mapPickerEmptyHint {
+  position: absolute;
+  bottom: 0.7rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 401;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  background: color-mix(in srgb, var(--brand-surface) 92%, transparent);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--brand-border);
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--brand-secondary);
+  box-shadow: var(--brand-shadow-sm);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.mapPickerEmptyHint i {
+  color: var(--brand-primary);
+}
+
+/* Marqueur maison (divIcon) — évite toute dépendance aux images par défaut de
+   Leaflet, cassées par les bundlers sans configuration additionnelle. */
+.mapPickerPinWrap {
+  background: none;
+  border: none;
+}
+
+.mapPickerPin {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 30px;
+  height: 30px;
+  margin-left: -15px;
+  border-radius: 50% 50% 50% 0;
+  background: var(--brand-primary);
+  border: 2.5px solid #fff;
+  box-shadow: var(--brand-shadow-md);
+  transform: rotate(-45deg);
+  animation: mapPickerDrop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.mapPickerPinDot {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+@keyframes mapPickerDrop {
+  from {
+    transform: rotate(-45deg) translateY(-14px) scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: rotate(-45deg) translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.mapPickerFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.mapPickerHint {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.78rem;
+  color: var(--brand-text-muted);
+  font-weight: 500;
+}
+
+.mapPickerClear {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: none;
+  background: none;
+  color: var(--brand-danger);
+  font-size: 0.78rem;
+  font-weight: 650;
+  padding: 0.2rem 0.4rem;
+  cursor: pointer;
+}
+
+.mapPickerClear:hover {
+  text-decoration: underline;
+}
+
+.mapPickerError {
+  font-size: 0.78rem;
+  color: var(--brand-danger);
+}
+
+/* ---------- BienDetailsModal ---------- */
+
+.bienDetailsMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.bienDetailsCategory {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--brand-text-muted);
+}
+
+.bienDetailsCategory i {
+  color: var(--brand-primary);
+}
+
+.bienGallery {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1.1rem;
+}
+
+.bienGalleryMain {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--brand-radius-card);
+  overflow: hidden;
+  background: var(--brand-bg);
+  box-shadow: var(--brand-shadow-sm);
+}
+
+.bienGalleryMain img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bienGalleryNav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.3rem;
+  height: 2.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: color-mix(in srgb, #000 45%, transparent);
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.bienGalleryNav:hover {
+  background: color-mix(in srgb, #000 65%, transparent);
+}
+
+.bienGalleryNavPrev {
+  left: 0.6rem;
+}
+
+.bienGalleryNavNext {
+  right: 0.6rem;
+}
+
+.bienGalleryCount {
+  position: absolute;
+  bottom: 0.6rem;
+  right: 0.6rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, #000 45%, transparent);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.bienGalleryThumbs {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
+}
+
+.bienGalleryThumb {
+  flex: none;
+  width: 3.6rem;
+  height: 3.6rem;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity 0.12s ease, border-color 0.12s ease;
+}
+
+.bienGalleryThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bienGalleryThumb:hover {
+  opacity: 0.9;
+}
+
+.bienGalleryThumbActive {
+  border-color: var(--brand-primary);
+  opacity: 1;
+}
+
+.bienGalleryEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 160px;
+  border: 1.5px dashed var(--brand-border);
+  border-radius: var(--brand-radius-card);
+  color: var(--brand-text-muted);
+  font-size: 0.85rem;
+}
+
+.bienGalleryEmpty i {
+  font-size: 1.6rem;
+  opacity: 0.6;
+}
+
+.bienDetailsAddress {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  color: var(--brand-text);
+  margin: 0 0 0.6rem;
+}
+
+.bienDetailsAddress i {
+  color: var(--brand-primary);
+  margin-top: 0.15rem;
+}
+
+.bienDetailsDescription {
+  font-size: 0.86rem;
+  color: var(--brand-text-muted);
+  line-height: 1.55;
+  margin: 0 0 1.2rem;
+}
+
+.bienDetailsSection {
+  margin-top: 1.2rem;
+}
+
+.bienDetailsSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--brand-secondary);
+  margin: 0 0 0.6rem;
+}
+
+.bienDetailsSectionTitle i {
+  color: var(--brand-primary);
 }
 
 .radioGroup {

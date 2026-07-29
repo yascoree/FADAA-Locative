@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
@@ -9,6 +9,9 @@ import { createAvis, fetchAvis } from "@/lib/avis";
 import { createDemandeDemo } from "@/lib/demandesDemo";
 import { fetchPartenaires, PARTENAIRE_STATUS } from "@/lib/partenaires";
 import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
+import NavBar from "@/components/landing/NavBar";
+import Footer from "@/components/landing/Footer";
+import CalendarInput from "@/components/CalendarInput";
 import styles from "./landing.module.css";
 
 const FEATURES = [
@@ -128,21 +131,6 @@ const TESTIMONIALS = [
   },
 ];
 
-const FOOTER_COLUMNS = [
-  {
-    title: "Produit",
-    links: ["Fonctionnalités", "Application mobile", "Intégrations"],
-  },
-  {
-    title: "Ressources",
-    links: ["Documentation", "Référence API", "Blog", "Support"],
-  },
-  {
-    title: "Légal",
-    links: ["Politique de confidentialité", "Conditions d'utilisation", "Sécurité"],
-  },
-];
-
 const DASH_BIENS = [
   { name: "Résidence Anfa — 4 lots", badge: "Actif" },
   { name: "Villa Oasis — 1 lot", badge: "Actif" },
@@ -154,37 +142,6 @@ const DASH_ACTIVITY = [
   { text: "Bail créé", time: "il y a 5j" },
   { text: "Relance d'impayé envoyée", time: "il y a 1j" },
 ];
-
-function NavBar() {
-  return (
-    <header className={styles.nav}>
-      <div className={styles.navInner}>
-        <div className={styles.logoLockup}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/fadaa-logo-full-dark.png" alt="FADAA Locative" className={styles.brandLogoFull} />
-        </div>
-        <nav className={styles.navLinks}>
-          <a href="#fonctionnalites">Fonctionnalités</a>
-          <a href="#roles">Solutions</a>
-          <a href="#apropos">À propos</a>
-          <a href="#contact">Contact</a>
-          <a href="#partenaires">Partenaires</a>
-        </nav>
-        <div className={styles.navActions}>
-          <button type="button" className={styles.langSwitch}>
-            FR <i className="bi bi-chevron-down" />
-          </button>
-          <Link href="/front/login" className={styles.navLogin}>
-            Connexion
-          </Link>
-          <Link href="/front/login?tab=register" className={styles.navRegister}>
-            Essai gratuit
-          </Link>
-        </div>
-      </div>
-    </header>
-  );
-}
 
 function Hero() {
   const [showDemoModal, setShowDemoModal] = useState(false);
@@ -500,31 +457,6 @@ function PlatformShowcase() {
   );
 }
 
-function WhyFadaa() {
-  return (
-    <section className={styles.section}>
-      <div className={styles.whyCard}>
-        <div className={styles.sectionHead}>
-          <span className={`${styles.eyebrow} ${styles.eyebrowLight}`}>Pourquoi FADAA Locative</span>
-          <h2 className={styles.whyTitle}>Pensé pour la fiabilité à grande échelle</h2>
-          <p className={styles.whySub}>L&apos;infrastructure sur laquelle votre activité peut compter, chaque jour.</p>
-        </div>
-        <div className={styles.whyGrid}>
-          {WHY_FADAA.map((w) => (
-            <div key={w.title} className={styles.whyTile}>
-              <span className={styles.whyIcon}>
-                <i className={`bi ${w.icon}`} />
-              </span>
-              <h3 className={styles.whyTileTitle}>{w.title}</h3>
-              <p className={styles.whyTileText}>{w.text}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function About() {
   return (
     <section id="apropos" className={styles.section}>
@@ -730,127 +662,11 @@ function AvisSection() {
   );
 }
 
-const CALENDAR_WEEKDAYS = ["L", "M", "M", "J", "V", "S", "D"];
-const CALENDAR_MONTHS = [
-  "Janvier",
-  "Février",
-  "Mars",
-  "Avril",
-  "Mai",
-  "Juin",
-  "Juillet",
-  "Août",
-  "Septembre",
-  "Octobre",
-  "Novembre",
-  "Décembre",
-];
-
 function toISODate(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
-}
-
-function isSameDay(a, b) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
-
-function MiniDatePicker({ value, onChange }) {
-  const selectedDate = value ? new Date(`${value}T00:00:00`) : null;
-  const [open, setOpen] = useState(false);
-  const [viewDate, setViewDate] = useState(() => selectedDate || new Date());
-  const wrapRef = useRef(null);
-
-  useEffect(() => {
-    if (!open) return undefined;
-    function handleClickOutside(e) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
-    }
-    function handleKeyDown(e) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
-  const firstOfMonth = new Date(year, month, 1);
-  const startOffset = (firstOfMonth.getDay() + 6) % 7; // grille lundi -> dimanche
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  const cells = [];
-  for (let i = 0; i < startOffset; i += 1) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d += 1) cells.push(new Date(year, month, d));
-
-  return (
-    <div className={styles.miniCalendarWrap} ref={wrapRef}>
-      <button type="button" className={styles.miniCalendarTrigger} onClick={() => setOpen((o) => !o)}>
-        <i className="bi bi-calendar3" />
-        <span className={selectedDate ? undefined : styles.miniCalendarPlaceholder}>
-          {selectedDate
-            ? selectedDate.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
-            : "Choisir une date"}
-        </span>
-      </button>
-
-      {open && (
-        <div className={styles.miniCalendarPanel}>
-          <div className={styles.miniCalendarHeader}>
-            <button type="button" onClick={() => setViewDate(new Date(year, month - 1, 1))} aria-label="Mois précédent">
-              <i className="bi bi-chevron-left" />
-            </button>
-            <span>
-              {CALENDAR_MONTHS[month]} {year}
-            </span>
-            <button type="button" onClick={() => setViewDate(new Date(year, month + 1, 1))} aria-label="Mois suivant">
-              <i className="bi bi-chevron-right" />
-            </button>
-          </div>
-
-          <div className={styles.miniCalendarWeekdays}>
-            {CALENDAR_WEEKDAYS.map((w, i) => (
-              <span key={i}>{w}</span>
-            ))}
-          </div>
-
-          <div className={styles.miniCalendarGrid}>
-            {cells.map((d, i) => {
-              if (!d) return <span key={`empty-${i}`} />;
-              const isPast = d < today;
-              const isSelected = selectedDate && isSameDay(d, selectedDate);
-              const isToday = isSameDay(d, today);
-              return (
-                <button
-                  key={d.getTime()}
-                  type="button"
-                  disabled={isPast}
-                  className={`${styles.miniCalendarDay} ${isSelected ? styles.miniCalendarDaySelected : ""} ${
-                    isToday ? styles.miniCalendarDayToday : ""
-                  }`}
-                  onClick={() => {
-                    onChange(toISODate(d));
-                    setOpen(false);
-                  }}
-                >
-                  {d.getDate()}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
 }
 
 function DemoRequestModal({ onClose }) {
@@ -948,7 +764,12 @@ function DemoRequestModal({ onClose }) {
 
             <label className={styles.demoFieldGroup}>
               <span className={styles.demoFieldLabel}>Date souhaitée pour la démo</span>
-              <MiniDatePicker value={dateSouhaitee} onChange={setDateSouhaitee} />
+              <CalendarInput
+                name="dateSouhaitee"
+                value={dateSouhaitee}
+                onChange={(e) => setDateSouhaitee(e.target.value)}
+                min={toISODate(new Date())}
+              />
             </label>
 
             <label className={styles.demoFieldGroup}>
@@ -985,6 +806,17 @@ function CtaBanner() {
           Rejoignez des centaines d&apos;agences et de propriétaires qui gèrent déjà leur portefeuille sur FADAA
           Locative.
         </p>
+        <div className={styles.ctaWhyGrid}>
+          {WHY_FADAA.map((w) => (
+            <div key={w.title} className={styles.ctaWhyTile}>
+              <span className={styles.ctaWhyIcon}>
+                <i className={`bi ${w.icon}`} />
+              </span>
+              <h3 className={styles.ctaWhyTitle}>{w.title}</h3>
+              <p className={styles.ctaWhyText}>{w.text}</p>
+            </div>
+          ))}
+        </div>
         <div className={styles.ctaActions}>
           <Link href="/front/login?tab=register" className={styles.btnPrimaryLight}>
             Essai gratuit
@@ -996,59 +828,6 @@ function CtaBanner() {
       </div>
       {showDemoModal && <DemoRequestModal onClose={() => setShowDemoModal(false)} />}
     </section>
-  );
-}
-
-function Footer() {
-  return (
-    <footer className={styles.footer}>
-      <div className={styles.footerInner}>
-        <div className={styles.footerBrandCol}>
-          <div className={styles.logoLockup}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/fadaa-logo-full-light.png" alt="FADAA Locative" className={styles.brandLogoFull} />
-          </div>
-          <p className={styles.footerTagline}>
-            La plateforme tout-en-un de gestion locative pour agences, propriétaires et locataires.
-          </p>
-        </div>
-
-        {FOOTER_COLUMNS.map((col) => (
-          <div key={col.title} className={styles.footerCol}>
-            <h4>{col.title}</h4>
-            {col.links.map((l) => (
-              <a key={l} href="#">
-                {l}
-              </a>
-            ))}
-          </div>
-        ))}
-
-        <div className={styles.footerCol}>
-          <h4>Contact</h4>
-          <a href="mailto:contact@fadaalocative.ma">contact@fadaalocative.ma</a>
-          <a href="tel:+212500000000">+212 5 00 00 00 00</a>
-          <span className={styles.footerAddress}>123 Avenue Hassan II, Casablanca, Maroc</span>
-        </div>
-      </div>
-
-      <div className={styles.footerBottom}>
-        <p className={styles.footerCopy}>
-          © {new Date().getFullYear()} FADAA Locative — IRMASERVICE. Tous droits réservés.
-        </p>
-        <div className={styles.footerSocials}>
-          <a href="#" aria-label="Facebook" className={styles.footerSocial}>
-            <i className="bi bi-facebook" />
-          </a>
-          <a href="#" aria-label="LinkedIn" className={styles.footerSocial}>
-            <i className="bi bi-linkedin" />
-          </a>
-          <a href="#" aria-label="Instagram" className={styles.footerSocial}>
-            <i className="bi bi-instagram" />
-          </a>
-        </div>
-      </div>
-    </footer>
   );
 }
 
@@ -1079,7 +858,6 @@ export default function RootPage() {
       <Roles />
       <HowItWorks />
       <PlatformShowcase />
-      <WhyFadaa />
       <About />
       <AvisSection />
       <CtaBanner />

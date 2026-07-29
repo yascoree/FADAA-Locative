@@ -31,6 +31,7 @@ const TYPE_ICON = {
   [NOTIFICATION_TYPE.AVIS]: "bi-chat-square-quote-fill",
   [NOTIFICATION_TYPE.RECLAMATION]: "bi-headset",
   [NOTIFICATION_TYPE.DEMANDE_DEMO]: "bi-calendar2-check-fill",
+  [NOTIFICATION_TYPE.CONTACT_MESSAGE]: "bi-envelope-paper-fill",
   [NOTIFICATION_TYPE.GESTION]: "bi-person-gear",
 };
 
@@ -39,6 +40,7 @@ const TYPE_TONE_CLASS = {
   [NOTIFICATION_TYPE.AVIS]: "notifIconAccent",
   [NOTIFICATION_TYPE.RECLAMATION]: "notifIconDanger",
   [NOTIFICATION_TYPE.DEMANDE_DEMO]: "notifIconAccent",
+  [NOTIFICATION_TYPE.CONTACT_MESSAGE]: "notifIconAccent",
   [NOTIFICATION_TYPE.GESTION]: "notifIconAccent",
 };
 
@@ -47,6 +49,7 @@ const TYPE_TARGET = {
   [NOTIFICATION_TYPE.AVIS]: "/backoffice/admin/avis",
   [NOTIFICATION_TYPE.RECLAMATION]: "/backoffice/admin/messagerie",
   [NOTIFICATION_TYPE.DEMANDE_DEMO]: "/backoffice/admin/demandes-demo",
+  [NOTIFICATION_TYPE.CONTACT_MESSAGE]: "/backoffice/admin/messages-contact",
   [NOTIFICATION_TYPE.GESTION]: "/backoffice/admin/utilisateurs",
 };
 
