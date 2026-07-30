@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -30,3 +31,4 @@ class NotificationRead(NotificationBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    date_creation: datetime

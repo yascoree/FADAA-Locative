@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { ROLES } from "@/lib/roles";
 import NotificationBell from "@/components/NotificationBell";
 import PageTransition from "@/components/PageTransition";
+import RouteProgressBar from "@/components/RouteProgressBar";
 import LocataireSidebar from "./LocataireSidebar";
 import styles from "./locataire.module.css";
 
@@ -51,6 +52,7 @@ export default function LocataireLayout({ children }) {
 
   return (
     <div className={styles.shell}>
+      <RouteProgressBar />
       <LocataireSidebar user={user} onLogout={handleLogout} />
       <div className={styles.main}>
         <header className={`${styles.topbar} ${isScrolled ? styles.topbarScrolled : ""}`}>
@@ -61,6 +63,8 @@ export default function LocataireLayout({ children }) {
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
+      {/* Ancre pour les portails (Modal, Drawer) : voir proprietaire/layout.js. */}
+      <div id="portal-root" />
     </div>
   );
 }

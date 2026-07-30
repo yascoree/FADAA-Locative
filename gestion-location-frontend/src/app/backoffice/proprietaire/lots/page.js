@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { extractErrorMessage } from "@/lib/apiClient";
 import {
   fetchBiens,
@@ -55,6 +57,7 @@ const EMPTY_FORM = {
 };
 
 export default function ProprietaireLotsPage() {
+  const searchParams = useSearchParams();
   const [lots, setLots] = useState([]);
   const [biens, setBiens] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -86,6 +89,13 @@ export default function ProprietaireLotsPage() {
         setLots(lotsList);
         setBiens(biensList);
         setCategories(categoriesList);
+        if (searchParams.get("create") === "1" && biensList.length > 0) {
+          setFormMode("create");
+          setFormTargetId(null);
+          setFormDraft({ ...EMPTY_FORM, bien_id: String(biensList[0].id) });
+          setFormBanner(null);
+          setFormOpen(true);
+        }
       } catch (err) {
         setLoadError(extractErrorMessage(err));
       } finally {
@@ -93,6 +103,7 @@ export default function ProprietaireLotsPage() {
       }
     }
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const stats = useMemo(() => {
@@ -260,7 +271,18 @@ export default function ProprietaireLotsPage() {
         </div>
 
         {biens.length === 0 && (
-          <p className={styles.empty}>Vous devez d&apos;abord créer un bien avant de pouvoir ajouter des lots.</p>
+          <div className={styles.prereqNotice}>
+            <span className={styles.prereqNoticeIcon}>
+              <i className="bi bi-exclamation-lg" />
+            </span>
+            <span className={styles.prereqNoticeText}>
+              Vous devez d&apos;abord créer un bien avant de pouvoir ajouter des lots.
+            </span>
+            <Link href="/backoffice/proprietaire/biens?create=1" className={styles.prereqNoticeAction}>
+              Créer un bien
+              <i className="bi bi-arrow-right" />
+            </Link>
+          </div>
         )}
 
         <div className={styles.filtersRow}>

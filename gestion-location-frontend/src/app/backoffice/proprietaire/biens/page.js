@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -61,6 +62,7 @@ const EMPTY_FORM = {
 
 export default function ProprietaireBiensPage() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
 
   const [biens, setBiens] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -138,6 +140,16 @@ export default function ProprietaireBiensPage() {
     setEditingPhotos([]);
     setFormOpen(true);
   }
+
+  useEffect(() => {
+    function openIfRequested() {
+      if (searchParams.get("create") === "1") {
+        openCreate();
+      }
+    }
+    openIfRequested();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function openEdit(bien) {
     setFormMode("edit");
@@ -303,7 +315,9 @@ export default function ProprietaireBiensPage() {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem" }}>
           <div>
             <h2 className={styles.sectionTitle}>
-              <i className="bi bi-table" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
+              <span className={styles.sectionIconBadge}>
+                <i className="bi bi-houses" />
+              </span>
               Mes biens
             </h2>
             <p className={styles.sectionSubtitle}>
@@ -317,15 +331,18 @@ export default function ProprietaireBiensPage() {
         </div>
 
         <div className={styles.filtersRow}>
-          <input
-            type="text"
-            placeholder="Rechercher par désignation, type, description..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setCurrentPage(1);
-            }}
-          />
+          <div className={styles.searchFieldWrap}>
+            <i className={`bi bi-search ${styles.searchFieldIcon}`} />
+            <input
+              type="text"
+              placeholder="Rechercher par désignation, type, description..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+            />
+          </div>
           <FilterSelect
             value={statusFilter}
             onChange={(v) => {

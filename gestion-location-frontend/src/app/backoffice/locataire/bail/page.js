@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import { fetchBaux, fetchBiens, fetchCategories, BAIL_STATUS, BAIL_STATUS_LABELS } from "@/lib/properties";
+import MapPicker from "@/components/MapPicker";
 import styles from "../locataire.module.css";
 
 function formatCurrency(value) {
@@ -20,11 +21,45 @@ function photoUrl(url) {
   return `${API_BASE_URL}${url}`;
 }
 
-function badgeClass(statut) {
-  if (statut === BAIL_STATUS.ACTIF) return styles.badgeActive;
-  if (statut === BAIL_STATUS.EN_ATTENTE) return styles.badgeWarning;
-  if (statut === BAIL_STATUS.RESILIE) return styles.badgeDanger;
-  return styles.badgeNeutral;
+function heroStatusClass(statut) {
+  if (statut === BAIL_STATUS.ACTIF) return styles.leaseHeroStatusActive;
+  if (statut === BAIL_STATUS.EN_ATTENTE) return styles.leaseHeroStatusWarning;
+  if (statut === BAIL_STATUS.RESILIE) return styles.leaseHeroStatusDanger;
+  return styles.leaseHeroStatusNeutral;
+}
+
+/** Anneau de progression SVG (durée écoulée du bail) — le pourcentage est
+    affiché au centre, superposé au cercle via un positionnement absolu. */
+function ProgressRing({ percent }) {
+  const size = 128;
+  const stroke = 10;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const clamped = Math.max(0, Math.min(100, percent));
+  const offset = c * (1 - clamped / 100);
+  return (
+    <div className={styles.leaseProgressRingWrap}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border)" strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="var(--tone-navy)"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </svg>
+      <div className={styles.leaseProgressRingCenter}>
+        <span className={styles.leaseProgressPercent}>{clamped.toFixed(0)}%</span>
+        <span className={styles.leaseProgressPercentLabel}>écoulé</span>
+      </div>
+    </div>
+  );
 }
 
 function leaseProgress(bail) {
@@ -47,6 +82,7 @@ export default function LocataireBailPage() {
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
+  const [selectedBailId, setSelectedBailId] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -69,8 +105,8 @@ export default function LocataireBailPage() {
     () => [...baux].sort((a, b) => new Date(b.date_debut || 0) - new Date(a.date_debut || 0)),
     [baux]
   );
-  const activeBail = sortedBaux.find((b) => b.statut === BAIL_STATUS.ACTIF) || sortedBaux[0] || null;
-  const historyBaux = sortedBaux.filter((b) => b.id !== activeBail?.id);
+  const defaultBail = sortedBaux.find((b) => b.statut === BAIL_STATUS.ACTIF) || sortedBaux[0] || null;
+  const selectedBail = sortedBaux.find((b) => b.id === selectedBailId) || defaultBail;
 
   function bienFor(bail) {
     return biens.find((b) => b.id === bail?.lot?.bien_id);
@@ -88,7 +124,7 @@ export default function LocataireBailPage() {
     return <div className={`${styles.banner} ${styles.bannerError}`}>{loadError}</div>;
   }
 
-  if (!activeBail) {
+  if (!selectedBail) {
     return (
       <div className={styles.card}>
         <div className={styles.emptyState}>
@@ -99,129 +135,183 @@ export default function LocataireBailPage() {
     );
   }
 
-  const bien = bienFor(activeBail);
-  const progress = leaseProgress(activeBail);
-  const remaining = daysRemaining(activeBail);
-  const category = categoryName(activeBail?.lot?.categorie_id);
+  const bien = bienFor(selectedBail);
+  const progress = leaseProgress(selectedBail);
+  const remaining = daysRemaining(selectedBail);
+  const category = categoryName(selectedBail?.lot?.categorie_id);
   const photos = bien?.photos || [];
 
   return (
     <div>
-      {/* ---- Photos ---- */}
-      {photos.length > 0 && (
-        <div className={styles.section} style={{ marginBottom: "1.5rem" }}>
-          <div className={`${styles.photoGallery} ${photos.length === 1 ? styles.photoGallerySingle : ""}`}>
-            <div className={styles.photoCover}>
-              <img src={photoUrl(photos[0].url)} alt="" />
+      {/* ---- Sélecteur de bail (si plusieurs) ---- */}
+      {sortedBaux.length > 1 && (
+        <div className={styles.bailPickerRow}>
+          {sortedBaux.map((b) => {
+            const b2 = bienFor(b);
+            const isSelected = b.id === selectedBail.id;
+            const isActive = b.statut === BAIL_STATUS.ACTIF;
+            return (
+              <button
+                type="button"
+                key={b.id}
+                className={`${styles.bailChip} ${isSelected ? styles.bailChipActive : ""}`}
+                onClick={() => setSelectedBailId(b.id)}
+              >
+                <span
+                  className={`${styles.bailChipDot} ${isActive ? styles.bailChipDotActive : styles.bailChipDotEnded}`}
+                />
+                <span className={styles.bailChipText}>
+                  <span className={styles.bailChipName}>{b2?.designation || `Bien #${b.lot?.bien_id}`}</span>
+                  <span className={styles.bailChipMeta}>
+                    {BAIL_STATUS_LABELS[b.statut]} · {formatDate(b.date_debut)}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ---- Carte hero : photo, identité, stats, progression, actions ---- */}
+      <div className={styles.leaseCard}>
+        <div className={styles.leaseHero}>
+          {photos[0] ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img className={styles.leaseHeroImg} src={photoUrl(photos[0].url)} alt="" />
+          ) : (
+            <div className={styles.leaseHeroPlaceholder}>
+              <i className="bi bi-house-door-fill" />
             </div>
-            {photos.length > 1 && (
-              <div className={styles.photoStrip}>
-                {photos.slice(1, 5).map((p) => (
-                  <div className={styles.photoThumbSm} key={p.id}>
-                    <img src={photoUrl(p.url)} alt="" />
-                  </div>
-                ))}
+          )}
+          <div className={styles.leaseHeroOverlay} />
+          <span className={`${styles.leaseHeroStatus} ${heroStatusClass(selectedBail.statut)}`}>
+            <i className="bi bi-circle-fill" />
+            {BAIL_STATUS_LABELS[selectedBail.statut]}
+          </span>
+          {photos.length > 1 && (
+            <span className={styles.leaseHeroPhotoCount}>
+              <i className="bi bi-images" />
+              {photos.length}
+            </span>
+          )}
+          <div className={styles.leaseHeroContent}>
+            <h2 className={styles.leaseHeroTitle}>{bien?.designation || `Bien #${selectedBail.lot?.bien_id}`}</h2>
+            {bien?.adresse && (
+              <div className={styles.leaseHeroAddress}>
+                <i className="bi bi-geo-alt-fill" />
+                {bien.adresse}
               </div>
             )}
           </div>
         </div>
-      )}
 
-      {/* ---- En-tête logement ---- */}
-      <div className={styles.card} style={{ marginBottom: "1.5rem" }}>
-        <div className={styles.logementHeader}>
-          <span className={styles.logementIcon}>
-            <i className="bi bi-house-door-fill" />
-          </span>
-          <div style={{ flex: 1 }}>
-            <div className={styles.logementTitle}>{bien?.designation || `Bien #${activeBail.lot?.bien_id}`}</div>
-            <div className={styles.logementMetaRow}>
-              <span className={`${styles.badge} ${badgeClass(activeBail.statut)}`}>
-                {BAIL_STATUS_LABELS[activeBail.statut]}
+        <div className={styles.leaseBody}>
+          <div className={styles.leaseTagsRow}>
+            {category && <span className={styles.tagPill}>{category}</span>}
+            <span className={styles.tagPill}>{selectedBail.lot?.reference || `Lot #${selectedBail.lot_id}`}</span>
+          </div>
+
+          <div className={styles.leaseStatsGrid}>
+            <div className={styles.leaseStatTile}>
+              <span className={styles.leaseStatIcon}>
+                <i className="bi bi-cash-stack" />
               </span>
-              {category && <span className={styles.tagPill}>{category}</span>}
-              <span className={styles.tagPill}>{activeBail.lot?.reference || `Lot #${activeBail.lot_id}`}</span>
+              <div>
+                <div className={styles.leaseStatLabel}>Loyer mensuel</div>
+                <div className={styles.leaseStatValue}>{formatCurrency(selectedBail.loyer)}</div>
+              </div>
+            </div>
+            <div className={styles.leaseStatTile}>
+              <span className={styles.leaseStatIcon}>
+                <i className="bi bi-receipt" />
+              </span>
+              <div>
+                <div className={styles.leaseStatLabel}>Charges</div>
+                <div className={styles.leaseStatValue}>{formatCurrency(selectedBail.charges)}</div>
+              </div>
+            </div>
+            <div className={styles.leaseStatTile}>
+              <span className={styles.leaseStatIcon}>
+                <i className="bi bi-shield-check" />
+              </span>
+              <div>
+                <div className={styles.leaseStatLabel}>Dépôt de garantie</div>
+                <div className={styles.leaseStatValue}>{formatCurrency(selectedBail.depot)}</div>
+              </div>
+            </div>
+            <div className={styles.leaseStatTile}>
+              <span className={styles.leaseStatIcon}>
+                <i className="bi bi-calendar-event" />
+              </span>
+              <div>
+                <div className={styles.leaseStatLabel}>Début du bail</div>
+                <div className={styles.leaseStatValue}>{formatDate(selectedBail.date_debut)}</div>
+              </div>
+            </div>
+            <div className={styles.leaseStatTile}>
+              <span className={styles.leaseStatIcon}>
+                <i className="bi bi-calendar-x" />
+              </span>
+              <div>
+                <div className={styles.leaseStatLabel}>Fin du bail</div>
+                <div className={styles.leaseStatValue}>{formatDate(selectedBail.date_fin)}</div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className={styles.detailsGrid}>
-          <div className={styles.detailItem}>
-            <span className={styles.detailItemLabel}>Loyer mensuel</span>
-            <span className={styles.detailItemValue}>{formatCurrency(activeBail.loyer)}</span>
-          </div>
-          <div className={styles.detailItem}>
-            <span className={styles.detailItemLabel}>Charges</span>
-            <span className={styles.detailItemValue}>{formatCurrency(activeBail.charges)}</span>
-          </div>
-          <div className={styles.detailItem}>
-            <span className={styles.detailItemLabel}>Dépôt de garantie</span>
-            <span className={styles.detailItemValue}>{formatCurrency(activeBail.depot)}</span>
-          </div>
-          <div className={styles.detailItem}>
-            <span className={styles.detailItemLabel}>Début du bail</span>
-            <span className={styles.detailItemValue}>{formatDate(activeBail.date_debut)}</span>
-          </div>
-          <div className={styles.detailItem}>
-            <span className={styles.detailItemLabel}>Fin du bail</span>
-            <span className={styles.detailItemValue}>{formatDate(activeBail.date_fin)}</span>
-          </div>
-          <div className={styles.detailItem}>
-            <span className={styles.detailItemLabel}>Temps restant</span>
-            <span className={styles.detailItemValue}>
-              {remaining === null ? "—" : remaining >= 0 ? `${remaining} jour(s)` : "Échu"}
-            </span>
-          </div>
-        </div>
-
-        {progress !== null && activeBail.statut === BAIL_STATUS.ACTIF && (
-          <div className={styles.progressBlock}>
-            <div className={styles.progressLabelRow}>
-              <span>Durée écoulée</span>
-              <span>{progress.toFixed(0)}%</span>
+          {progress !== null && selectedBail.statut === BAIL_STATUS.ACTIF && (
+            <div className={styles.leaseProgressCard}>
+              <ProgressRing percent={progress} />
+              <div className={styles.leaseProgressInfo}>
+                <div className={styles.leaseProgressInfoTitle}>Durée du bail</div>
+                <div className={styles.leaseTimelineRow}>
+                  <span>{formatDate(selectedBail.date_debut)}</span>
+                  <span className={styles.leaseTimelineTrack}>
+                    <span className={styles.leaseTimelineFill} style={{ width: `${progress}%` }} />
+                  </span>
+                  <span>{formatDate(selectedBail.date_fin)}</span>
+                </div>
+                <div className={styles.leaseProgressRemaining}>
+                  {remaining === null ? "—" : remaining >= 0 ? `${remaining} jour(s) restant(s)` : "Bail échu"}
+                </div>
+              </div>
             </div>
-            <div className={styles.progressTrack}>
-              <div className={styles.progressFill} style={{ width: `${progress}%` }} />
-            </div>
-          </div>
-        )}
+          )}
 
-        <div className={styles.quickActions}>
-          <Link href="/backoffice/locataire/echeances" className={styles.btn}>
-            <i className="bi bi-calendar-check" />
-            Voir mes échéances
-          </Link>
-          <Link href="/backoffice/locataire/discussions" className={styles.btnOutline}>
-            <i className="bi bi-chat-dots" />
-            Contacter le propriétaire
-          </Link>
+          <div className={styles.leaseActionsGrid}>
+            <Link href="/backoffice/locataire/echeances" className={styles.leaseActionCard}>
+              <span className={styles.leaseActionIcon}>
+                <i className="bi bi-calendar-check" />
+              </span>
+              <span className={styles.leaseActionText}>
+                <span className={styles.leaseActionTitle}>Mes échéances</span>
+                <span className={styles.leaseActionSub}>Voir le calendrier de paiement</span>
+              </span>
+              <i className={`bi bi-chevron-right ${styles.leaseActionChevron}`} />
+            </Link>
+            <Link href="/backoffice/locataire/discussions" className={styles.leaseActionCard}>
+              <span className={styles.leaseActionIcon}>
+                <i className="bi bi-chat-dots" />
+              </span>
+              <span className={styles.leaseActionText}>
+                <span className={styles.leaseActionTitle}>Contacter le propriétaire</span>
+                <span className={styles.leaseActionSub}>Ouvrir la discussion</span>
+              </span>
+              <i className={`bi bi-chevron-right ${styles.leaseActionChevron}`} />
+            </Link>
+          </div>
         </div>
       </div>
 
-      {/* ---- Historique ---- */}
-      {historyBaux.length > 0 && (
+      {/* ---- Localisation ---- */}
+      {bien?.latitude != null && bien?.longitude != null && (
         <div className={styles.section} style={{ marginBottom: 0 }}>
           <div className={styles.card}>
             <h3 className={styles.cardTitle}>
-              <i className="bi bi-clock-history" style={{ color: "var(--primary)" }} />
-              Historique de mes baux
+              <i className="bi bi-geo-alt-fill" style={{ color: "var(--primary)" }} />
+              Localisation
             </h3>
-            <div className={styles.echeanceList}>
-              {historyBaux.map((b) => {
-                const b2 = bienFor(b);
-                return (
-                  <div className={styles.echeanceRow} key={b.id}>
-                    <div>
-                      <div className={styles.echeanceDate}>{b2?.designation || `Bien #${b.lot?.bien_id}`}</div>
-                      <div className={styles.echeanceMontant}>
-                        {formatDate(b.date_debut)} → {formatDate(b.date_fin)}
-                      </div>
-                    </div>
-                    <span className={`${styles.badge} ${badgeClass(b.statut)}`}>{BAIL_STATUS_LABELS[b.statut]}</span>
-                  </div>
-                );
-              })}
-            </div>
+            <MapPicker readOnly label="" latitude={bien.latitude} longitude={bien.longitude} adresse={bien.adresse} />
           </div>
         </div>
       )}

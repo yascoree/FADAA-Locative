@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { ROLES } from "@/lib/roles";
 import NotificationBell from "@/components/NotificationBell";
 import PageTransition from "@/components/PageTransition";
+import RouteProgressBar from "@/components/RouteProgressBar";
 import ProprietaireSidebar from "./ProprietaireSidebar";
 import styles from "./proprietaire.module.css";
 
@@ -56,6 +57,7 @@ export default function ProprietaireLayout({ children }) {
 
   return (
     <div className={styles.shell}>
+      <RouteProgressBar />
       <ProprietaireSidebar user={user} onLogout={handleLogout} />
       <div className={styles.main}>
         <header className={`${styles.topbar} ${isScrolled ? styles.topbarScrolled : ""}`}>
@@ -66,6 +68,11 @@ export default function ProprietaireLayout({ children }) {
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
+      {/* Ancre pour les portails (Modal, Drawer) : à l'intérieur de .shell pour
+          hériter les variables CSS --primary/--text/... propres à cet espace,
+          mais hors de PageTransition/.content pour éviter tout contexte
+          d'empilement qui piégerait un position:fixed sous le header. */}
+      <div id="portal-root" />
     </div>
   );
 }

@@ -365,30 +365,47 @@ export default function AgenceBauxPage() {
               {filteredBaux.length} bail(aux) affiché(s) sur {baux.length}, tous propriétaires confondus.
             </p>
           </div>
-          {creatableLots.length > 0 && locataires.length === 0 ? (
-            <Link href="/backoffice/agence/locataires?create=1" className={styles.btn}>
-              <i className="bi bi-person-plus" />
-              Créer un locataire
-            </Link>
-          ) : (
-            <button
-              type="button"
-              className={styles.btn}
-              onClick={openCreate}
-              disabled={creatableLots.length === 0}
-              title={creatableLots.length === 0 ? "Aucun lot disponible (mandat manquant ou aucun lot enregistré)" : undefined}
-            >
-              <i className="bi bi-plus-lg" />
-              Nouveau bail
-            </button>
-          )}
+          <button
+            type="button"
+            className={styles.btn}
+            onClick={openCreate}
+            disabled={creatableLots.length === 0 || locataires.length === 0}
+            title={
+              creatableLots.length === 0
+                ? "Aucun lot disponible (mandat manquant ou aucun lot enregistré)"
+                : locataires.length === 0
+                  ? "Ajoutez d'abord un locataire"
+                  : undefined
+            }
+          >
+            <i className="bi bi-plus-lg" />
+            Nouveau bail
+          </button>
         </div>
 
         {lots.length === 0 && (
-          <p className={styles.empty}>Aucun lot disponible pour l&apos;instant (mandat manquant ou aucun lot enregistré).</p>
+          <div className={styles.prereqNotice}>
+            <span className={styles.prereqNoticeIcon}>
+              <i className="bi bi-exclamation-lg" />
+            </span>
+            <span className={styles.prereqNoticeText}>
+              Aucun lot disponible pour l&apos;instant (mandat manquant ou aucun lot enregistré).
+            </span>
+          </div>
         )}
         {lots.length > 0 && locataires.length === 0 && (
-          <p className={styles.empty}>Aucun locataire disponible pour le moment. Créez-en un pour pouvoir ajouter un bail.</p>
+          <div className={styles.prereqNotice}>
+            <span className={styles.prereqNoticeIcon}>
+              <i className="bi bi-exclamation-lg" />
+            </span>
+            <span className={styles.prereqNoticeText}>
+              Aucun locataire disponible pour le moment. Créez-en un pour pouvoir ajouter un bail.
+            </span>
+            <Link href="/backoffice/agence/locataires?create=1" className={styles.prereqNoticeAction}>
+              Créer un locataire
+              <i className="bi bi-arrow-right" />
+            </Link>
+          </div>
         )}
 
         <div className={styles.filtersRow}>

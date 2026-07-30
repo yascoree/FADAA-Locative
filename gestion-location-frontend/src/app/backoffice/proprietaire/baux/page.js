@@ -353,30 +353,51 @@ export default function ProprietaireBauxPage() {
               {filteredBaux.length} bail(aux) affiché(s) sur {baux.length}.
             </p>
           </div>
-          {lots.length > 0 && locataires.length === 0 ? (
-            <Link href="/backoffice/proprietaire/locataires?create=1" className={styles.btn}>
-              <i className="bi bi-person-plus" />
-              Créer un locataire
-            </Link>
-          ) : (
-            <button
-              type="button"
-              className={styles.btn}
-              onClick={openCreate}
-              disabled={lots.length === 0}
-              title={lots.length === 0 ? "Ajoutez d'abord un lot" : undefined}
-            >
-              <i className="bi bi-plus-lg" />
-              Nouveau bail
-            </button>
-          )}
+          <button
+            type="button"
+            className={styles.btn}
+            onClick={openCreate}
+            disabled={lots.length === 0 || locataires.length === 0}
+            title={
+              lots.length === 0
+                ? "Ajoutez d'abord un lot"
+                : locataires.length === 0
+                  ? "Ajoutez d'abord un locataire"
+                  : undefined
+            }
+          >
+            <i className="bi bi-plus-lg" />
+            Nouveau bail
+          </button>
         </div>
 
         {lots.length === 0 && (
-          <p className={styles.empty}>Vous devez d&apos;abord créer un lot avant de pouvoir ajouter un bail.</p>
+          <div className={styles.prereqNotice}>
+            <span className={styles.prereqNoticeIcon}>
+              <i className="bi bi-exclamation-lg" />
+            </span>
+            <span className={styles.prereqNoticeText}>
+              Vous devez d&apos;abord créer un lot avant de pouvoir ajouter un bail.
+            </span>
+            <Link href="/backoffice/proprietaire/lots?create=1" className={styles.prereqNoticeAction}>
+              Créer un lot
+              <i className="bi bi-arrow-right" />
+            </Link>
+          </div>
         )}
         {lots.length > 0 && locataires.length === 0 && (
-          <p className={styles.empty}>Aucun locataire disponible pour le moment. Créez-en un pour pouvoir ajouter un bail.</p>
+          <div className={styles.prereqNotice}>
+            <span className={styles.prereqNoticeIcon}>
+              <i className="bi bi-exclamation-lg" />
+            </span>
+            <span className={styles.prereqNoticeText}>
+              Aucun locataire disponible pour le moment. Créez-en un pour pouvoir ajouter un bail.
+            </span>
+            <Link href="/backoffice/proprietaire/locataires?create=1" className={styles.prereqNoticeAction}>
+              Créer un locataire
+              <i className="bi bi-arrow-right" />
+            </Link>
+          </div>
         )}
 
         <div className={styles.filtersRow}>

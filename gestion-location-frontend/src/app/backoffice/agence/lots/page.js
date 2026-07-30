@@ -266,9 +266,14 @@ export default function AgenceLotsPage() {
         </div>
 
         {biens.length === 0 && (
-          <p className={styles.empty}>
-            Aucun bien disponible pour l&apos;instant (mandat manquant, ou propriétaire sans bien enregistré).
-          </p>
+          <div className={styles.prereqNotice}>
+            <span className={styles.prereqNoticeIcon}>
+              <i className="bi bi-exclamation-lg" />
+            </span>
+            <span className={styles.prereqNoticeText}>
+              Aucun bien disponible pour l&apos;instant (mandat manquant, ou propriétaire sans bien enregistré).
+            </span>
+          </div>
         )}
 
         <div className={styles.filtersRow}>

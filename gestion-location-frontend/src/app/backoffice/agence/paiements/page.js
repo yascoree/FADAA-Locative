@@ -625,8 +625,10 @@ export default function AgencePaiementsPage() {
               <strong>Montant payé (ce paiement) :</strong> {formatCurrency(detailsTarget.montant)}
             </div>
             <div className={styles.detailLine}>
-              <strong>Total payé sur cette échéance :</strong>{" "}
-              {formatCurrency(paidSoFar(detailsTarget.echeance_id))}
+              <strong>Reste à payer sur cette échéance :</strong>{" "}
+              {formatCurrency(
+                Math.max(0, Number(detailsTarget.echeance?.montant_du || 0) - paidSoFar(detailsTarget.echeance_id))
+              )}
             </div>
             <div className={styles.detailLine}>
               <strong>Montant total dû :</strong> {formatCurrency(detailsTarget.echeance?.montant_du)}
