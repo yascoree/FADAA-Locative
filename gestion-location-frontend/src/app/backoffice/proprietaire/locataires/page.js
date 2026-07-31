@@ -1,14 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import { fetchLocataires, createLocataire } from "@/lib/tenants";
 import { fetchBiens, fetchBaux, fetchEcheances, fetchPaiements, BAIL_STATUS, BAIL_STATUS_LABELS, ECHEANCE_STATUS } from "@/lib/properties";
 import { ACCOUNT_STATUS, ACCOUNT_STATUS_LABELS } from "@/lib/users";
+import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
+import Drawer from "@/components/Drawer";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
+import FilterChip from "@/components/FilterChip";
+import FilterSelect from "@/components/FilterSelect";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -24,6 +29,19 @@ function accountBadgeClass(statut) {
   if (statut === ACCOUNT_STATUS.ACTIF) return styles.badgeActive;
   if (statut === ACCOUNT_STATUS.INVITE_EN_ATTENTE) return styles.badgeWarning;
   return styles.badgeDanger;
+}
+
+function accountStatusIcon(statut) {
+  if (statut === ACCOUNT_STATUS.ACTIF) return "bi-check-circle-fill";
+  if (statut === ACCOUNT_STATUS.INVITE_EN_ATTENTE) return "bi-hourglass-split";
+  return "bi-slash-circle-fill";
+}
+
+function avatarRingClass(locataire, isOverdueFlag) {
+  if (isOverdueFlag) return styles.tenantAvatarRingOverdue;
+  if (locataire.statut_compte === ACCOUNT_STATUS.ACTIF) return styles.tenantAvatarRingActive;
+  if (locataire.statut_compte === ACCOUNT_STATUS.INVITE_EN_ATTENTE) return styles.tenantAvatarRingPending;
+  return styles.tenantAvatarRingDisabled;
 }
 
 function bailBadgeClass(statut) {
@@ -54,6 +72,7 @@ const PAGE_SIZE = 10;
 const EMPTY_FORM = { prenom: "", nom: "", email: "", mot_de_passe: "", statut_compte: String(ACCOUNT_STATUS.ACTIF) };
 
 export default function ProprietaireLocatairesPage() {
+  const searchParams = useSearchParams();
   const [locataires, setLocataires] = useState([]);
   const [baux, setBaux] = useState([]);
   const [echeances, setEcheances] = useState([]);
@@ -64,6 +83,7 @@ export default function ProprietaireLocatairesPage() {
 
   const [search, setSearch] = useState("");
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [sortBy, setSortBy] = useState("recent");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -137,15 +157,21 @@ export default function ProprietaireLocatairesPage() {
 
   const filteredLocataires = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return locataires.filter((l) => {
+    const filtered = locataires.filter((l) => {
       if (term) {
-        const name = `${l.prenom} ${l.nom} ${l.email}`.toLowerCase();
-        if (!name.includes(term)) return false;
+        const activeBaux = bauxOf(l.id).filter((b) => b.statut === BAIL_STATUS.ACTIF);
+        const haystack = [l.prenom, l.nom, l.email, ...activeBaux.map((b) => bienLotLabel(b))]
+          .filter((v) => v !== null && v !== undefined && v !== "")
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(term)) return false;
       }
       if (overdueOnly && !locataireHasOverdue.get(l.id)) return false;
       return true;
     });
-  }, [locataires, search, overdueOnly, locataireHasOverdue]);
+    return sortList(filtered, sortBy, { dateOf: (l) => l.date_creation, nameOf: (l) => `${l.prenom} ${l.nom}` });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locataires, search, overdueOnly, sortBy, locataireHasOverdue, baux, biens]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLocataires.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -158,6 +184,16 @@ export default function ProprietaireLocatairesPage() {
     setFormBanner(null);
     setFormOpen(true);
   }
+
+  useEffect(() => {
+    function openIfRequested() {
+      if (searchParams.get("create") === "1") {
+        openCreate();
+      }
+    }
+    openIfRequested();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function closeForm() {
     if (formBusy) return;
@@ -208,7 +244,9 @@ export default function ProprietaireLocatairesPage() {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem" }}>
           <div>
             <h2 className={styles.sectionTitle}>
-              <i className="bi bi-table" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
+              <span className={styles.sectionIconBadge}>
+                <i className="bi bi-people-fill" />
+              </span>
               Mes locataires
             </h2>
             <p className={styles.sectionSubtitle}>
@@ -222,26 +260,28 @@ export default function ProprietaireLocatairesPage() {
         </div>
 
         <div className={styles.filtersRow}>
-          <input
-            type="text"
-            placeholder="Rechercher par nom ou e-mail..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setCurrentPage(1);
-            }}
-          />
-          <label className={styles.checkFilter}>
+          <div className={styles.searchFieldWrap}>
+            <i className={`bi bi-search ${styles.searchFieldIcon}`} />
             <input
-              type="checkbox"
-              checked={overdueOnly}
+              type="text"
+              placeholder="Rechercher par nom, e-mail, bien occupé..."
+              value={search}
               onChange={(e) => {
-                setOverdueOnly(e.target.checked);
+                setSearch(e.target.value);
                 setCurrentPage(1);
               }}
             />
+          </div>
+          <FilterChip
+            checked={overdueOnly}
+            onChange={(checked) => {
+              setOverdueOnly(checked);
+              setCurrentPage(1);
+            }}
+          >
             En retard uniquement
-          </label>
+          </FilterChip>
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>
@@ -264,43 +304,64 @@ export default function ProprietaireLocatairesPage() {
                 </tr>
               )}
               {paginatedLocataires.map((l) => {
-                const activeBaux = bauxOf(l.id).filter((b) => b.statut === BAIL_STATUS.ACTIF);
+                const allBaux = bauxOf(l.id);
+                const activeBaux = allBaux.filter((b) => b.statut === BAIL_STATUS.ACTIF);
                 const initials = `${l.prenom?.[0] || ""}${l.nom?.[0] || ""}`.toUpperCase();
+                const overdue = locataireHasOverdue.get(l.id);
+                const isActive = selectedId === l.id;
                 return (
-                  <tr key={l.id} className={selectedId === l.id ? styles.tableRowActive : ""}>
+                  <tr
+                    key={l.id}
+                    className={`${isActive ? styles.tableRowActive : ""} ${overdue ? styles.tenantRowOverdue : ""}`}
+                  >
                     <td>
                       <div className={styles.userCell}>
-                        {l.photo ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={`${API_BASE_URL}${l.photo}`}
-                            alt=""
-                            className={styles.avatarSm}
-                            style={{ objectFit: "cover" }}
-                          />
-                        ) : (
-                          <span className={styles.avatarSm}>{initials || "?"}</span>
-                        )}
-                        <span className={styles.userName}>
-                          {l.prenom} {l.nom}
+                        <span className={`${styles.tenantAvatarRing} ${avatarRingClass(l, overdue)}`}>
+                          {l.photo ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={`${API_BASE_URL}${l.photo}`}
+                              alt=""
+                              className={styles.tenantAvatarInner}
+                              style={{ objectFit: "cover" }}
+                            />
+                          ) : (
+                            <span className={styles.tenantAvatarInner}>{initials || "?"}</span>
+                          )}
                         </span>
-                        {locataireHasOverdue.get(l.id) && (
-                          <span className={styles.badge} style={{ background: "var(--danger-soft)", color: "var(--danger)" }}>
-                            Retard
-                          </span>
-                        )}
+                        <div>
+                          <div className={styles.userName}>
+                            {l.prenom} {l.nom}
+                          </div>
+                          {overdue && (
+                            <span className={styles.tenantOverdueTag}>
+                              <i className="bi bi-exclamation-triangle-fill" />
+                              Retard
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td>{l.email}</td>
                     <td>
-                      {activeBaux.length > 0
-                        ? activeBaux.map((b) => bienLotLabel(b)).join(", ")
-                        : bauxOf(l.id).length > 0
-                          ? "Aucun bail actif"
-                          : "—"}
+                      <div className={styles.tenantBiensRow}>
+                        {activeBaux.length > 0 ? (
+                          activeBaux.map((b) => (
+                            <span className={styles.tenantBienChip} key={b.id}>
+                              <i className="bi bi-house-door" />
+                              {bienLotLabel(b)}
+                            </span>
+                          ))
+                        ) : (
+                          <span style={{ color: "var(--text-muted)" }}>
+                            {allBaux.length > 0 ? "Aucun bail actif" : "—"}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td>
-                      <span className={`${styles.badge} ${accountBadgeClass(l.statut_compte)}`}>
+                      <span className={`${styles.badge} ${styles.badgeWithIcon} ${accountBadgeClass(l.statut_compte)}`}>
+                        <i className={`bi ${accountStatusIcon(l.statut_compte)}`} />
                         {ACCOUNT_STATUS_LABELS[l.statut_compte]}
                       </span>
                     </td>
@@ -309,10 +370,10 @@ export default function ProprietaireLocatairesPage() {
                         <button
                           type="button"
                           className={styles.iconBtn}
-                          onClick={() => setSelectedId(selectedId === l.id ? null : l.id)}
+                          onClick={() => setSelectedId(isActive ? null : l.id)}
                           title="Voir le détail"
                         >
-                          <i className="bi bi-eye" />
+                          <i className={`bi ${isActive ? "bi-chevron-up" : "bi-eye"}`} />
                         </button>
                       </div>
                     </td>
@@ -353,45 +414,79 @@ export default function ProprietaireLocatairesPage() {
 
         {/* ---- Détail du locataire ---- */}
         {selected && (
-          <div className={styles.detailCard}>
-            <div className={styles.detailHeader}>
-              <h3 className={styles.detailTitle}>
-                <i className="bi bi-person-vcard-fill" style={{ color: "var(--primary)" }} />
-                {selected.prenom} {selected.nom}
-              </h3>
-              <button type="button" className={styles.btnOutline} onClick={() => setSelectedId(null)}>
-                <i className="bi bi-x-lg" />
-                Fermer
-              </button>
-            </div>
-
-            <div className={styles.detailColumns}>
-              <div>
-                <div className={styles.detailBlockTitle}>
-                  <i className="bi bi-person-fill" />
-                  Coordonnées
-                </div>
-                <div className={styles.detailLine}>
-                  <strong>Email :</strong> {selected.email}
-                </div>
-                <div className={styles.detailLine}>
-                  <strong>Statut du compte :</strong> {ACCOUNT_STATUS_LABELS[selected.statut_compte]}
-                </div>
-                <div className={styles.detailLine}>
-                  <strong>Compte créé le :</strong> {formatDate(selected.date_creation)}
+          <Drawer
+            isOpen={!!selected}
+            onClose={() => setSelectedId(null)}
+            title={
+              <div className={styles.detailHeaderIdentity}>
+                <span
+                  className={`${styles.tenantAvatarRing} ${styles.tenantAvatarRingLg} ${avatarRingClass(
+                    selected,
+                    locataireHasOverdue.get(selected.id)
+                  )}`}
+                >
+                  {selected.photo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`${API_BASE_URL}${selected.photo}`}
+                      alt=""
+                      className={styles.tenantAvatarInner}
+                      style={{ objectFit: "cover" }}
+                    />
+                  ) : (
+                    <span className={styles.tenantAvatarInner}>
+                      {`${selected.prenom?.[0] || ""}${selected.nom?.[0] || ""}`.toUpperCase() || "?"}
+                    </span>
+                  )}
+                </span>
+                <div>
+                  <h3 className={styles.detailTitle}>
+                    {selected.prenom} {selected.nom}
+                  </h3>
+                  <div className={styles.detailHeaderMeta}>
+                    <span className={`${styles.badge} ${styles.badgeWithIcon} ${accountBadgeClass(selected.statut_compte)}`}>
+                      <i className={`bi ${accountStatusIcon(selected.statut_compte)}`} />
+                      {ACCOUNT_STATUS_LABELS[selected.statut_compte]}
+                    </span>
+                  </div>
+                  <div className={styles.detailHeaderMeta} style={{ marginTop: "0.3rem" }}>
+                    <i className="bi bi-envelope" />
+                    {selected.email}
+                  </div>
                 </div>
               </div>
-              <div>
-                <div className={styles.detailBlockTitle}>
+            }
+          >
+            <div className={styles.tenantStatTiles}>
+              <div className={styles.tenantStatTile}>
+                <span className={styles.tenantStatTileIcon}>
                   <i className="bi bi-cash-stack" />
-                  Résumé financier
+                </span>
+                <div>
+                  <div className={styles.tenantStatTileLabel}>Total payé</div>
+                  <div className={styles.tenantStatTileValue}>
+                    {formatCurrency(paiementsOf(selected.id).reduce((sum, p) => sum + Number(p.montant || 0), 0))}
+                  </div>
                 </div>
-                <div className={styles.detailLine}>
-                  <strong>Total payé :</strong>{" "}
-                  {formatCurrency(paiementsOf(selected.id).reduce((sum, p) => sum + Number(p.montant || 0), 0))}
+              </div>
+              <div className={styles.tenantStatTile}>
+                <span className={`${styles.tenantStatTileIcon} ${styles.tenantStatTileIconDanger}`}>
+                  <i className="bi bi-exclamation-triangle-fill" />
+                </span>
+                <div>
+                  <div className={styles.tenantStatTileLabel}>Échéances en retard</div>
+                  <div className={styles.tenantStatTileValue}>{echeancesOf(selected.id).filter(isOverdue).length}</div>
                 </div>
-                <div className={styles.detailLine}>
-                  <strong>Échéances en retard :</strong> {echeancesOf(selected.id).filter(isOverdue).length}
+              </div>
+              <div className={styles.tenantStatTile}>
+                <span className={styles.tenantStatTileIcon}>
+                  <i className="bi bi-calendar-check" />
+                </span>
+                <div>
+                  <div className={styles.tenantStatTileLabel}>Membre depuis</div>
+                  <div className={styles.tenantStatTileValue} style={{ fontSize: "0.92rem" }}>
+                    {formatDate(selected.date_creation)}
+                  </div>
                 </div>
               </div>
             </div>
@@ -435,7 +530,7 @@ export default function ProprietaireLocatairesPage() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </Drawer>
         )}
       </div>
 

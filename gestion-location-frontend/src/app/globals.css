@@ -112,14 +112,16 @@ a {
 @keyframes pageFadeIn {
   from {
     opacity: 0;
+    transform: translateY(10px) scale(0.99);
   }
   to {
     opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
 .page-transition {
-  animation: pageFadeIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: pageFadeIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes bannerSlideIn {

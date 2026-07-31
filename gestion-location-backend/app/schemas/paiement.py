@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.models.paiement import ModePaiement, PaiementStatus
 from app.models.quittance import QuittanceStatus
 from app.schemas.echeance import EcheanceRead
+from app.schemas.utilisateur import UtilisateurMini
 
 
 class PaiementBase(BaseModel):
@@ -17,6 +18,10 @@ class PaiementBase(BaseModel):
 
 class PaiementCreate(PaiementBase):
     pass
+
+
+class PaiementAnnulation(BaseModel):
+    motif: Optional[str] = Field(default=None, max_length=255)
 
 
 class QuittanceMini(BaseModel):
@@ -36,5 +41,11 @@ class PaiementRead(PaiementBase):
     id: int
     date_paiement: datetime
     statut: PaiementStatus
+    encaisse_par: int
+    encaisseur: Optional[UtilisateurMini] = None
+    annule_par: Optional[int] = None
+    annulateur: Optional[UtilisateurMini] = None
+    date_annulation: Optional[datetime] = None
+    motif_annulation: Optional[str] = None
     echeance: Optional[EcheanceRead] = None
     quittance: Optional[QuittanceMini] = None

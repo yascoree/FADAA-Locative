@@ -45,6 +45,7 @@ gestion-location-backend/__pycache__/
 gestion-location-backend/**/__pycache__/
 gestion-location-backend/**/*.pyc
 gestion-location-backend/*.log
+gestion-location-frontend/*.log
 
 # fichiers générés (photos utilisateurs, PDF de quittances contenant des données personnelles)
 gestion-location-backend/uploads/

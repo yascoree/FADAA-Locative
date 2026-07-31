@@ -41,9 +41,9 @@ export default function LocataireParametresPage() {
 
   useEffect(() => {
     if (!user) return;
-    setAccountDraft({ prenom: user.prenom, nom: user.nom, email: user.email });
 
     async function init() {
+      setAccountDraft({ prenom: user.prenom, nom: user.nom, email: user.email });
       setIsLoading(true);
       try {
         const profile = await fetchProfile(user.id);

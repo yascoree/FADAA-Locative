@@ -16,12 +16,12 @@ const NAV_SECTIONS = [
       { href: "/backoffice/proprietaire/biens", label: "Biens", icon: "bi-house-door" },
       { href: "/backoffice/proprietaire/lots", label: "Lots", icon: "bi-grid-3x3-gap" },
       { href: "/backoffice/proprietaire/baux", label: "Baux", icon: "bi-file-earmark-text" },
-      { href: "/backoffice/proprietaire/echeances", label: "Échéances", icon: "bi-calendar-event" },
     ],
   },
   {
     label: "Finances",
     items: [
+      { href: "/backoffice/proprietaire/echeances", label: "Échéances", icon: "bi-calendar-event" },
       { href: "/backoffice/proprietaire/paiements", label: "Paiements", icon: "bi-cash-stack" },
       { href: "/backoffice/proprietaire/revenus", label: "Revenus", icon: "bi-graph-up" },
     ],

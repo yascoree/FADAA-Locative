@@ -2,10 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { extractErrorMessage } from "@/lib/apiClient";
-import { fetchCategories, createCategorie, updateCategorie, deleteCategorie, fetchBiens } from "@/lib/properties";
+import {
+  fetchCategories,
+  createCategorie,
+  updateCategorie,
+  deleteCategorie,
+  fetchLots,
+  TYPE_BIEN,
+  TYPE_BIEN_LABELS,
+} from "@/lib/properties";
 import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
+import SelectField from "@/components/SelectField";
 import styles from "../admin.module.css";
 
 function Banner({ banner }) {
@@ -17,11 +26,12 @@ function Banner({ banner }) {
   );
 }
 
-const EMPTY_CATEGORY_FORM = { libelle: "", description: "" };
+const TYPE_OPTIONS = Object.entries(TYPE_BIEN_LABELS).map(([value, label]) => ({ value, label }));
+const EMPTY_CATEGORY_FORM = { libelle: "", type_bien: String(TYPE_BIEN.IMMOBILIER), description: "" };
 
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState([]);
-  const [biens, setBiens] = useState([]);
+  const [lots, setLots] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
@@ -39,9 +49,9 @@ export default function AdminCategoriesPage() {
     async function init() {
       setIsLoading(true);
       try {
-        const [categoriesList, biensList] = await Promise.all([fetchCategories(), fetchBiens()]);
+        const [categoriesList, lotsList] = await Promise.all([fetchCategories(), fetchLots()]);
         setCategories(categoriesList);
-        setBiens(biensList);
+        setLots(lotsList);
       } catch (err) {
         setLoadError(extractErrorMessage(err));
       } finally {
@@ -53,9 +63,15 @@ export default function AdminCategoriesPage() {
 
   const usageCount = useMemo(() => {
     const map = new Map();
-    biens.forEach((b) => map.set(b.categorie_id, (map.get(b.categorie_id) || 0) + 1));
+    lots.forEach((l) => {
+      if (l.categorie_id) map.set(l.categorie_id, (map.get(l.categorie_id) || 0) + 1);
+    });
     return map;
-  }, [biens]);
+  }, [lots]);
+
+  const catDeleteTargetCount = catDeleteTarget ? usageCount.get(catDeleteTarget.id) || 0 : 0;
+  const catFormTargetCount = catFormTargetId ? usageCount.get(catFormTargetId) || 0 : 0;
+  const libelleLocked = catFormMode === "edit" && catFormTargetCount > 0;
 
   function openCreateCategory() {
     setCatFormMode("create");
@@ -68,7 +84,7 @@ export default function AdminCategoriesPage() {
   function openEditCategory(cat) {
     setCatFormMode("edit");
     setCatFormTargetId(cat.id);
-    setCatFormDraft({ libelle: cat.libelle, description: cat.description || "" });
+    setCatFormDraft({ libelle: cat.libelle, type_bien: String(cat.type_bien), description: cat.description || "" });
     setCatFormBanner(null);
     setCatFormOpen(true);
   }
@@ -84,11 +100,16 @@ export default function AdminCategoriesPage() {
     setCatFormBanner(null);
     try {
       if (catFormMode === "create") {
-        const created = await createCategorie({ libelle: catFormDraft.libelle, description: catFormDraft.description });
+        const created = await createCategorie({
+          libelle: catFormDraft.libelle,
+          typeBien: Number(catFormDraft.type_bien),
+          description: catFormDraft.description,
+        });
         setCategories((prev) => [...prev, created]);
       } else {
         const updated = await updateCategorie(catFormTargetId, {
           libelle: catFormDraft.libelle,
+          type_bien: Number(catFormDraft.type_bien),
           description: catFormDraft.description || null,
         });
         setCategories((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
@@ -132,9 +153,9 @@ export default function AdminCategoriesPage() {
               Catégories de biens
             </h2>
             <p className={styles.sectionSubtitle}>
-              Référentiel partagé utilisé par tous les propriétaires/gestionnaires pour classer leurs biens
-              (Appartement, Villa, Studio...). Lecture libre, création/modification/suppression réservées aux
-              admins.
+              Référentiel partagé utilisé par tous les propriétaires/gestionnaires pour classer leurs lots
+              (Appartement, Villa, Studio... pour un bien Immobilier, Voiture, Moto... pour un Véhicule). Lecture
+              libre, création/modification/suppression réservées aux admins.
             </p>
           </div>
           <button type="button" className={styles.btn} onClick={openCreateCategory}>
@@ -150,16 +171,17 @@ export default function AdminCategoriesPage() {
             <thead>
               <tr>
                 <th>Libellé</th>
+                <th>Type</th>
                 <th>Description</th>
-                <th>Biens</th>
+                <th>Lots</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {categories.length === 0 && (
                 <tr>
-                  <td colSpan={4} className={styles.empty}>
-                    Aucune catégorie. Créez-en une pour que les propriétaires puissent classer leurs biens.
+                  <td colSpan={5} className={styles.empty}>
+                    Aucune catégorie. Créez-en une pour que les propriétaires puissent classer leurs lots.
                   </td>
                 </tr>
               )}
@@ -170,6 +192,7 @@ export default function AdminCategoriesPage() {
                     <td>
                       <span className={styles.userName}>{cat.libelle}</span>
                     </td>
+                    <td>{TYPE_BIEN_LABELS[cat.type_bien] || "—"}</td>
                     <td>{cat.description || "—"}</td>
                     <td>{count}</td>
                     <td>
@@ -189,8 +212,7 @@ export default function AdminCategoriesPage() {
                             setCatDeleteError(null);
                             setCatDeleteTarget(cat);
                           }}
-                          disabled={count > 0}
-                          title={count > 0 ? "Utilisée par des biens existants" : "Supprimer"}
+                          title={count > 0 ? "Utilisée par des lots existants" : "Supprimer"}
                         >
                           <i className="bi bi-trash" />
                         </button>
@@ -218,6 +240,16 @@ export default function AdminCategoriesPage() {
             onChange={(e) => setCatFormDraft((d) => ({ ...d, libelle: e.target.value }))}
             placeholder="Ex : Appartement, Villa, Studio..."
             required
+            disabled={libelleLocked}
+            hint={libelleLocked ? "Utilisée par des lots existants : le libellé ne peut plus être modifié." : undefined}
+          />
+          <SelectField
+            label="Type"
+            name="type_bien"
+            options={TYPE_OPTIONS}
+            value={catFormDraft.type_bien}
+            onChange={(e) => setCatFormDraft((d) => ({ ...d, type_bien: e.target.value }))}
+            required
           />
           <TextField
             label="Description (optionnel)"
@@ -244,10 +276,17 @@ export default function AdminCategoriesPage() {
         onClose={() => setCatDeleteTarget(null)}
         onConfirm={handleConfirmDeleteCategory}
         title="Supprimer la catégorie"
-        message={catDeleteTarget ? `Supprimer définitivement la catégorie "${catDeleteTarget.libelle}" ?` : ""}
+        message={
+          catDeleteTarget
+            ? catDeleteTargetCount > 0
+              ? `Impossible de supprimer "${catDeleteTarget.libelle}" : cette catégorie est liée à ${catDeleteTargetCount} lot${catDeleteTargetCount > 1 ? "s" : ""} existant${catDeleteTargetCount > 1 ? "s" : ""}.`
+              : `Supprimer définitivement la catégorie "${catDeleteTarget.libelle}" ?`
+            : ""
+        }
         confirmLabel="Supprimer"
         danger
         isBusy={catDeleteBusy}
+        hideConfirm={catDeleteTargetCount > 0}
       />
     </div>
   );

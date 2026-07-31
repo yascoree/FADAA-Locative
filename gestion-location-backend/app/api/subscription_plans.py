@@ -61,6 +61,23 @@ def update_subscription_plan(
     return subscription_plan_crud.update(db, plan, plan_in)
 
 
+@router.delete("/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_subscription_plan(
+    plan_id: int,
+    db: Session = Depends(get_db),
+    _admin: Utilisateur = Depends(require_admin),
+):
+    plan = subscription_plan_crud.get(db, plan_id)
+    if not plan:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found")
+    if subscription_plan_crud.count_subscriptions(db, plan_id) > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Plan is used by existing subscriptions",
+        )
+    subscription_plan_crud.remove(db, plan)
+
+
 @router.post("/{plan_id}/activate", response_model=SubscriptionPlanRead)
 def activate_subscription_plan(
     plan_id: int,

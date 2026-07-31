@@ -2,13 +2,15 @@ from datetime import date, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.api.deps import gestionnaire_ids_for_proprietaire
+from app.api.deps import gestionnaire_ids_for_proprietaire, has_permission_for_bien
 from app.core.config import settings
 from app.models.bail import Bail
 from app.models.bien import Bien
 from app.models.echeance import Echeance, EcheanceStatus
 from app.models.lot import Lot
 from app.models.notification import Notification, NotificationType
+from app.models.utilisateur import Utilisateur
+from app.services.exceptions import BadRequest, Forbidden, NotFound
 from app.services.push_service import send_push_to_user
 
 
@@ -80,6 +82,30 @@ def send_upcoming_echeance_alerts(db: Session) -> int:
     return sent
 
 
+def _send_overdue_reminder(
+    db: Session, echeance: Echeance, bail: Bail, bien: Bien | None, notify_stakeholders: bool = True
+) -> None:
+    days_late = (date.today() - echeance.date_echeance).days
+    montant = echeance.montant_du if echeance.montant_du is not None else bail.loyer
+    send_push_to_user(
+        db,
+        user_id=bail.locataire_id,
+        title="Rappel de paiement",
+        body=f"Votre loyer de {montant} MAD est en retard de {days_late} jour(s).",
+        notif_type=NotificationType.RELANCE,
+        reference_id=echeance.id,
+    )
+    if bien and notify_stakeholders:
+        _notify_stakeholders(
+            db,
+            bien,
+            title="Retard de paiement",
+            body=f"Le loyer de {montant} MAD pour {bien.designation} est en retard de {days_late} jour(s).",
+            notif_type=NotificationType.RELANCE,
+            reference_id=echeance.id,
+        )
+
+
 def send_overdue_reminders(db: Session) -> int:
     """Relance le locataire pour toute échéance impayée/partielle dont la date est
     dépassée, au plus une fois tous les settings.push_overdue_reminder_every_days jours."""
@@ -101,25 +127,33 @@ def send_overdue_reminders(db: Session) -> int:
         bail = db.get(Bail, echeance.bail_id)
         if not bail:
             continue
-        days_late = (today - echeance.date_echeance).days
-        montant = echeance.montant_du if echeance.montant_du is not None else bail.loyer
-        send_push_to_user(
-            db,
-            user_id=bail.locataire_id,
-            title="Rappel de paiement",
-            body=f"Votre loyer de {montant} MAD est en retard de {days_late} jour(s).",
-            notif_type=NotificationType.RELANCE,
-            reference_id=echeance.id,
-        )
-        bien = _bien_for_bail(db, bail)
-        if bien:
-            _notify_stakeholders(
-                db,
-                bien,
-                title="Retard de paiement",
-                body=f"Le loyer de {montant} MAD pour {bien.designation} est en retard de {days_late} jour(s).",
-                notif_type=NotificationType.RELANCE,
-                reference_id=echeance.id,
-            )
+        _send_overdue_reminder(db, echeance, bail, _bien_for_bail(db, bail))
         sent += 1
     return sent
+
+
+def send_manual_relance(db: Session, current_user: Utilisateur, echeance_id: int) -> None:
+    """Relance à la demande, déclenchée par le propriétaire ou un gestionnaire mandaté
+    (VIEW_DUE_DATE) depuis le dashboard — contourne le throttle du cron pour que le
+    clic ait un effet immédiat, mais reste limitée aux échéances réellement en retard.
+    Ne notifie que le locataire : contrairement à la relance automatique quotidienne,
+    celle-ci est déclenchée à la main par le propriétaire/gestionnaire lui-même, qui
+    n'a donc pas besoin d'être notifié de sa propre action."""
+    echeance = (
+        db.query(Echeance)
+        .filter(Echeance.id == echeance_id, Echeance.deleted_at.is_(None))
+        .first()
+    )
+    if not echeance:
+        raise NotFound("Due date not found")
+    bail = db.get(Bail, echeance.bail_id)
+    if not bail:
+        raise NotFound("Due date not found")
+    bien = _bien_for_bail(db, bail)
+    if not bien or not has_permission_for_bien(db, current_user, bien, "VIEW_DUE_DATE"):
+        raise Forbidden("Not allowed to send a reminder for this due date")
+    if echeance.statut not in (EcheanceStatus.IMPAYE, EcheanceStatus.PARTIEL):
+        raise BadRequest("Cette échéance n'est pas en retard : aucune relance à envoyer.")
+    if echeance.date_echeance is None or echeance.date_echeance >= date.today():
+        raise BadRequest("Cette échéance n'est pas encore en retard.")
+    _send_overdue_reminder(db, echeance, bail, bien, notify_stakeholders=False)

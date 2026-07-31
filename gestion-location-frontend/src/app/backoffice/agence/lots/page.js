@@ -2,7 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { extractErrorMessage } from "@/lib/apiClient";
-import { fetchBiens, fetchLots, createLot, updateLot, deleteLot, LOT_STATUS, LOT_STATUS_LABELS } from "@/lib/properties";
+import {
+  fetchBiens,
+  fetchLots,
+  fetchCategories,
+  createLot,
+  updateLot,
+  deleteLot,
+  LOT_STATUS,
+  LOT_STATUS_LABELS,
+} from "@/lib/properties";
 import { fetchGestionnairePermissionIndex } from "@/lib/mandates";
 import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
@@ -10,6 +19,7 @@ import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
+import FilterSelect from "@/components/FilterSelect";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -22,8 +32,9 @@ function Banner({ banner }) {
 }
 
 function badgeClass(statut) {
-  if (statut === LOT_STATUS.LIBRE) return styles.badgeActive;
-  if (statut === LOT_STATUS.OCCUPE) return styles.badgeNeutral;
+  if (statut === LOT_STATUS.DISPONIBLE) return styles.badgeActive;
+  if (statut === LOT_STATUS.LOUE) return styles.badgeNeutral;
+  if (statut === LOT_STATUS.HORS_SERVICE) return styles.badgeDanger;
   return styles.badgeWarning;
 }
 
@@ -37,15 +48,17 @@ const PAGE_SIZE = 10;
 
 const EMPTY_FORM = {
   bien_id: "",
+  categorie_id: "",
   reference: "",
   description: "",
   loyer_reference: "",
-  statut: String(LOT_STATUS.LIBRE),
+  statut: String(LOT_STATUS.DISPONIBLE),
 };
 
 export default function AgenceLotsPage() {
   const [lots, setLots] = useState([]);
   const [biens, setBiens] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [permIndex, setPermIndex] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -71,13 +84,15 @@ export default function AgenceLotsPage() {
     async function init() {
       setIsLoading(true);
       try {
-        const [lotsList, biensList, permissionIndex] = await Promise.all([
+        const [lotsList, biensList, categoriesList, permissionIndex] = await Promise.all([
           fetchLots(),
           fetchBiens(),
+          fetchCategories(),
           fetchGestionnairePermissionIndex(),
         ]);
         setLots(lotsList);
         setBiens(biensList);
+        setCategories(categoriesList);
         setPermIndex(permissionIndex);
       } catch (err) {
         setLoadError(extractErrorMessage(err));
@@ -91,9 +106,10 @@ export default function AgenceLotsPage() {
   const stats = useMemo(() => {
     return {
       total: lots.length,
-      libres: lots.filter((l) => l.statut === LOT_STATUS.LIBRE).length,
-      occupes: lots.filter((l) => l.statut === LOT_STATUS.OCCUPE).length,
-      reserves: lots.filter((l) => l.statut === LOT_STATUS.RESERVE).length,
+      disponibles: lots.filter((l) => l.statut === LOT_STATUS.DISPONIBLE).length,
+      loues: lots.filter((l) => l.statut === LOT_STATUS.LOUE).length,
+      enMaintenance: lots.filter((l) => l.statut === LOT_STATUS.EN_MAINTENANCE).length,
+      horsService: lots.filter((l) => l.statut === LOT_STATUS.HORS_SERVICE).length,
     };
   }, [lots]);
 
@@ -105,13 +121,17 @@ export default function AgenceLotsPage() {
   const filteredLots = useMemo(() => {
     const term = search.trim().toLowerCase();
     const filtered = lots.filter((l) => {
-      if (term && !(l.reference || "").toLowerCase().includes(term)) return false;
+      if (term) {
+        const haystack = `${l.reference || ""} ${l.description || ""} ${bienName(l.bien_id)} ${l.loyer_reference ?? ""}`.toLowerCase();
+        if (!haystack.includes(term)) return false;
+      }
       if (bienFilter && String(l.bien_id) !== bienFilter) return false;
       if (statusFilter && String(l.statut) !== statusFilter) return false;
       return true;
     });
     return sortList(filtered, sortBy, { dateOf: (l) => l.created_at, nameOf: (l) => l.reference });
-  }, [lots, search, bienFilter, statusFilter, sortBy]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lots, search, bienFilter, statusFilter, sortBy, biens]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLots.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -121,6 +141,13 @@ export default function AgenceLotsPage() {
     const bien = biens.find((b) => b.id === bienId);
     return bien ? bien.designation || `Bien #${bien.id}` : "—";
   }
+
+  function categoryName(categorieId) {
+    return categories.find((c) => c.id === categorieId)?.libelle || "—";
+  }
+
+  const formBienType = biens.find((b) => b.id === Number(formDraft.bien_id))?.type;
+  const availableCategories = categories.filter((c) => c.type_bien === formBienType);
 
   function openCreate() {
     setFormMode("create");
@@ -135,6 +162,7 @@ export default function AgenceLotsPage() {
     setFormTargetId(lot.id);
     setFormDraft({
       bien_id: String(lot.bien_id),
+      categorie_id: lot.categorie_id ? String(lot.categorie_id) : "",
       reference: lot.reference || "",
       description: lot.description || "",
       loyer_reference: lot.loyer_reference ?? "",
@@ -157,6 +185,7 @@ export default function AgenceLotsPage() {
       if (formMode === "create") {
         const created = await createLot({
           bienId: Number(formDraft.bien_id),
+          categorieId: formDraft.categorie_id === "" ? null : Number(formDraft.categorie_id),
           reference: formDraft.reference,
           description: formDraft.description,
           loyerReference: formDraft.loyer_reference === "" ? null : Number(formDraft.loyer_reference),
@@ -166,6 +195,7 @@ export default function AgenceLotsPage() {
       } else {
         const updated = await updateLot(formTargetId, {
           bien_id: Number(formDraft.bien_id),
+          categorie_id: formDraft.categorie_id === "" ? null : Number(formDraft.categorie_id),
           reference: formDraft.reference,
           description: formDraft.description || null,
           loyer_reference: formDraft.loyer_reference === "" ? null : Number(formDraft.loyer_reference),
@@ -208,9 +238,10 @@ export default function AgenceLotsPage() {
       <div className={styles.section}>
         <div className={styles.statsGrid}>
           <StatCard icon="bi-grid-3x3-gap-fill" tone="primary" label="Lots gérés" value={stats.total} />
-          <StatCard icon="bi-check-circle-fill" tone="accent" label="Libres" value={stats.libres} />
-          <StatCard icon="bi-key-fill" tone="primary" label="Occupés" value={stats.occupes} />
-          <StatCard icon="bi-bookmark-star-fill" tone="warning" label="Réservés" value={stats.reserves} />
+          <StatCard icon="bi-check-circle-fill" tone="accent" label="Disponibles" value={stats.disponibles} />
+          <StatCard icon="bi-key-fill" tone="primary" label="Loués" value={stats.loues} />
+          <StatCard icon="bi-tools" tone="warning" label="En maintenance" value={stats.enMaintenance} />
+          <StatCard icon="bi-slash-circle" tone="danger" label="Hors service" value={stats.horsService} />
         </div>
       </div>
 
@@ -235,56 +266,46 @@ export default function AgenceLotsPage() {
         </div>
 
         {biens.length === 0 && (
-          <p className={styles.empty}>
-            Aucun bien disponible pour l&apos;instant (mandat manquant, ou propriétaire sans bien enregistré).
-          </p>
+          <div className={styles.prereqNotice}>
+            <span className={styles.prereqNoticeIcon}>
+              <i className="bi bi-exclamation-lg" />
+            </span>
+            <span className={styles.prereqNoticeText}>
+              Aucun bien disponible pour l&apos;instant (mandat manquant, ou propriétaire sans bien enregistré).
+            </span>
+          </div>
         )}
 
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher par référence..."
+            placeholder="Rechercher par référence, bien, loyer, description..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setCurrentPage(1);
             }}
           />
-          <select
+          <FilterSelect
             value={bienFilter}
-            onChange={(e) => {
-              setBienFilter(e.target.value);
+            onChange={(v) => {
+              setBienFilter(v);
               setCurrentPage(1);
             }}
-          >
-            <option value="">Tous les biens</option>
-            {biens.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.designation || `Bien #${b.id}`}
-              </option>
-            ))}
-          </select>
-          <select
+            options={[
+              { value: "", label: "Tous les biens" },
+              ...biens.map((b) => ({ value: b.id, label: b.designation || `Bien #${b.id}` })),
+            ]}
+          />
+          <FilterSelect
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
+            onChange={(v) => {
+              setStatusFilter(v);
               setCurrentPage(1);
             }}
-          >
-            <option value="">Tous les statuts</option>
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            {SORT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            options={[{ value: "", label: "Tous les statuts" }, ...STATUS_OPTIONS]}
+          />
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>
@@ -293,6 +314,7 @@ export default function AgenceLotsPage() {
               <tr>
                 <th>Référence</th>
                 <th>Bien</th>
+                <th>Sous-catégorie</th>
                 <th>Loyer de référence</th>
                 <th>Statut</th>
                 <th>Actions</th>
@@ -301,7 +323,7 @@ export default function AgenceLotsPage() {
             <tbody>
               {filteredLots.length === 0 && (
                 <tr>
-                  <td colSpan={5} className={styles.empty}>
+                  <td colSpan={6} className={styles.empty}>
                     Aucun lot ne correspond à ces critères.
                   </td>
                 </tr>
@@ -312,6 +334,7 @@ export default function AgenceLotsPage() {
                     <span className={styles.userName}>{l.reference || `Lot #${l.id}`}</span>
                   </td>
                   <td>{bienName(l.bien_id)}</td>
+                  <td>{l.categorie_id ? categoryName(l.categorie_id) : "—"}</td>
                   <td>{formatCurrency(l.loyer_reference)}</td>
                   <td>
                     <span className={`${styles.badge} ${badgeClass(l.statut)}`}>
@@ -395,8 +418,19 @@ export default function AgenceLotsPage() {
               label: b.designation || `Bien #${b.id}`,
             }))}
             value={formDraft.bien_id}
-            onChange={(e) => setFormDraft((d) => ({ ...d, bien_id: e.target.value }))}
+            onChange={(e) => setFormDraft((d) => ({ ...d, bien_id: e.target.value, categorie_id: "" }))}
             required
+          />
+          <SelectField
+            label="Sous-catégorie"
+            name="categorie_id"
+            options={[
+              { value: "", label: "Aucune" },
+              ...availableCategories.map((c) => ({ value: c.id, label: c.libelle })),
+            ]}
+            value={formDraft.categorie_id}
+            onChange={(e) => setFormDraft((d) => ({ ...d, categorie_id: e.target.value }))}
+            hint={availableCategories.length === 0 ? "Aucune sous-catégorie pour ce type de bien" : undefined}
           />
           <TextField
             label="Référence"
@@ -453,13 +487,13 @@ export default function AgenceLotsPage() {
           setDeleteError(null);
         }}
         onConfirm={handleConfirmDelete}
-        title="Supprimer le lot"
+        title="Masquer le lot"
         message={
           deleteTarget
-            ? `Masquer "${deleteTarget.reference || `Lot #${deleteTarget.id}`}" ? Il n'apparaîtra plus dans vos listes, mais ses baux sont conservés (non supprimés). Impossible s'il a un bail actif.`
+            ? `Masquer "${deleteTarget.reference || `Lot #${deleteTarget.id}`}" ? Il ne sera plus visible dans vos listes (ses baux restent conservés).`
             : ""
         }
-        confirmLabel="Supprimer"
+        confirmLabel="Masquer"
         danger
         isBusy={deleteBusy}
         error={deleteError}

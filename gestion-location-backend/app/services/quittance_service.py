@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from sqlalchemy.orm import Session
 
 from app.api.deps import bien_ids_with_permission, has_permission_for_bien
@@ -107,17 +105,20 @@ def get_quittance(db: Session, current_user: Utilisateur, quittance_id: int) -> 
 
 
 def get_quittance_pdf_path(db: Session, current_user: Utilisateur, quittance_id: int) -> str:
-    """Return the filesystem path to the receipt PDF, (re-)generating it if missing."""
+    """Return the filesystem path to the receipt PDF, always (re-)generating it.
+    Un fichier déjà sur disque peut avoir été produit avec une version antérieure
+    du gabarit (ou avant une annulation) : on ne le sert jamais tel quel, on le
+    régénère systématiquement pour qu'il reflète l'état courant."""
     quittance = get_quittance(db, current_user, quittance_id)
-    if not quittance.fichier_pdf or not Path(quittance.fichier_pdf).is_file():
-        quittance.fichier_pdf = generate_receipt_pdf(db, quittance)
-        db.commit()
+    quittance.fichier_pdf = generate_receipt_pdf(db, quittance)
+    db.commit()
     return quittance.fichier_pdf
 
 
 def annuler_quittance(db: Session, current_user: Utilisateur, quittance_id: int) -> Quittance:
     """Une quittance ne se supprime jamais (preuve documentaire) : on la marque
-    ANNULEE, elle reste consultable dans l'historique avec ce statut."""
+    ANNULEE, elle reste consultable dans l'historique avec ce statut. Le PDF est
+    régénéré pour afficher la référence d'annulation (qui, quand)."""
     quittance = (
         db.query(Quittance)
         .filter(Quittance.id == quittance_id, Quittance.deleted_at.is_(None))
@@ -131,6 +132,9 @@ def annuler_quittance(db: Session, current_user: Utilisateur, quittance_id: int)
     if quittance.statut == QuittanceStatus.ANNULEE:
         raise BadRequest("Impossible d'annuler cette quittance : elle est déjà annulée.")
     quittance.statut = QuittanceStatus.ANNULEE
+    db.commit()
+    db.refresh(quittance)
+    quittance.fichier_pdf = generate_receipt_pdf(db, quittance)
     db.commit()
     db.refresh(quittance)
     return quittance

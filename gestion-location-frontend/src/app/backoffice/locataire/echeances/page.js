@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { extractErrorMessage } from "@/lib/apiClient";
 import { fetchEcheances, fetchBiens, ECHEANCE_STATUS, ECHEANCE_STATUS_LABELS } from "@/lib/properties";
+import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
+import FilterChip from "@/components/FilterChip";
+import FilterSelect from "@/components/FilterSelect";
 import styles from "../locataire.module.css";
 
 function Banner({ banner }) {
@@ -47,6 +50,7 @@ export default function LocataireEcheancesPage() {
 
   const [statusFilter, setStatusFilter] = useState("");
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [sortBy, setSortBy] = useState("recent");
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
@@ -82,14 +86,13 @@ export default function LocataireEcheancesPage() {
   }
 
   const filteredEcheances = useMemo(() => {
-    return [...echeances]
-      .filter((e) => {
-        if (statusFilter && String(e.statut) !== statusFilter) return false;
-        if (overdueOnly && !isOverdue(e)) return false;
-        return true;
-      })
-      .sort((a, b) => new Date(b.date_echeance || 0) - new Date(a.date_echeance || 0));
-  }, [echeances, statusFilter, overdueOnly]);
+    const filtered = echeances.filter((e) => {
+      if (statusFilter && String(e.statut) !== statusFilter) return false;
+      if (overdueOnly && !isOverdue(e)) return false;
+      return true;
+    });
+    return sortList(filtered, sortBy, { dateOf: (e) => e.date_echeance, nameOf: (e) => e.reference });
+  }, [echeances, statusFilter, overdueOnly, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredEcheances.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -127,37 +130,31 @@ export default function LocataireEcheancesPage() {
         </div>
 
         <div className={styles.filtersRow}>
-          <select
+          <FilterSelect
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
+            onChange={(v) => {
+              setStatusFilter(v);
+              setCurrentPage(1);
+            }}
+            options={[{ value: "", label: "Tous les statuts" }, ...STATUS_OPTIONS]}
+          />
+          <FilterChip
+            checked={overdueOnly}
+            onChange={(checked) => {
+              setOverdueOnly(checked);
               setCurrentPage(1);
             }}
           >
-            <option value="">Tous les statuts</option>
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <label className={styles.checkFilter}>
-            <input
-              type="checkbox"
-              checked={overdueOnly}
-              onChange={(e) => {
-                setOverdueOnly(e.target.checked);
-                setCurrentPage(1);
-              }}
-            />
             En retard uniquement
-          </label>
+          </FilterChip>
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
               <tr>
+                <th>Référence</th>
                 <th>Logement</th>
                 <th>Date d&apos;échéance</th>
                 <th>Montant dû</th>
@@ -167,7 +164,7 @@ export default function LocataireEcheancesPage() {
             <tbody>
               {filteredEcheances.length === 0 && (
                 <tr>
-                  <td colSpan={4} className={styles.empty}>
+                  <td colSpan={5} className={styles.empty}>
                     Aucune échéance ne correspond à ces critères.
                   </td>
                 </tr>
@@ -176,6 +173,7 @@ export default function LocataireEcheancesPage() {
                 const overdue = isOverdue(e);
                 return (
                   <tr key={e.id}>
+                    <td className={styles.mono}>{e.reference}</td>
                     <td>{bienLotLabel(e)}</td>
                     <td>
                       {formatDate(e.date_echeance)}

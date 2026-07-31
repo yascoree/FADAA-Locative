@@ -1,4 +1,4 @@
-"use client";
+  "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { extractErrorMessage } from "@/lib/apiClient";
@@ -11,7 +11,10 @@ import {
   PAIEMENT_STATUS,
   PAIEMENT_STATUS_LABELS,
 } from "@/lib/properties";
+import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
+import FilterChip from "@/components/FilterChip";
+import FilterSelect from "@/components/FilterSelect";
 import styles from "../locataire.module.css";
 
 function Banner({ banner }) {
@@ -47,6 +50,7 @@ export default function LocatairePaiementsPage() {
 
   const [modeFilter, setModeFilter] = useState("");
   const [monthOnly, setMonthOnly] = useState(false);
+  const [sortBy, setSortBy] = useState("recent");
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
@@ -72,18 +76,21 @@ export default function LocatairePaiementsPage() {
 
   const stats = useMemo(() => {
     const now = new Date();
-    const total = paiements.reduce((sum, p) => sum + Number(p.montant || 0), 0);
-    const moisCourant = paiements
+    // Un paiement annulé ne doit plus compter dans les totaux affichés : on ne
+    // prend en compte que les paiements encore valides.
+    const valides = paiements.filter((p) => p.statut !== PAIEMENT_STATUS.ANNULE);
+    const total = valides.reduce((sum, p) => sum + Number(p.montant || 0), 0);
+    const moisCourant = valides
       .filter((p) => {
         const d = new Date(p.date_paiement);
         return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
       })
       .reduce((sum, p) => sum + Number(p.montant || 0), 0);
     return {
-      count: paiements.length,
+      count: valides.length,
       total,
       moisCourant,
-      moyenne: paiements.length > 0 ? total / paiements.length : 0,
+      moyenne: valides.length > 0 ? total / valides.length : 0,
     };
   }, [paiements]);
 
@@ -114,17 +121,17 @@ export default function LocatairePaiementsPage() {
 
   const filteredPaiements = useMemo(() => {
     const now = new Date();
-    return [...paiements]
-      .filter((p) => {
-        if (modeFilter && String(p.mode_paiement) !== modeFilter) return false;
-        if (monthOnly) {
-          const d = new Date(p.date_paiement);
-          if (d.getFullYear() !== now.getFullYear() || d.getMonth() !== now.getMonth()) return false;
-        }
-        return true;
-      })
-      .sort((a, b) => new Date(b.date_paiement || 0) - new Date(a.date_paiement || 0));
-  }, [paiements, modeFilter, monthOnly]);
+    const filtered = paiements.filter((p) => {
+      if (modeFilter && String(p.mode_paiement) !== modeFilter) return false;
+      if (monthOnly) {
+        const d = new Date(p.date_paiement);
+        if (d.getFullYear() !== now.getFullYear() || d.getMonth() !== now.getMonth()) return false;
+      }
+      return true;
+    });
+    return sortList(filtered, sortBy, { dateOf: (p) => p.date_paiement, nameOf: (p) => bienLotLabel(p.echeance) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paiements, modeFilter, monthOnly, sortBy, biens]);
 
   const totalPages = Math.max(1, Math.ceil(filteredPaiements.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -162,31 +169,24 @@ export default function LocatairePaiementsPage() {
         </div>
 
         <div className={styles.filtersRow}>
-          <select
+          <FilterSelect
             value={modeFilter}
-            onChange={(e) => {
-              setModeFilter(e.target.value);
+            onChange={(v) => {
+              setModeFilter(v);
+              setCurrentPage(1);
+            }}
+            options={[{ value: "", label: "Tous les modes" }, ...MODE_OPTIONS]}
+          />
+          <FilterChip
+            checked={monthOnly}
+            onChange={(checked) => {
+              setMonthOnly(checked);
               setCurrentPage(1);
             }}
           >
-            <option value="">Tous les modes</option>
-            {MODE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <label className={styles.checkFilter}>
-            <input
-              type="checkbox"
-              checked={monthOnly}
-              onChange={(e) => {
-                setMonthOnly(e.target.checked);
-                setCurrentPage(1);
-              }}
-            />
             Ce mois uniquement
-          </label>
+          </FilterChip>
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>
@@ -216,7 +216,12 @@ export default function LocatairePaiementsPage() {
                   <tr key={p.id}>
                     <td>{bienLotLabel(p.echeance)}</td>
                     <td>{formatDate(p.echeance?.date_echeance)}</td>
-                    <td>{formatCurrency(p.montant)}</td>
+                    <td>
+                      {formatCurrency(p.montant)}
+                      {p.echeance?.montant_du !== null && p.echeance?.montant_du !== undefined && (
+                        <span className={styles.recentEmail}> / {formatCurrency(p.echeance.montant_du)} dû</span>
+                      )}
+                    </td>
                     <td>{MODE_PAIEMENT_LABELS[p.mode_paiement] || "—"}</td>
                     <td>{formatDate(p.date_paiement)}</td>
                     <td>
@@ -225,7 +230,7 @@ export default function LocatairePaiementsPage() {
                       </span>
                     </td>
                     <td>
-                      {quittance && p.statut !== PAIEMENT_STATUS.ANNULE ? (
+                      {quittance ? (
                         <button
                           type="button"
                           className={styles.btnOutline}

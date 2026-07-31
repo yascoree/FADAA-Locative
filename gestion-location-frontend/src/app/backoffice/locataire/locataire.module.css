@@ -130,6 +130,10 @@
   background: var(--bg);
 }
 
+.navItem:active {
+  transform: scale(0.97);
+}
+
 .navItemActive {
   background: none;
   color: var(--secondary);
@@ -204,6 +208,13 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.mono {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .userRole {
@@ -727,62 +738,440 @@
   color: var(--text-muted);
 }
 
-/* ---------- Mon logement ---------- */
+/* ---------- Sélecteur de bail (si plusieurs) ---------- */
 
-.logementHeader {
+.bailPickerRow {
   display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  margin-bottom: 1.3rem;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
 }
 
-.logementIcon {
-  width: 2.8rem;
-  height: 2.8rem;
-  border-radius: 12px;
+.bailChip {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding: 0.55rem 0.9rem;
+  border-radius: var(--radius-field);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease, transform 0.12s ease;
+}
+
+.bailChip:hover {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.bailChipActive {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.bailChipActive:hover {
+  transform: none;
+}
+
+.bailChipDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-muted);
+}
+
+.bailChipDotActive {
+  background: #4e5738;
+}
+
+.bailChipActive .bailChipDotActive {
+  background: #fff;
+}
+
+.bailChipDotEnded {
+  background: var(--danger);
+}
+
+.bailChipActive .bailChipDotEnded {
+  background: #fff;
+  opacity: 0.85;
+}
+
+.bailChipText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.bailChipName {
+  font-size: 0.84rem;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 22ch;
+}
+
+.bailChipMeta {
+  font-size: 0.72rem;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+/* ---------- Mon bail — carte hero ---------- */
+
+.leaseCard {
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  margin-bottom: 1.5rem;
+}
+
+.leaseHero {
+  position: relative;
+  height: 320px;
+  background: var(--bg);
+}
+
+.leaseHeroImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.leaseHeroPlaceholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  font-size: 3.6rem;
+  color: rgba(255, 255, 255, 0.32);
+}
+
+.leaseHeroOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(15, 14, 10, 0.8) 0%, rgba(15, 14, 10, 0.25) 48%, transparent 72%);
+}
+
+.leaseHeroStatus {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #fff;
+}
+
+.leaseHeroStatus i {
+  font-size: 0.5rem;
+}
+
+.leaseHeroStatusActive {
+  background: rgba(78, 87, 56, 0.78);
+}
+
+.leaseHeroStatusWarning {
+  background: rgba(193, 133, 47, 0.8);
+}
+
+.leaseHeroStatusDanger {
+  background: rgba(181, 83, 62, 0.8);
+}
+
+.leaseHeroStatusNeutral {
+  background: rgba(60, 58, 50, 0.65);
+}
+
+.leaseHeroPhotoCount {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.74rem;
+  font-weight: 650;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  padding: 0.32rem 0.7rem;
+  border-radius: 999px;
+}
+
+.leaseHeroContent {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  padding: 1.7rem 1.8rem;
+}
+
+.leaseHeroTitle {
+  margin: 0 0 0.4rem;
+  font-size: clamp(1.3rem, 3vw, 1.7rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #fff;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+}
+
+.leaseHeroAddress {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+}
+
+.leaseBody {
+  padding: 1.6rem 1.8rem;
+}
+
+.leaseTagsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.4rem;
+}
+
+.leaseStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.6rem;
+}
+
+.leaseStatTile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--bg);
+  border-radius: var(--radius-field);
+}
+
+.leaseStatIcon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 10px;
   background: var(--primary-soft);
   color: var(--primary-dark);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
+  font-size: 1.05rem;
   flex-shrink: 0;
 }
 
-.logementTitle {
-  font-size: 1.05rem;
+.leaseStatLabel {
+  font-size: 0.68rem;
   font-weight: 700;
-  color: var(--secondary);
-  margin-bottom: 0.35rem;
-}
-
-.detailsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 1rem;
-}
-
-.detailItem {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  padding: 0.85rem 1rem;
-  background: var(--bg);
-  border-radius: var(--radius-field);
-}
-
-.detailItemLabel {
-  font-size: 0.72rem;
-  font-weight: 650;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
 }
 
-.detailItemValue {
-  font-size: 0.95rem;
-  font-weight: 650;
+.leaseStatValue {
+  font-size: 1.05rem;
+  font-weight: 750;
   color: var(--secondary);
+  margin-top: 0.15rem;
+}
+
+.leaseProgressCard {
+  display: flex;
+  align-items: center;
+  gap: 1.6rem;
+  background: var(--bg);
+  border-radius: var(--radius-card);
+  padding: 1.4rem 1.6rem;
+  margin-bottom: 1.6rem;
+  flex-wrap: wrap;
+}
+
+.leaseProgressRingWrap {
+  position: relative;
+  width: 128px;
+  height: 128px;
+  flex-shrink: 0;
+}
+
+.leaseProgressRingCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.leaseProgressPercent {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--secondary);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.leaseProgressPercentLabel {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.leaseProgressInfo {
+  flex: 1;
+  min-width: 200px;
+}
+
+.leaseProgressInfoTitle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--secondary);
+  margin-bottom: 0.8rem;
+}
+
+.leaseTimelineRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  font-weight: 650;
+  margin-bottom: 0.6rem;
+}
+
+.leaseTimelineTrack {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+  position: relative;
+}
+
+.leaseTimelineFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  background: linear-gradient(90deg, var(--tone-navy), var(--tone-navy-dark));
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.leaseProgressRemaining {
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--primary-dark);
+}
+
+.leaseActionsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.leaseActionCard {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.leaseActionCard:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.leaseActionCard:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.leaseActionIcon {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 10px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.leaseActionText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.leaseActionTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--secondary);
+}
+
+.leaseActionSub {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.leaseActionChevron {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.leaseActionCard:hover .leaseActionChevron {
+  color: var(--primary);
+  transform: translateX(2px);
+}
+
+@media (max-width: 560px) {
+  .leaseHero {
+    height: 240px;
+  }
+  .leaseBody {
+    padding: 1.3rem;
+  }
 }
 
 .editActions {
@@ -845,6 +1234,8 @@
 /* ---------- Boutons ---------- */
 
 .btn {
+  position: relative;
+  overflow: hidden;
   border: none;
   background: var(--primary);
   color: #fff;
@@ -873,6 +1264,8 @@
 }
 
 .btnOutline {
+  position: relative;
+  overflow: hidden;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--secondary);
@@ -899,72 +1292,35 @@
   transform: translateY(0) scale(0.97);
 }
 
-/* ---------- Mon bail — galerie photos ---------- */
-
-.photoGallery {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 0.6rem;
-  border-radius: var(--radius-card);
-  overflow: hidden;
-  height: 280px;
+/* Ripple au clic — même mécanisme que components/ui.module.css. */
+.btn::after,
+.btnOutline::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease;
 }
 
-.photoGallerySingle {
-  grid-template-columns: 1fr;
+.btn::after {
+  background: rgba(255, 255, 255, 0.55);
 }
 
-.photoCover {
-  border-radius: var(--radius-card);
-  overflow: hidden;
-  height: 100%;
+.btnOutline::after {
+  background: color-mix(in srgb, var(--primary) 35%, transparent);
 }
 
-.photoCover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.photoStrip {
-  display: grid;
-  grid-template-rows: repeat(auto-fit, 1fr);
-  gap: 0.6rem;
-  height: 100%;
-}
-
-.photoThumbSm {
-  border-radius: var(--radius-field);
-  overflow: hidden;
-  height: 100%;
-}
-
-.photoThumbSm img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-@media (max-width: 700px) {
-  .photoGallery {
-    grid-template-columns: 1fr;
-    height: auto;
-  }
-  .photoCover {
-    height: 220px;
-  }
-  .photoStrip {
-    display: none;
-  }
-}
-
-/* ---------- Mon bail — méta & progression ---------- */
-
-.logementMetaRow {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+.btn:active:not(:disabled)::after,
+.btnOutline:active:not(:disabled)::after {
+  transform: translate(-50%, -50%) scale(18);
+  opacity: 1;
+  transition: transform 0.2s ease-out, opacity 0.1s ease-out;
 }
 
 .tagPill {
@@ -974,42 +1330,6 @@
   background: var(--bg);
   padding: 0.28rem 0.7rem;
   border-radius: 999px;
-}
-
-.progressBlock {
-  margin-top: 1.4rem;
-}
-
-.progressLabelRow {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  margin-bottom: 0.4rem;
-}
-
-.progressTrack {
-  height: 8px;
-  border-radius: 999px;
-  background: var(--bg);
-  overflow: hidden;
-}
-
-.progressFill {
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--tone-navy), var(--tone-navy-dark));
-  transition: width 0.4s ease;
-}
-
-.quickActions {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  margin-top: 1.4rem;
-  padding-top: 1.2rem;
-  border-top: 1px solid var(--border);
 }
 
 /* ---------- Listes / tableaux ---------- */
@@ -1043,21 +1363,6 @@
   background: var(--surface);
 }
 
-.checkFilter {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.82rem;
-  color: var(--secondary);
-  white-space: nowrap;
-  font-weight: 500;
-}
-
-.checkFilter input {
-  width: 14px;
-  height: 14px;
-  accent-color: var(--primary);
-}
 
 .tableWrap {
   overflow-x: auto;

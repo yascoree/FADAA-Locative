@@ -2,9 +2,12 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.models.bien import TypeBien
+
 
 class CategorieBase(BaseModel):
     libelle: str = Field(min_length=1, max_length=100)
+    type_bien: TypeBien
     description: Optional[str] = None
 
 
@@ -14,6 +17,7 @@ class CategorieCreate(CategorieBase):
 
 class CategorieUpdate(BaseModel):
     libelle: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    type_bien: Optional[TypeBien] = None
     description: Optional[str] = None
 
 

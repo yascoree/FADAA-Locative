@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { extractErrorMessage } from "@/lib/apiClient";
 import {
   fetchBiens,
@@ -15,19 +16,23 @@ import {
   FREQUENCE_PAIEMENT_LABELS,
 } from "@/lib/properties";
 import { fetchLocataires } from "@/lib/tenants";
+import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import RadioGroupField from "@/components/RadioGroupField";
+import FilterSelect from "@/components/FilterSelect";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
   if (!banner) return null;
+  const isError = banner.type !== "success";
   return (
-    <div className={`${styles.banner} ${banner.type === "success" ? styles.bannerSuccess : styles.bannerError}`}>
-      {banner.message}
+    <div className={`${styles.banner} ${isError ? styles.bannerError : styles.bannerSuccess}`}>
+      {isError && <i className="bi bi-exclamation-triangle-fill" style={{ fontSize: "1.1rem" }} />}
+      <span style={isError ? { fontWeight: 700 } : undefined}>{banner.message}</span>
     </div>
   );
 }
@@ -76,12 +81,14 @@ export default function ProprietaireBauxPage() {
   const [search, setSearch] = useState("");
   const [lotFilter, setLotFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [sortBy, setSortBy] = useState("recent");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createDraft, setCreateDraft] = useState(EMPTY_CREATE_FORM);
   const [createBusy, setCreateBusy] = useState(false);
   const [createBanner, setCreateBanner] = useState(null);
+  const createModalBodyRef = useRef(null);
 
   const [editTarget, setEditTarget] = useState(null);
   const [editDraft, setEditDraft] = useState(null);
@@ -131,9 +138,55 @@ export default function ProprietaireBauxPage() {
     return `${bienName} — ${lot.reference || `Lot #${lot.id}`}`;
   }
 
+  // Un lot est indisponible s'il a déjà un bail actif/planifié dont la période
+  // chevauche celle en cours de saisie (dates non renseignées = pas de filtre).
+  function isLotAvailable(lotId, dateDebut, dateFin, excludeBailId) {
+    if (!dateDebut && !dateFin) return true;
+    return !baux.some((b) => {
+      if (b.lot_id !== lotId || b.id === excludeBailId) return false;
+      if (b.statut !== BAIL_STATUS.ACTIF && b.statut !== BAIL_STATUS.EN_ATTENTE) return false;
+      const startsBeforeOrEq = !b.date_debut || !dateFin || b.date_debut <= dateFin;
+      const endsAfterOrEq = !b.date_fin || !dateDebut || dateDebut <= b.date_fin;
+      return startsBeforeOrEq && endsAfterOrEq;
+    });
+  }
+
+  const lotOptions = useMemo(
+    () => [
+      { value: "", label: "Sélectionner un lot...", disabled: true },
+      ...lots.map((l) => {
+        const available = isLotAvailable(l.id, createDraft.date_debut, createDraft.date_fin);
+        return {
+          value: l.id,
+          label: available ? lotLabel(l) : `${lotLabel(l)} — indisponible sur cette période`,
+          disabled: !available,
+        };
+      }),
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lots, biens, baux, createDraft.date_debut, createDraft.date_fin]
+  );
+
+  // Dès que les dates vident la sélection de lot (voir updateCreateDraftDate), on
+  // l'explique immédiatement — pas seulement au moment de cliquer sur "Créer".
+  const lotUnavailableBanner =
+    !createDraft.lot_id && (createDraft.date_debut || createDraft.date_fin)
+      ? { type: "error", message: "Ce lot est déjà occupé sur cette période. Choisissez un autre lot ou d'autres dates." }
+      : null;
+
+  function updateCreateDraftDate(field, value) {
+    setCreateDraft((d) => {
+      const next = { ...d, [field]: value };
+      if (next.lot_id && !isLotAvailable(Number(next.lot_id), next.date_debut, next.date_fin)) {
+        next.lot_id = "";
+      }
+      return next;
+    });
+  }
+
   const filteredBaux = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return baux.filter((b) => {
+    const filtered = baux.filter((b) => {
       if (term) {
         const bien = biens.find((bi) => bi.id === b.lot?.bien_id);
         const haystack = [
@@ -158,7 +211,11 @@ export default function ProprietaireBauxPage() {
       if (statusFilter && String(b.statut) !== statusFilter) return false;
       return true;
     });
-  }, [baux, search, lotFilter, statusFilter, biens]);
+    return sortList(filtered, sortBy, {
+      dateOf: (b) => b.date_debut,
+      nameOf: (b) => `${b.locataire?.prenom || ""} ${b.locataire?.nom || ""}`,
+    });
+  }, [baux, search, lotFilter, statusFilter, sortBy, biens]);
 
   const totalPages = Math.max(1, Math.ceil(filteredBaux.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -181,8 +238,12 @@ export default function ProprietaireBauxPage() {
 
   async function handleSubmitCreate(e) {
     e.preventDefault();
-    setCreateBusy(true);
     setCreateBanner(null);
+    if (!createDraft.lot_id) {
+      createModalBodyRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    setCreateBusy(true);
     try {
       const locataire = locataires.find((l) => l.id === Number(createDraft.locataire_id));
       const created = await createBail({
@@ -200,7 +261,7 @@ export default function ProprietaireBauxPage() {
       setBaux((prev) => [...prev, { ...created, locataire, lot }]);
       setCreateOpen(false);
     } catch (err) {
-      setCreateBanner({ type: "error", message: err.message || extractErrorMessage(err) });
+      setCreateBanner({ type: "error", message: extractErrorMessage(err) });
     } finally {
       setCreateBusy(false);
     }
@@ -301,7 +362,7 @@ export default function ProprietaireBauxPage() {
               lots.length === 0
                 ? "Ajoutez d'abord un lot"
                 : locataires.length === 0
-                  ? "Créez d'abord un locataire depuis la page Locataires"
+                  ? "Ajoutez d'abord un locataire"
                   : undefined
             }
           >
@@ -311,12 +372,32 @@ export default function ProprietaireBauxPage() {
         </div>
 
         {lots.length === 0 && (
-          <p className={styles.empty}>Vous devez d&apos;abord créer un lot avant de pouvoir ajouter un bail.</p>
+          <div className={styles.prereqNotice}>
+            <span className={styles.prereqNoticeIcon}>
+              <i className="bi bi-exclamation-lg" />
+            </span>
+            <span className={styles.prereqNoticeText}>
+              Vous devez d&apos;abord créer un lot avant de pouvoir ajouter un bail.
+            </span>
+            <Link href="/backoffice/proprietaire/lots?create=1" className={styles.prereqNoticeAction}>
+              Créer un lot
+              <i className="bi bi-arrow-right" />
+            </Link>
+          </div>
         )}
         {lots.length > 0 && locataires.length === 0 && (
-          <p className={styles.empty}>
-            Aucun locataire disponible. Créez-en un depuis la page Locataires avant d&apos;ajouter un bail.
-          </p>
+          <div className={styles.prereqNotice}>
+            <span className={styles.prereqNoticeIcon}>
+              <i className="bi bi-exclamation-lg" />
+            </span>
+            <span className={styles.prereqNoticeText}>
+              Aucun locataire disponible pour le moment. Créez-en un pour pouvoir ajouter un bail.
+            </span>
+            <Link href="/backoffice/proprietaire/locataires?create=1" className={styles.prereqNoticeAction}>
+              Créer un locataire
+              <i className="bi bi-arrow-right" />
+            </Link>
+          </div>
         )}
 
         <div className={styles.filtersRow}>
@@ -329,34 +410,23 @@ export default function ProprietaireBauxPage() {
               setCurrentPage(1);
             }}
           />
-          <select
+          <FilterSelect
             value={lotFilter}
-            onChange={(e) => {
-              setLotFilter(e.target.value);
+            onChange={(v) => {
+              setLotFilter(v);
               setCurrentPage(1);
             }}
-          >
-            <option value="">Tous les lots</option>
-            {lots.map((l) => (
-              <option key={l.id} value={l.id}>
-                {lotLabel(l)}
-              </option>
-            ))}
-          </select>
-          <select
+            options={[{ value: "", label: "Tous les lots" }, ...lots.map((l) => ({ value: l.id, label: lotLabel(l) }))]}
+          />
+          <FilterSelect
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
+            onChange={(v) => {
+              setStatusFilter(v);
               setCurrentPage(1);
             }}
-          >
-            <option value="">Tous les statuts</option>
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            options={[{ value: "", label: "Tous les statuts" }, ...STATUS_OPTIONS]}
+          />
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>
@@ -466,15 +536,18 @@ export default function ProprietaireBauxPage() {
       </div>
 
       {/* ---- Créer un bail ---- */}
-      <Modal isOpen={createOpen} onClose={closeCreate} title="Nouveau bail">
+      <Modal isOpen={createOpen} onClose={closeCreate} title="Nouveau bail" bodyRef={createModalBodyRef}>
         <form onSubmit={handleSubmitCreate}>
-          <Banner banner={createBanner} />
+          <div style={{ position: "sticky", top: 0, zIndex: 2, background: "var(--brand-surface)" }}>
+            <Banner banner={createBanner || lotUnavailableBanner} />
+          </div>
           <SelectField
             label="Lot"
             name="lot_id"
-            options={lots.map((l) => ({ value: l.id, label: lotLabel(l) }))}
+            options={lotOptions}
             value={createDraft.lot_id}
             onChange={(e) => setCreateDraft((d) => ({ ...d, lot_id: e.target.value }))}
+            hint="Choisissez les dates pour exclure les lots déjà occupés sur cette période."
             required
           />
           <SelectField
@@ -491,14 +564,14 @@ export default function ProprietaireBauxPage() {
             name="date_debut"
             type="date"
             value={createDraft.date_debut}
-            onChange={(e) => setCreateDraft((d) => ({ ...d, date_debut: e.target.value }))}
+            onChange={(e) => updateCreateDraftDate("date_debut", e.target.value)}
           />
           <TextField
             label="Date de fin"
             name="date_fin"
             type="date"
             value={createDraft.date_fin}
-            onChange={(e) => setCreateDraft((d) => ({ ...d, date_fin: e.target.value }))}
+            onChange={(e) => updateCreateDraftDate("date_fin", e.target.value)}
           />
           <TextField
             label="Loyer (MAD)"
@@ -628,13 +701,13 @@ export default function ProprietaireBauxPage() {
           setDeleteError(null);
         }}
         onConfirm={handleConfirmDelete}
-        title="Supprimer le bail"
+        title="Masquer le bail"
         message={
           deleteTarget
-            ? `Masquer ce bail (${deleteTarget.locataire?.prenom || ""} ${deleteTarget.locataire?.nom || ""}) ? Ses échéances, paiements et quittances sont conservés (non supprimés). Impossible tant que le bail est actif : terminez-le ou résiliez-le d'abord.`
+            ? `Masquer le bail de ${deleteTarget.locataire?.prenom || ""} ${deleteTarget.locataire?.nom || ""} ? Il ne sera plus visible dans vos listes (échéances, paiements et quittances restent conservés).`
             : ""
         }
-        confirmLabel="Supprimer"
+        confirmLabel="Masquer"
         danger
         isBusy={deleteBusy}
         error={deleteError}

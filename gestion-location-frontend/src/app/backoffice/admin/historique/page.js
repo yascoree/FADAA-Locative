@@ -5,6 +5,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
 import { fetchHistorique, HISTORIQUE_ACTIONS } from "@/lib/historique";
 import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
+import FilterSelect from "@/components/FilterSelect";
 import styles from "../admin.module.css";
 
 function Banner({ banner }) {
@@ -79,8 +80,18 @@ export default function AdminHistoriquePage() {
     const term = search.trim().toLowerCase();
     const filtered = entries.filter((e) => {
       if (term) {
-        const name = `${e.utilisateur?.prenom || ""} ${e.utilisateur?.nom || ""} ${e.utilisateur?.email || ""}`.toLowerCase();
-        if (!name.includes(term)) return false;
+        const haystack = [
+          e.utilisateur?.prenom,
+          e.utilisateur?.nom,
+          e.utilisateur?.email,
+          e.module,
+          ACTION_LABELS[e.action] || e.action,
+          elementCell(e),
+        ]
+          .filter((v) => v !== null && v !== undefined && v !== "")
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(term)) return false;
       }
       if (moduleFilter && e.module !== moduleFilter) return false;
       if (actionFilter && e.action !== actionFilter) return false;
@@ -128,48 +139,33 @@ export default function AdminHistoriquePage() {
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher par utilisateur..."
+            placeholder="Rechercher par utilisateur, module, élément..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setCurrentPage(1);
             }}
           />
-          <select
+          <FilterSelect
             value={moduleFilter}
-            onChange={(e) => {
-              setModuleFilter(e.target.value);
+            onChange={(v) => {
+              setModuleFilter(v);
               setCurrentPage(1);
             }}
-          >
-            <option value="">Tous les modules</option>
-            {modules.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-          <select
+            options={[{ value: "", label: "Tous les modules" }, ...modules.map((m) => ({ value: m, label: m }))]}
+          />
+          <FilterSelect
             value={actionFilter}
-            onChange={(e) => {
-              setActionFilter(e.target.value);
+            onChange={(v) => {
+              setActionFilter(v);
               setCurrentPage(1);
             }}
-          >
-            <option value="">Toutes les actions</option>
-            {HISTORIQUE_ACTIONS.map((a) => (
-              <option key={a} value={a}>
-                {ACTION_LABELS[a] || a}
-              </option>
-            ))}
-          </select>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            {SORT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            options={[
+              { value: "", label: "Toutes les actions" },
+              ...HISTORIQUE_ACTIONS.map((a) => ({ value: a, label: ACTION_LABELS[a] || a })),
+            ]}
+          />
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>

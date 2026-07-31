@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { ROLES } from "@/lib/roles";
 import NotificationBell from "@/components/NotificationBell";
 import PageTransition from "@/components/PageTransition";
+import RouteProgressBar from "@/components/RouteProgressBar";
 import AgenceSidebar from "./AgenceSidebar";
 import styles from "./agence.module.css";
 
@@ -54,6 +55,7 @@ export default function AgenceLayout({ children }) {
 
   return (
     <div className={styles.shell}>
+      <RouteProgressBar />
       <AgenceSidebar user={user} onLogout={handleLogout} />
       <div className={styles.main}>
         <header className={`${styles.topbar} ${isScrolled ? styles.topbarScrolled : ""}`}>
@@ -64,6 +66,8 @@ export default function AgenceLayout({ children }) {
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
+      {/* Ancre pour les portails (Modal, Drawer) : voir proprietaire/layout.js. */}
+      <div id="portal-root" />
     </div>
   );
 }

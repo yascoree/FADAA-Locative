@@ -4,6 +4,7 @@ from datetime import datetime
 
 from app.api.deps import require_admin
 from app.database import get_db
+from app.models.bien import TypeBien
 from app.models.utilisateur import Utilisateur
 from app.schemas.categorie import CategorieCreate, CategorieRead, CategorieUpdate
 from app.services import categorie_service
@@ -17,8 +18,15 @@ router = APIRouter(prefix="/categories", tags=["categories"])
 
 
 @router.get("/", response_model=list[CategorieRead])
-def list_categories(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return categorie_service.list_categories(db, skip, limit)
+def list_categories(
+    skip: int = 0,
+    limit: int = 100,
+    type_bien: TypeBien | None = None,
+    db: Session = Depends(get_db),
+):
+    """``type_bien`` filtre les sous-catégories proposables pour un Lot dont le
+    Bien parent a ce type (ex. GET /categories?type_bien=VEHICULE)."""
+    return categorie_service.list_categories(db, skip, limit, type_bien)
 
 
 @router.post("/", response_model=CategorieRead, status_code=status.HTTP_201_CREATED)
@@ -49,6 +57,8 @@ def update_categorie(
         return categorie_service.update_categorie(db, categorie_id, categorie_in)
     except NotFound as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except BadRequest as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
 @router.delete("/{categorie_id}", status_code=status.HTTP_204_NO_CONTENT)

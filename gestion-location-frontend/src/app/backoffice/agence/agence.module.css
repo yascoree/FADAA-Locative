@@ -205,6 +205,13 @@
   text-overflow: ellipsis;
 }
 
+.mono {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 .userRole {
   font-size: 0.74rem;
   color: var(--text-muted);
@@ -460,6 +467,73 @@
   font-size: 0.8rem;
   color: var(--text-muted);
   padding: 0.5rem 0;
+}
+
+/* ---------- Notice "prérequis manquant" (ex: pas de lot avant un bail) ---------- */
+
+.prereqNotice {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  background: var(--warning-soft);
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+  border-radius: var(--radius-field);
+  padding: 0.65rem 0.85rem;
+  margin: 0.75rem 0 1.15rem;
+  flex-wrap: wrap;
+}
+
+.prereqNoticeIcon {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--warning) 18%, transparent);
+  color: var(--warning);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.prereqNoticeText {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.prereqNoticeAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.79rem;
+  font-weight: 700;
+  color: var(--warning);
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, transparent);
+  padding: 0.38rem 0.8rem;
+  border-radius: 999px;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.12s ease, color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.prereqNoticeAction:hover {
+  background: var(--warning);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.prereqNoticeAction:active {
+  transform: translateY(0) scale(0.96);
+}
+
+.prereqNoticeAction i {
+  font-size: 0.76rem;
 }
 
 /* ---------- Generic dashboard bits ---------- */
@@ -1031,6 +1105,47 @@
   color: var(--text-muted);
 }
 
+.overdueBtn {
+  font-size: 0.73rem;
+  font-weight: 650;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  border: none;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: 0.5rem;
+  background: var(--danger-soft);
+  color: var(--danger);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, transform 0.12s ease;
+}
+
+.overdueBtn:hover:not(:disabled) {
+  background: var(--danger);
+  color: #fff;
+}
+
+.overdueBtn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.overdueBtn:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.overdueBtn i.bi-arrow-repeat {
+  animation: overdueSpin 0.8s linear infinite;
+}
+
+@keyframes overdueSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* ---------- Filtres & tableau ---------- */
 
 .filtersRow {
@@ -1274,21 +1389,6 @@
   color: var(--text-muted);
 }
 
-.checkFilter {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.82rem;
-  color: var(--secondary);
-  white-space: nowrap;
-  font-weight: 500;
-}
-
-.checkFilter input {
-  width: 14px;
-  height: 14px;
-  accent-color: var(--primary);
-}
 
 .avatarSm {
   width: 1.9rem;

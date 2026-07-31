@@ -904,6 +904,20 @@
   text-decoration: underline;
 }
 
+.planFooterActions {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.planDeleteLink {
+  color: var(--danger);
+}
+
+.planDeleteLink:hover {
+  color: #8f4230;
+}
+
 .planUsersLine {
   font-size: 0.75rem;
   color: var(--text-muted);
@@ -954,14 +968,269 @@
 
 .editForm {
   margin-top: 1.1rem;
-  padding-top: 1.1rem;
-  border-top: 1px dashed var(--border);
+  padding: 1.1rem 1.1rem 1.2rem;
+  background: color-mix(in srgb, var(--bg) 65%, transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field);
 }
 
-.editGrid {
+.editFormHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.editFormTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--secondary);
+}
+
+.editFormClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.editFormClose:hover {
+  background: var(--border);
+  color: var(--secondary);
+}
+
+.editRow {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 0.7rem;
+}
+
+.editRow + .editRow {
+  margin-top: 0.7rem;
+}
+
+.editSectionDivider {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin: 1.15rem 0 0.6rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ---------- Sélecteur de couleur du plan ---------- */
+
+.colorSwatchGroup {
+  display: flex;
+  gap: 1.1rem;
+  padding: 0.2rem 0.1rem 0.6rem;
+}
+
+.colorSwatchBtn {
+  position: relative;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 0.95rem;
+  box-shadow: var(--shadow-sm), inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.colorSwatchBtn:hover {
+  transform: translateY(-2px) scale(1.06);
+  box-shadow: var(--shadow-lift), inset 0 0 0 2px rgba(255, 255, 255, 0.45);
+}
+
+.colorSwatchBtn i {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.colorSwatchBtnActive {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary), var(--shadow-sm);
+}
+
+.colorSwatchBtnActive:hover {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary), var(--shadow-lift);
+}
+
+.colorSwatchLabel {
+  position: absolute;
+  bottom: -1.3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.66rem;
+  font-weight: 650;
+  color: var(--text-muted);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.colorSwatchBtn:hover .colorSwatchLabel,
+.colorSwatchBtnActive .colorSwatchLabel {
+  opacity: 1;
+}
+
+.colorSwatchOlive {
+  background: linear-gradient(135deg, var(--tone-olive), var(--tone-olive-dark));
+}
+
+.colorSwatchNavy {
+  background: linear-gradient(135deg, var(--tone-navy), var(--tone-navy-dark));
+}
+
+.colorSwatchCharcoal {
+  background: linear-gradient(135deg, var(--tone-charcoal), var(--tone-charcoal-dark));
+}
+
+.colorSwatchTerracotta {
+  background: linear-gradient(135deg, var(--tone-terracotta), var(--tone-terracotta-dark));
+}
+
+.limitEditList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.limitEditRow {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: var(--radius-field);
+  transition: background 0.12s ease;
+}
+
+.limitEditRow:hover {
+  background: var(--surface);
+}
+
+.limitEditIcon {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.limitEditLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.limitEditInput {
+  width: 4.5rem;
+  flex-shrink: 0;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field);
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  background: var(--surface);
+  color: var(--text);
+  transition: border-color 0.12s ease;
+}
+
+.limitEditInput:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.limitEditInput:disabled {
+  background: var(--bg);
+  color: var(--text-muted);
+  border-color: transparent;
+}
+
+.toggleSwitch {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.toggleSwitch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggleTrack {
+  position: relative;
+  width: 2.1rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  background: var(--border);
+  flex-shrink: 0;
+  transition: background 0.16s ease;
+}
+
+.toggleThumb {
+  position: absolute;
+  top: 0.14rem;
+  left: 0.14rem;
+  width: 0.87rem;
+  height: 0.87rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.16s ease;
+}
+
+.toggleSwitch input:checked + .toggleTrack {
+  background: var(--primary);
+}
+
+.toggleSwitch input:checked + .toggleTrack .toggleThumb {
+  transform: translateX(0.95rem);
+}
+
+.toggleSwitch input:focus-visible + .toggleTrack {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 35%, transparent);
+}
+
+.toggleLabel {
+  white-space: nowrap;
 }
 
 .field {
@@ -994,18 +1263,6 @@
 .field input:disabled {
   background: var(--bg);
   color: var(--text-muted);
-}
-
-.checkboxLabel {
-  flex-direction: row !important;
-  align-items: center;
-  gap: 0.4rem !important;
-}
-
-.checkboxLabel input {
-  width: 14px;
-  height: 14px;
-  accent-color: var(--primary);
 }
 
 .diffBox {
@@ -1064,23 +1321,117 @@
   margin-top: 1rem;
 }
 
-.newPlanForm {
+.newPlanCard {
+  position: relative;
+  margin-top: 1.6rem;
+  padding: 1.6rem 1.7rem 1.8rem;
   background: var(--surface);
-  border: 1px dashed var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-card);
-  padding: 1.3rem 1.4rem;
-  margin-top: 1.4rem;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.newPlanCard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary), var(--tone-navy));
+}
+
+.newPlanHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  margin-bottom: 1.2rem;
+}
+
+.newPlanHeaderIcon {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--primary), var(--tone-navy));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
   box-shadow: var(--shadow-sm);
 }
 
-.newPlanGrid {
+.newPlanTitle {
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--secondary);
+  margin: 0;
+}
+
+.newPlanSubtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0.2rem 0 0;
+}
+
+.newPlanLayout {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0.7rem;
+  grid-template-columns: minmax(0, 1.4fr) minmax(240px, 1fr);
+  gap: 1.6rem;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .newPlanLayout {
+    grid-template-columns: 1fr;
+  }
 }
 
 .newPlanForm .btn {
-  margin-top: 1.1rem;
+  margin-top: 1.3rem;
+}
+
+.newPlanPreviewWrap {
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.newPlanPreviewLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.planCardPreview {
+  transform: none !important;
+  cursor: default;
+}
+
+.planCardPreview:hover {
+  transform: none;
+  box-shadow: var(--shadow-sm);
+}
+
+.newPlanPreviewDesc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0 0 0.9rem;
+}
+
+.editSectionDividerFirst {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 
 /* ---------- Accounts table ---------- */
@@ -1091,6 +1442,32 @@
   flex-wrap: wrap;
   align-items: center;
   margin-bottom: 1.2rem;
+  padding: 0.9rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.searchInputWrap {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  padding-left: 2.1rem !important;
 }
 
 .filtersRow input[type="text"],
@@ -1110,32 +1487,11 @@
   border-color: var(--primary);
 }
 
-.filtersRow select option,
-.changePlanRow select option {
+.filtersRow select option {
   color: var(--text);
   background: var(--surface);
 }
 
-.filtersRow input[type="text"] {
-  flex: 1;
-  min-width: 220px;
-}
-
-.checkFilter {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.82rem;
-  color: var(--secondary);
-  white-space: nowrap;
-  font-weight: 500;
-}
-
-.checkFilter input {
-  width: 14px;
-  height: 14px;
-  accent-color: var(--primary);
-}
 
 .tableWrap {
   overflow-x: auto;
@@ -1249,6 +1605,36 @@
   background: var(--danger-soft);
 }
 
+.planPill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.planPillTerracotta {
+  background: var(--tone-terracotta-soft);
+  color: var(--tone-terracotta-dark);
+}
+
+.planPillCharcoal {
+  background: var(--tone-charcoal-soft);
+  color: var(--tone-charcoal-dark);
+}
+
+.planPillNavy {
+  background: var(--tone-navy-soft);
+  color: var(--tone-navy-dark);
+}
+
+.planPillOlive {
+  background: var(--tone-olive-soft);
+  color: var(--tone-olive-dark);
+}
+
 .trialPill {
   display: inline-flex;
   align-items: center;
@@ -1258,6 +1644,7 @@
   padding: 0.35rem 0.75rem;
   border-radius: 999px;
   margin-top: 0.4rem;
+  margin-left: 0.4rem;
 }
 
 .trialPillActive {
@@ -1311,14 +1698,38 @@
   margin-bottom: 1.2rem;
 }
 
+.detailHeaderIdentity {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.detailAvatar {
+  width: 2.9rem;
+  height: 2.9rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--primary), var(--tone-navy));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.05rem;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+}
+
 .detailTitle {
-  font-size: 1.08rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--secondary);
   margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
+}
+
+.detailSubtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0.15rem 0 0;
 }
 
 .detailColumns {
@@ -1340,14 +1751,55 @@
   gap: 0.4rem;
 }
 
-.detailLine {
-  font-size: 0.87rem;
-  color: var(--text);
-  margin-bottom: 0.35rem;
+.detailHeaderTags {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
 }
 
-.detailLine strong {
+.detailInfoList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.detailInfoRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.detailInfoIcon {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+
+.detailInfoBody {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.detailInfoLabel {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.detailInfoValue {
+  font-size: 0.87rem;
+  font-weight: 650;
   color: var(--secondary);
+  word-break: break-word;
 }
 
 .usageGrid {
@@ -1360,8 +1812,22 @@
 .usageItem {
   font-size: 0.82rem;
   background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: var(--radius-field);
   padding: 0.7rem 0.85rem;
+}
+
+.usageIcon {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.76rem;
+  flex-shrink: 0;
 }
 
 .usageLabelRow {
@@ -1398,7 +1864,7 @@
 .usageFill {
   height: 100%;
   border-radius: 999px;
-  background: var(--primary);
+  background: linear-gradient(90deg, var(--primary), var(--tone-navy));
   transition: width 0.3s ease;
 }
 
@@ -1424,28 +1890,7 @@
   padding: 1.2rem 1.3rem;
   border-radius: var(--radius-card);
   background: var(--bg);
-}
-
-.changePlanRow {
-  display: flex;
-  gap: 0.8rem;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 1.1rem;
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: var(--secondary);
-}
-
-.changePlanRow select {
-  padding: 0.55rem 0.75rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius-field);
-  font-size: 0.84rem;
-  background: var(--surface);
-  color: var(--text);
-  color-scheme: light;
-  font-weight: 600;
 }
 
 .previewGrid {
@@ -1457,6 +1902,114 @@
   border-radius: var(--radius-field);
   padding: 1rem;
   margin-bottom: 1.1rem;
+}
+
+.planPickerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.1rem;
+}
+
+.planPickerCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 0.15rem;
+  padding: 1rem 1rem 0.9rem;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-field);
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.14s ease, transform 0.14s ease, box-shadow 0.14s ease;
+  font-family: inherit;
+}
+
+.planPickerCard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+
+.planPickerCardTerracotta::before {
+  background: linear-gradient(90deg, var(--tone-terracotta), var(--tone-terracotta-dark));
+}
+
+.planPickerCardCharcoal::before {
+  background: linear-gradient(90deg, var(--tone-charcoal), var(--tone-charcoal-dark));
+}
+
+.planPickerCardNavy::before {
+  background: linear-gradient(90deg, var(--tone-navy), var(--tone-navy-dark));
+}
+
+.planPickerCardOlive::before {
+  background: linear-gradient(90deg, var(--tone-olive), var(--tone-olive-dark));
+}
+
+.planPickerCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.planPickerCardSelected {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+.planPickerCurrentBadge {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.7rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  background: var(--bg);
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+}
+
+.planPickerRadio {
+  font-size: 0.95rem;
+  color: var(--border);
+  margin-bottom: 0.3rem;
+}
+
+.planPickerCardSelected .planPickerRadio {
+  color: var(--primary);
+}
+
+.planPickerName {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--secondary);
+}
+
+.planPickerPrice {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.planPickerUnit {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-left: 0.2rem;
+}
+
+.planPickerMeta {
+  font-size: 0.74rem;
+  color: var(--text-muted);
 }
 
 /* ---------- Dashboard ---------- */

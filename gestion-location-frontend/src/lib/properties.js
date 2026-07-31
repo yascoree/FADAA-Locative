@@ -1,10 +1,18 @@
 import apiClient from "@/lib/apiClient";
 
-export const BIEN_STATUS = { DISPONIBLE: 1, LOUE: 2, MAINTENANCE: 3, HORS_SERVICE: 4 };
-export const BIEN_STATUS_LABELS = { 1: "Disponible", 2: "Loué", 3: "En maintenance", 4: "Hors service" };
+// Le bien (immeuble/propriété) ne porte plus de notion d'occupation — un bien
+// peut avoir plusieurs lots dans des états différents. L'occupation se lit sur
+// le Lot (LOT_STATUS), automatiquement synchronisé avec ses baux.
+export const BIEN_STATUS = { ACTIF: 1, INACTIF: 2, ARCHIVE: 3 };
+export const BIEN_STATUS_LABELS = { 1: "Actif", 2: "Inactif", 3: "Archivé" };
 
-export const LOT_STATUS = { LIBRE: 1, OCCUPE: 2, RESERVE: 3 };
-export const LOT_STATUS_LABELS = { 1: "Libre", 2: "Occupé", 3: "Réservé" };
+// Type général de l'actif loué. Détermine les sous-catégories (Categorie)
+// proposables sur les Lots de ce bien — voir fetchCategories(typeBien).
+export const TYPE_BIEN = { IMMOBILIER: 1, VEHICULE: 2, MATERIEL: 3, AUTRE: 4 };
+export const TYPE_BIEN_LABELS = { 1: "Immobilier", 2: "Véhicule", 3: "Matériel", 4: "Autre" };
+
+export const LOT_STATUS = { DISPONIBLE: 1, LOUE: 2, EN_MAINTENANCE: 3, HORS_SERVICE: 4 };
+export const LOT_STATUS_LABELS = { 1: "Disponible", 2: "Loué", 3: "En maintenance", 4: "Hors service" };
 
 export const BAIL_STATUS = { EN_ATTENTE: 1, ACTIF: 2, RESILIE: 3, EXPIRE: 4 };
 export const BAIL_STATUS_LABELS = { 1: "En attente", 2: "Actif", 3: "Résilié", 4: "Expiré" };
@@ -15,13 +23,19 @@ export const FREQUENCE_PAIEMENT_LABELS = { 1: "Jour", 2: "Semaine", 3: "Mois", 4
 export const ECHEANCE_STATUS = { PAYE: 1, PARTIEL: 2, IMPAYE: 3 };
 export const ECHEANCE_STATUS_LABELS = { 1: "Payé", 2: "Partiel", 3: "Impayé" };
 
-export async function fetchCategories() {
-  const { data } = await apiClient.get("/categories/");
+export async function fetchCategories(typeBien) {
+  const { data } = await apiClient.get("/categories/", {
+    params: typeBien ? { type_bien: typeBien } : undefined,
+  });
   return data;
 }
 
-export async function createCategorie({ libelle, description }) {
-  const { data } = await apiClient.post("/categories/", { libelle, description: description || null });
+export async function createCategorie({ libelle, typeBien, description }) {
+  const { data } = await apiClient.post("/categories/", {
+    libelle,
+    type_bien: typeBien,
+    description: description || null,
+  });
   return data;
 }
 
@@ -39,12 +53,24 @@ export async function fetchBiens() {
   return data;
 }
 
-export async function createBien({ proprietaireId, categorieId, designation, description, statut }) {
+export async function createBien({
+  proprietaireId,
+  type,
+  designation,
+  description,
+  adresse,
+  latitude,
+  longitude,
+  statut,
+}) {
   const { data } = await apiClient.post("/properties/", {
     proprietaire_id: proprietaireId,
-    categorie_id: categorieId,
+    type,
     designation: designation || null,
     description: description || null,
+    adresse: adresse || null,
+    latitude: latitude ?? null,
+    longitude: longitude ?? null,
     statut: statut || null,
   });
   return data;
@@ -77,9 +103,10 @@ export async function fetchLots() {
   return data;
 }
 
-export async function createLot({ bienId, reference, description, loyerReference, statut }) {
+export async function createLot({ bienId, categorieId, reference, description, loyerReference, statut }) {
   const { data } = await apiClient.post("/lots/", {
     bien_id: bienId,
+    categorie_id: categorieId || null,
     reference: reference || null,
     description: description || null,
     loyer_reference: loyerReference || null,
@@ -126,6 +153,11 @@ export async function deleteEcheance(echeanceId) {
   await apiClient.delete(`/due-dates/${echeanceId}`);
 }
 
+export async function relanceEcheance(echeanceId) {
+  const { data } = await apiClient.post(`/due-dates/${echeanceId}/relance`);
+  return data;
+}
+
 export async function fetchPaiements() {
   const { data } = await apiClient.get("/payments/");
   return data;
@@ -156,8 +188,8 @@ export async function deletePaiement(paiementId) {
 export const PAIEMENT_STATUS = { VALIDE: 1, ANNULE: 2 };
 export const PAIEMENT_STATUS_LABELS = { 1: "Validé", 2: "Annulé" };
 
-export async function annulerPaiement(paiementId) {
-  const { data } = await apiClient.post(`/payments/${paiementId}/annuler`);
+export async function annulerPaiement(paiementId, motif) {
+  const { data } = await apiClient.post(`/payments/${paiementId}/annuler`, motif ? { motif } : undefined);
   return data;
 }
 

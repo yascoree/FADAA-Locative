@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import {
-  fetchCategories,
   fetchBiens,
   createBien,
   updateBien,
@@ -12,6 +11,8 @@ import {
   deleteBienPhoto,
   BIEN_STATUS,
   BIEN_STATUS_LABELS,
+  TYPE_BIEN,
+  TYPE_BIEN_LABELS,
 } from "@/lib/properties";
 import { fetchMandates, fetchGestionnairePermissionIndex, MANDAT_STATUS } from "@/lib/mandates";
 import { SORT_OPTIONS, sortList } from "@/lib/sort";
@@ -20,6 +21,9 @@ import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
+import FilterSelect from "@/components/FilterSelect";
+import MapPicker from "@/components/MapPicker";
+import BienDetailsModal from "@/components/BienDetailsModal";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -32,9 +36,8 @@ function Banner({ banner }) {
 }
 
 function badgeClass(statut) {
-  if (statut === BIEN_STATUS.DISPONIBLE) return styles.badgeActive;
-  if (statut === BIEN_STATUS.LOUE) return styles.badgeNeutral;
-  if (statut === BIEN_STATUS.MAINTENANCE) return styles.badgeWarning;
+  if (statut === BIEN_STATUS.ACTIF) return styles.badgeActive;
+  if (statut === BIEN_STATUS.INACTIF) return styles.badgeWarning;
   return styles.badgeDanger;
 }
 
@@ -43,19 +46,22 @@ function photoUrl(url) {
 }
 
 const STATUS_OPTIONS = Object.entries(BIEN_STATUS_LABELS).map(([value, label]) => ({ value, label }));
+const TYPE_OPTIONS = Object.entries(TYPE_BIEN_LABELS).map(([value, label]) => ({ value, label }));
 const PAGE_SIZE = 10;
 
 const EMPTY_FORM = {
   proprietaire_id: "",
   designation: "",
   description: "",
-  categorie_id: "",
-  statut: String(BIEN_STATUS.DISPONIBLE),
+  adresse: "",
+  latitude: null,
+  longitude: null,
+  type: String(TYPE_BIEN.IMMOBILIER),
+  statut: String(BIEN_STATUS.ACTIF),
 };
 
 export default function AgenceBiensPage() {
   const [biens, setBiens] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [proprietaires, setProprietaires] = useState([]);
   const [permIndex, setPermIndex] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -81,18 +87,18 @@ export default function AgenceBiensPage() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
 
+  const [detailsTarget, setDetailsTarget] = useState(null);
+
   useEffect(() => {
     async function init() {
       setIsLoading(true);
       try {
-        const [biensList, categoriesList, mandatesList, permissionIndex] = await Promise.all([
+        const [biensList, mandatesList, permissionIndex] = await Promise.all([
           fetchBiens(),
-          fetchCategories(),
           fetchMandates(),
           fetchGestionnairePermissionIndex(),
         ]);
         setBiens(biensList);
-        setCategories(categoriesList);
         const proprietairesById = new Map();
         mandatesList
           .filter((m) => m.statut === MANDAT_STATUS.ACTIF && m.proprietaire)
@@ -111,9 +117,9 @@ export default function AgenceBiensPage() {
   const stats = useMemo(() => {
     return {
       total: biens.length,
-      disponibles: biens.filter((b) => b.statut === BIEN_STATUS.DISPONIBLE).length,
-      loues: biens.filter((b) => b.statut === BIEN_STATUS.LOUE).length,
-      autres: biens.filter((b) => b.statut === BIEN_STATUS.MAINTENANCE || b.statut === BIEN_STATUS.HORS_SERVICE).length,
+      actifs: biens.filter((b) => b.statut === BIEN_STATUS.ACTIF).length,
+      inactifs: biens.filter((b) => b.statut === BIEN_STATUS.INACTIF).length,
+      archives: biens.filter((b) => b.statut === BIEN_STATUS.ARCHIVE).length,
     };
   }, [biens]);
 
@@ -125,20 +131,20 @@ export default function AgenceBiensPage() {
   const filteredBiens = useMemo(() => {
     const term = search.trim().toLowerCase();
     const filtered = biens.filter((b) => {
-      if (term && !(b.designation || "").toLowerCase().includes(term)) return false;
+      if (term) {
+        const haystack = `${b.designation || ""} ${b.description || ""} ${b.adresse || ""} ${TYPE_BIEN_LABELS[b.type] || ""} ${proprietaireName(b.proprietaire_id)}`.toLowerCase();
+        if (!haystack.includes(term)) return false;
+      }
       if (statusFilter && String(b.statut) !== statusFilter) return false;
       return true;
     });
     return sortList(filtered, sortBy, { dateOf: (b) => b.created_at, nameOf: (b) => b.designation });
-  }, [biens, search, statusFilter, sortBy]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [biens, search, statusFilter, sortBy, proprietaires]);
 
   const totalPages = Math.max(1, Math.ceil(filteredBiens.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
   const paginatedBiens = filteredBiens.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-
-  function categoryName(categorieId) {
-    return categories.find((c) => c.id === categorieId)?.libelle || "—";
-  }
 
   function proprietaireName(proprietaireId) {
     const p = proprietaires.find((p) => p.id === proprietaireId);
@@ -151,7 +157,6 @@ export default function AgenceBiensPage() {
     setFormDraft({
       ...EMPTY_FORM,
       proprietaire_id: creatableProprietaires[0] ? String(creatableProprietaires[0].id) : "",
-      categorie_id: categories[0] ? String(categories[0].id) : "",
     });
     setFormBanner(null);
     setStagedFiles([]);
@@ -166,7 +171,10 @@ export default function AgenceBiensPage() {
       proprietaire_id: String(bien.proprietaire_id),
       designation: bien.designation || "",
       description: bien.description || "",
-      categorie_id: String(bien.categorie_id),
+      adresse: bien.adresse || "",
+      latitude: bien.latitude ?? null,
+      longitude: bien.longitude ?? null,
+      type: String(bien.type),
       statut: String(bien.statut),
     });
     setEditingPhotos(bien.photos || []);
@@ -246,9 +254,12 @@ export default function AgenceBiensPage() {
       if (formMode === "create") {
         const created = await createBien({
           proprietaireId: Number(formDraft.proprietaire_id),
-          categorieId: Number(formDraft.categorie_id),
+          type: Number(formDraft.type),
           designation: formDraft.designation,
           description: formDraft.description,
+          adresse: formDraft.adresse,
+          latitude: formDraft.latitude,
+          longitude: formDraft.longitude,
           statut: Number(formDraft.statut),
         });
         const photos = [];
@@ -262,9 +273,12 @@ export default function AgenceBiensPage() {
         setBiens((prev) => [...prev, { ...created, photos }]);
       } else {
         const updated = await updateBien(formTargetId, {
-          categorie_id: Number(formDraft.categorie_id),
+          type: Number(formDraft.type),
           designation: formDraft.designation,
           description: formDraft.description || null,
+          adresse: formDraft.adresse || null,
+          latitude: formDraft.latitude,
+          longitude: formDraft.longitude,
           statut: Number(formDraft.statut),
         });
         setBiens((prev) => prev.map((b) => (b.id === updated.id ? { ...b, ...updated } : b)));
@@ -312,9 +326,9 @@ export default function AgenceBiensPage() {
       <div className={styles.section}>
         <div className={styles.statsGrid}>
           <StatCard icon="bi-house-door-fill" tone="primary" label="Biens gérés" value={stats.total} />
-          <StatCard icon="bi-check-circle-fill" tone="accent" label="Disponibles" value={stats.disponibles} />
-          <StatCard icon="bi-key-fill" tone="primary" label="Loués" value={stats.loues} />
-          <StatCard icon="bi-tools" tone="warning" label="Maintenance / hors service" value={stats.autres} />
+          <StatCard icon="bi-check-circle-fill" tone="accent" label="Actifs" value={stats.actifs} />
+          <StatCard icon="bi-pause-circle" tone="warning" label="Inactifs" value={stats.inactifs} />
+          <StatCard icon="bi-archive-fill" tone="danger" label="Archivés" value={stats.archives} />
         </div>
       </div>
 
@@ -341,34 +355,22 @@ export default function AgenceBiensPage() {
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher par désignation..."
+            placeholder="Rechercher par désignation, propriétaire, type, description..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setCurrentPage(1);
             }}
           />
-          <select
+          <FilterSelect
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
+            onChange={(v) => {
+              setStatusFilter(v);
               setCurrentPage(1);
             }}
-          >
-            <option value="">Tous les statuts</option>
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            {SORT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            options={[{ value: "", label: "Tous les statuts" }, ...STATUS_OPTIONS]}
+          />
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>
@@ -377,7 +379,7 @@ export default function AgenceBiensPage() {
               <tr>
                 <th>Bien</th>
                 <th>Propriétaire</th>
-                <th>Catégorie</th>
+                <th>Type</th>
                 <th>Statut</th>
                 <th>Photos</th>
                 <th>Actions</th>
@@ -405,11 +407,19 @@ export default function AgenceBiensPage() {
                             <i className="bi bi-house" />
                           </span>
                         )}
-                        <span className={styles.userName}>{b.designation || `Bien #${b.id}`}</span>
+                        <div>
+                          <span className={styles.userName}>{b.designation || `Bien #${b.id}`}</span>
+                          {b.adresse && (
+                            <div style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>
+                              <i className="bi bi-geo-alt" style={{ marginRight: "0.25rem" }} />
+                              {b.adresse}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td>{proprietaireName(b.proprietaire_id)}</td>
-                    <td>{categoryName(b.categorie_id)}</td>
+                    <td>{TYPE_BIEN_LABELS[b.type] || "—"}</td>
                     <td>
                       <span className={`${styles.badge} ${badgeClass(b.statut)}`}>
                         {BIEN_STATUS_LABELS[b.statut] || "—"}
@@ -420,9 +430,16 @@ export default function AgenceBiensPage() {
                       {(() => {
                         const canUpdate = permIndex?.hasForBien(b.id, b.proprietaire_id, "UPDATE_PROPERTY");
                         const canDelete = permIndex?.hasForBien(b.id, b.proprietaire_id, "DELETE_PROPERTY");
-                        if (!canUpdate && !canDelete) return <span className={styles.empty}>—</span>;
                         return (
                           <div className={styles.tableActions}>
+                            <button
+                              type="button"
+                              className={styles.iconBtn}
+                              onClick={() => setDetailsTarget(b)}
+                              title="Voir les détails"
+                            >
+                              <i className="bi bi-eye" />
+                            </button>
                             {canUpdate && (
                               <button type="button" className={styles.iconBtn} onClick={() => openEdit(b)} title="Modifier">
                                 <i className="bi bi-pencil" />
@@ -502,6 +519,14 @@ export default function AgenceBiensPage() {
             onChange={(e) => setFormDraft((d) => ({ ...d, designation: e.target.value }))}
             placeholder="Ex : Villa Anfa, Immeuble 12..."
           />
+          <MapPicker
+            label="Localisation"
+            adresse={formDraft.adresse}
+            latitude={formDraft.latitude}
+            longitude={formDraft.longitude}
+            onChange={({ adresse, latitude, longitude }) => setFormDraft((d) => ({ ...d, adresse, latitude, longitude }))}
+            hint="Optionnel — recherchez une adresse ou placez le marqueur directement sur la carte."
+          />
           <TextField
             label="Description"
             name="description"
@@ -513,11 +538,11 @@ export default function AgenceBiensPage() {
             hint="Optionnel"
           />
           <SelectField
-            label="Catégorie"
-            name="categorie_id"
-            options={categories.map((c) => ({ value: c.id, label: c.libelle }))}
-            value={formDraft.categorie_id}
-            onChange={(e) => setFormDraft((d) => ({ ...d, categorie_id: e.target.value }))}
+            label="Type"
+            name="type"
+            options={TYPE_OPTIONS}
+            value={formDraft.type}
+            onChange={(e) => setFormDraft((d) => ({ ...d, type: e.target.value }))}
             required
           />
           <SelectField
@@ -597,17 +622,20 @@ export default function AgenceBiensPage() {
           setDeleteError(null);
         }}
         onConfirm={handleConfirmDelete}
-        title="Supprimer le bien"
+        title="Masquer le bien"
         message={
           deleteTarget
-            ? `Masquer "${deleteTarget.designation || `Bien #${deleteTarget.id}`}" ? Il n'apparaîtra plus dans vos listes, mais ses lots et baux sont conservés (non supprimés). Impossible si l'un de ses lots a un bail actif.`
+            ? `Masquer "${deleteTarget.designation || `Bien #${deleteTarget.id}`}" ? Il ne sera plus visible dans vos listes (ses lots et baux restent conservés).`
             : ""
         }
-        confirmLabel="Supprimer"
+        confirmLabel="Masquer"
         danger
         isBusy={deleteBusy}
         error={deleteError}
       />
+
+      {/* ---- Détails d'un bien ---- */}
+      <BienDetailsModal bien={detailsTarget} onClose={() => setDetailsTarget(null)} />
     </div>
   );
 }
