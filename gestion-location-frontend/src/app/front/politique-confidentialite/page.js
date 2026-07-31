@@ -1,49 +1,81 @@
-import LegalPage from "@/components/LegalPage";
+"use client";
 
-export const metadata = { title: "Politique de confidentialité — FADAA Locative" };
+import Link from "next/link";
+import LegalPage from "@/components/LegalPage";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function PolitiqueConfidentialitePage() {
-  return (
-    <LegalPage title="Politique de confidentialité" updatedAt="28 juillet 2026">
-      <h2>1. Données collectées</h2>
-      <p>
-        Lors de la création d&apos;un compte et de l&apos;utilisation de la plateforme, nous collectons les données
-        nécessaires à la fourniture du service : identité, coordonnées, informations relatives aux biens, baux et
-        paiements que vous gérez.
-      </p>
+  const { t } = useLanguage();
+  const c = "legal.privacy.";
 
-      <h2>2. Finalités du traitement</h2>
-      <p>Ces données sont utilisées pour :</p>
+  return (
+    <LegalPage title={t(`${c}pageTitle`)} updatedAt={t(`${c}updatedAt`)}>
+      <p>{t(`${c}intro`)}</p>
+
+      <h2>{t(`${c}s1Title`)}</h2>
+      <p>{t(`${c}s1Intro1`)}</p>
       <ul>
-        <li>Créer et gérer votre compte et vos accès selon votre rôle ;</li>
-        <li>Assurer le suivi des biens, baux, paiements et permissions ;</li>
-        <li>Vous envoyer les notifications nécessaires au bon fonctionnement du service ;</li>
-        <li>Améliorer la sécurité et la fiabilité de la plateforme.</li>
+        {t(`${c}s1List1`).map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+      <p>{t(`${c}s1Intro2`)}</p>
+      <ul>
+        {t(`${c}s1List2`).map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+      <p>{t(`${c}s1Outro`)}</p>
+
+      <h2>{t(`${c}s2Title`)}</h2>
+      <p>{t(`${c}s2Intro`)}</p>
+      <ul>
+        {t(`${c}s2List`).map((item) => (
+          <li key={item}>{item}</li>
+        ))}
       </ul>
 
-      <h2>3. Partage des données</h2>
+      <h2>{t(`${c}s3Title`)}</h2>
+      <p>{t(`${c}s3P1`)}</p>
+      <p>{t(`${c}s3P2`)}</p>
+
+      <h2>{t(`${c}s4Title`)}</h2>
+      <p>{t(`${c}s4P1`)}</p>
+
+      <h2>{t(`${c}s5Title`)}</h2>
+      <p>{t(`${c}s5P1`)}</p>
+
+      <h2>{t(`${c}s6Title`)}</h2>
+      <p>{t(`${c}s6Intro`)}</p>
+      <ul>
+        {t(`${c}s6List`).map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
       <p>
-        Vos données ne sont partagées qu&apos;avec les personnes de votre organisation habilitées (propriétaire,
-        agence, gestionnaires) selon les permissions que vous définissez. Elles ne sont jamais vendues à des tiers.
+        {t(`${c}s6Before`)}
+        <Link href="/front/contact">
+          <strong>Contact</strong>
+        </Link>
+        {t(`${c}s6After`)}
       </p>
 
-      <h2>4. Conservation des données</h2>
-      <p>
-        Les données sont conservées pendant toute la durée d&apos;utilisation du compte, puis archivées ou
-        supprimées conformément aux obligations légales applicables à la gestion locative.
-      </p>
+      <h2>{t(`${c}s7Title`)}</h2>
+      <p>{t(`${c}s7P1`)}</p>
 
-      <h2>5. Sécurité</h2>
-      <p>
-        Les échanges avec la plateforme sont chiffrés et l&apos;accès aux données est restreint selon les rôles et
-        permissions attribués à chaque utilisateur.
-      </p>
+      <h2>{t(`${c}s8Title`)}</h2>
+      <p>{t(`${c}s8P1`)}</p>
 
-      <h2>6. Vos droits</h2>
+      <h2>{t(`${c}s9Title`)}</h2>
+      <p>{t(`${c}s9P1`)}</p>
+
+      <h2>{t(`${c}s10Title`)}</h2>
       <p>
-        Vous disposez d&apos;un droit d&apos;accès, de rectification et de suppression de vos données personnelles.
-        Pour exercer ces droits, contactez-nous via les moyens indiqués sur la page d&apos;accueil de la
-        plateforme.
+        {t(`${c}s10Before`)}
+        <Link href="/front/contact">
+          <strong>Contact</strong>
+        </Link>
+        {t(`${c}s10After`)}
       </p>
     </LegalPage>
   );

@@ -44,6 +44,7 @@ const STATUS_OPTIONS = Object.entries(ECHEANCE_STATUS_LABELS).map(([value, label
 const PAGE_SIZE = 10;
 
 export default function LocataireEcheancesPage() {
+  const { t } = useLanguage();
   const [echeances, setEcheances] = useState([]);
   const [biens, setBiens] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -100,7 +101,7 @@ export default function LocataireEcheancesPage() {
   const paginatedEcheances = filteredEcheances.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.common.loading")}</p>;
   }
 
   return (
@@ -110,10 +111,10 @@ export default function LocataireEcheancesPage() {
       {/* ---- Stats ---- */}
       <div className={styles.section}>
         <div className={styles.statsGrid}>
-          <StatCard icon="bi-calendar-check-fill" tone="primary" label="Échéances" value={stats.total} />
-          <StatCard icon="bi-check-circle-fill" tone="accent" label="Payées" value={stats.payees} />
-          <StatCard icon="bi-hourglass-split" tone="warning" label="Partielles" value={stats.partielles} />
-          <StatCard icon="bi-exclamation-octagon-fill" tone="danger" label="Impayées" value={stats.impayees} />
+          <StatCard icon="bi-calendar-check-fill" tone="primary" label={t("bo.locataireEcheances.statTotal")} value={stats.total} />
+          <StatCard icon="bi-check-circle-fill" tone="accent" label={t("bo.locataireEcheances.statPaid")} value={stats.payees} />
+          <StatCard icon="bi-hourglass-split" tone="warning" label={t("bo.locataireEcheances.statPartial")} value={stats.partielles} />
+          <StatCard icon="bi-exclamation-octagon-fill" tone="danger" label={t("bo.locataireEcheances.statUnpaid")} value={stats.impayees} />
         </div>
       </div>
 
@@ -122,11 +123,10 @@ export default function LocataireEcheancesPage() {
         <div>
           <h2 className={styles.sectionTitle}>
             <i className="bi bi-table" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-            Mes échéances
+            {t("bo.locataireEcheances.title")}
           </h2>
           <p className={styles.sectionSubtitle}>
-            {filteredEcheances.length} échéance(s) affichée(s) sur {echeances.length}, générées automatiquement à la
-            création de votre bail.
+            {t("bo.locataireEcheances.subtitle", { shown: filteredEcheances.length, total: echeances.length })}
           </p>
         </div>
 
@@ -137,7 +137,7 @@ export default function LocataireEcheancesPage() {
               setStatusFilter(v);
               setCurrentPage(1);
             }}
-            options={[{ value: "", label: "Tous les statuts" }, ...STATUS_OPTIONS]}
+            options={[{ value: "", label: t("bo.common.allStatuses") }, ...STATUS_OPTIONS]}
           />
           <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
           <FilterChip
@@ -147,7 +147,7 @@ export default function LocataireEcheancesPage() {
               setCurrentPage(1);
             }}
           >
-            En retard uniquement
+            {t("bo.common.overdueOnly")}
           </FilterChip>
         </div>
 
@@ -155,18 +155,18 @@ export default function LocataireEcheancesPage() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Référence</th>
-                <th>Logement</th>
-                <th>Date d&apos;échéance</th>
-                <th>Montant dû</th>
-                <th>Statut</th>
+                <th>{t("bo.locataireEcheances.colRef")}</th>
+                <th>{t("bo.locataireEcheances.colHome")}</th>
+                <th>{t("bo.locataireEcheances.colDueDate")}</th>
+                <th>{t("bo.locataireEcheances.colAmountDue")}</th>
+                <th>{t("bo.locataireEcheances.colStatus")}</th>
               </tr>
             </thead>
             <tbody>
               {filteredEcheances.length === 0 && (
                 <tr>
                   <td colSpan={5} className={styles.empty}>
-                    Aucune échéance ne correspond à ces critères.
+                    {t("bo.common.noMatch")}
                   </td>
                 </tr>
               )}
@@ -183,7 +183,7 @@ export default function LocataireEcheancesPage() {
                           className={styles.badge}
                           style={{ marginLeft: "0.5rem", background: "var(--danger-soft)", color: "var(--danger)" }}
                         >
-                          En retard
+                          {t("bo.common.overdueBadge")}
                         </span>
                       )}
                     </td>
@@ -202,7 +202,7 @@ export default function LocataireEcheancesPage() {
           {filteredEcheances.length > 0 && (
             <div className={styles.paginationRow}>
               <span>
-                Page {safePage} / {totalPages} · {filteredEcheances.length} échéance(s)
+                {t("bo.locataireEcheances.pageOf", { page: safePage, total: totalPages, count: filteredEcheances.length })}
               </span>
               <div className={styles.paginationButtons}>
                 <button
@@ -212,7 +212,7 @@ export default function LocataireEcheancesPage() {
                   disabled={safePage <= 1}
                 >
                   <i className="bi bi-chevron-left" />
-                  Précédent
+                  {t("bo.common.previous")}
                 </button>
                 <button
                   type="button"
@@ -220,7 +220,7 @@ export default function LocataireEcheancesPage() {
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={safePage >= totalPages}
                 >
-                  Suivant
+                  {t("bo.common.next")}
                   <i className="bi bi-chevron-right" />
                 </button>
               </div>

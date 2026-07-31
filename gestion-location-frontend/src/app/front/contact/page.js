@@ -5,51 +5,21 @@ import NavBar from "@/components/landing/NavBar";
 import Footer from "@/components/landing/Footer";
 import { createContactMessage } from "@/lib/contactMessages";
 import { extractErrorMessage } from "@/lib/apiClient";
+import { useLanguage } from "@/context/LanguageContext";
 import landingStyles from "../../landing.module.css";
 import styles from "./contact.module.css";
 
-const SUJETS = [
-  "Demande d'information",
-  "Demande de démo",
-  "Support / assistance",
-  "Partenariat",
-  "Presse",
-  "Autre",
-];
-
-const CONTACT_INFO = [
-  {
-    icon: "bi-envelope",
-    label: "E-mail",
-    value: "contact@fadaalocative.ma",
-    href: "mailto:contact@fadaalocative.ma",
-  },
-  {
-    icon: "bi-telephone",
-    label: "Téléphone",
-    value: "+212 5 00 00 00 00",
-    href: "tel:+212500000000",
-  },
-  {
-    icon: "bi-geo-alt",
-    label: "Adresse",
-    value: "123 Avenue Hassan II, Casablanca, Maroc",
-    href: null,
-  },
-  {
-    icon: "bi-clock",
-    label: "Horaires",
-    value: "Lun. – Ven., 9h – 18h",
-    href: null,
-  },
-];
+const CONTACT_ICONS = ["bi-envelope", "bi-telephone", "bi-geo-alt", "bi-clock"];
+const CONTACT_HREFS = ["mailto:contact@fadaalocative.ma", "tel:+212500000000", null, null];
 
 function ContactForm() {
+  const { t } = useLanguage();
+  const subjects = t("contact.subjects");
   const [prenom, setPrenom] = useState("");
   const [nom, setNom] = useState("");
   const [email, setEmail] = useState("");
   const [telephone, setTelephone] = useState("");
-  const [sujet, setSujet] = useState(SUJETS[0]);
+  const [sujet, setSujet] = useState(subjects[0]);
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState("idle"); // idle | busy | sent | error
   const [error, setError] = useState(null);
@@ -73,7 +43,7 @@ function ContactForm() {
       setNom("");
       setEmail("");
       setTelephone("");
-      setSujet(SUJETS[0]);
+      setSujet(subjects[0]);
       setMessage("");
     } catch (err) {
       setStatus("error");
@@ -88,10 +58,8 @@ function ContactForm() {
           <span className={styles.sentIcon}>
             <i className="bi bi-check-lg" />
           </span>
-          <h3 className={styles.sentTitle}>Message envoyé</h3>
-          <p className={styles.sentSub}>
-            Merci de nous avoir contactés — notre équipe vous répondra dans les plus brefs délais.
-          </p>
+          <h3 className={styles.sentTitle}>{t("contact.sentTitle")}</h3>
+          <p className={styles.sentSub}>{t("contact.sentSub")}</p>
         </div>
       </div>
     );
@@ -99,28 +67,28 @@ function ContactForm() {
 
   return (
     <form className={styles.formCard} onSubmit={handleSubmit}>
-      <h3 className={styles.formTitle}>Envoyez-nous un message</h3>
-      <p className={styles.formSub}>Tous les champs marqués d&apos;un * sont obligatoires.</p>
+      <h3 className={styles.formTitle}>{t("contact.formTitle")}</h3>
+      <p className={styles.formSub}>{t("contact.formSub")}</p>
 
       <div className={styles.formRow}>
         <label className={styles.fieldGroup}>
-          <span className={styles.fieldLabel}>Prénom *</span>
+          <span className={styles.fieldLabel}>{t("contact.firstNameLabel")}</span>
           <input
             type="text"
             value={prenom}
             onChange={(e) => setPrenom(e.target.value)}
-            placeholder="Votre prénom"
+            placeholder={t("contact.firstNamePlaceholder")}
             className={landingStyles.avisFormInput}
             required
           />
         </label>
         <label className={styles.fieldGroup}>
-          <span className={styles.fieldLabel}>Nom *</span>
+          <span className={styles.fieldLabel}>{t("contact.lastNameLabel")}</span>
           <input
             type="text"
             value={nom}
             onChange={(e) => setNom(e.target.value)}
-            placeholder="Votre nom"
+            placeholder={t("contact.lastNamePlaceholder")}
             className={landingStyles.avisFormInput}
             required
           />
@@ -129,32 +97,32 @@ function ContactForm() {
 
       <div className={styles.formRow}>
         <label className={styles.fieldGroup}>
-          <span className={styles.fieldLabel}>E-mail *</span>
+          <span className={styles.fieldLabel}>{t("contact.emailLabel")}</span>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="vous@exemple.com"
+            placeholder={t("contact.emailPlaceholder")}
             className={landingStyles.avisFormInput}
             required
           />
         </label>
         <label className={styles.fieldGroup}>
-          <span className={styles.fieldLabel}>Téléphone</span>
+          <span className={styles.fieldLabel}>{t("contact.phoneLabel")}</span>
           <input
             type="tel"
             value={telephone}
             onChange={(e) => setTelephone(e.target.value)}
-            placeholder="+212 6XX XXX XXX"
+            placeholder={t("contact.phonePlaceholder")}
             className={landingStyles.avisFormInput}
           />
         </label>
       </div>
 
       <label className={styles.fieldGroup}>
-        <span className={styles.fieldLabel}>Sujet *</span>
+        <span className={styles.fieldLabel}>{t("contact.subjectLabel")}</span>
         <select value={sujet} onChange={(e) => setSujet(e.target.value)} className={styles.select} required>
-          {SUJETS.map((s) => (
+          {subjects.map((s) => (
             <option key={s} value={s}>
               {s}
             </option>
@@ -163,11 +131,11 @@ function ContactForm() {
       </label>
 
       <label className={styles.fieldGroup}>
-        <span className={styles.fieldLabel}>Message *</span>
+        <span className={styles.fieldLabel}>{t("contact.messageLabel")}</span>
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Décrivez-nous votre besoin..."
+          placeholder={t("contact.messagePlaceholder")}
           className={landingStyles.avisFormTextarea}
           rows={5}
           required
@@ -177,32 +145,36 @@ function ContactForm() {
       {status === "error" && <p className={landingStyles.avisFormError}>{error}</p>}
 
       <button type="submit" className={landingStyles.avisFormSubmit} disabled={status === "busy"}>
-        {status === "busy" ? "Envoi..." : "Envoyer le message"}
+        {status === "busy" ? t("contact.submitting") : t("contact.submit")}
       </button>
     </form>
   );
 }
 
 export default function ContactPage() {
+  const { t } = useLanguage();
+  const CONTACT_INFO = [
+    { icon: CONTACT_ICONS[0], label: t("contact.labelEmail"), value: "contact@fadaalocative.ma", href: CONTACT_HREFS[0] },
+    { icon: CONTACT_ICONS[1], label: t("contact.labelPhone"), value: "+212 5 00 00 00 00", href: CONTACT_HREFS[1] },
+    { icon: CONTACT_ICONS[2], label: t("contact.labelAddress"), value: t("contact.addressValue"), href: CONTACT_HREFS[2] },
+    { icon: CONTACT_ICONS[3], label: t("contact.labelHours"), value: t("contact.hoursValue"), href: CONTACT_HREFS[3] },
+  ];
+
   return (
     <div className={landingStyles.page}>
       <NavBar />
 
       <section className={styles.hero}>
-        <span className={styles.heroEyebrow}>Contact</span>
-        <h1 className={styles.heroTitle}>Parlons de votre gestion locative</h1>
-        <p className={styles.heroSub}>
-          Une question, une démo à planifier, ou un partenariat à discuter ? Notre équipe vous répond rapidement.
-        </p>
+        <span className={styles.heroEyebrow}>{t("contact.eyebrow")}</span>
+        <h1 className={styles.heroTitle}>{t("contact.title")}</h1>
+        <p className={styles.heroSub}>{t("contact.sub")}</p>
       </section>
 
       <div className={styles.layout}>
         <div className={styles.infoCol}>
           <div>
-            <h2 className={styles.infoTitle}>Nos coordonnées</h2>
-            <p className={styles.infoSub}>
-              Préférez-vous nous écrire directement ? Retrouvez tous nos moyens de contact ci-dessous.
-            </p>
+            <h2 className={styles.infoTitle}>{t("contact.infoTitle")}</h2>
+            <p className={styles.infoSub}>{t("contact.infoSub")}</p>
           </div>
 
           {CONTACT_INFO.map((info) => (

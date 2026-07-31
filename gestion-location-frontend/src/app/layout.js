@@ -46,7 +46,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="fr" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="fr" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <body>
         <Script id="theme-init" strategy="beforeInteractive">
           {THEME_INIT_SCRIPT}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useTheme } from "@/context/ThemeContext";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "./ThemeToggle.module.css";
 
 /** Bascule clair/sombre — s'appuie sur les variables --primary/--border/...
@@ -9,9 +10,10 @@ import styles from "./ThemeToggle.module.css";
     espaces (admin, propriétaire, agence, locataire) sans configuration. */
 export default function ThemeToggle() {
   const { theme, setTheme } = useTheme();
+  const { t } = useLanguage();
 
   return (
-    <div className={styles.toggle} role="radiogroup" aria-label="Thème de l'interface">
+    <div className={styles.toggle} role="radiogroup" aria-label={t("bo.theme.ariaLabel")}>
       <button
         type="button"
         role="radio"
@@ -20,7 +22,7 @@ export default function ThemeToggle() {
         onClick={() => setTheme("light")}
       >
         <i className="bi bi-sun-fill" />
-        Clair
+        {t("bo.theme.light")}
       </button>
       <button
         type="button"
@@ -30,7 +32,7 @@ export default function ThemeToggle() {
         onClick={() => setTheme("dark")}
       >
         <i className="bi bi-moon-stars-fill" />
-        Sombre
+        {t("bo.theme.dark")}
       </button>
     </div>
   );

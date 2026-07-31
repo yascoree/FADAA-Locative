@@ -1,54 +1,72 @@
-import LegalPage from "@/components/LegalPage";
+"use client";
 
-export const metadata = { title: "Conditions d'utilisation — FADAA Locative" };
+import Link from "next/link";
+import LegalPage from "@/components/LegalPage";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function ConditionsUtilisationPage() {
+  const { t } = useLanguage();
+  const c = "legal.cgu.";
+
   return (
-    <LegalPage title="Conditions d'utilisation" updatedAt="28 juillet 2026">
-      <h2>1. Objet</h2>
-      <p>
-        Les présentes conditions d&apos;utilisation régissent l&apos;accès et l&apos;usage de la plateforme FADAA
-        Locative par ses utilisateurs (propriétaires, agences, gestionnaires et locataires). En créant un compte,
-        vous acceptez sans réserve l&apos;ensemble des dispositions décrites ci-dessous.
-      </p>
+    <LegalPage title={t(`${c}pageTitle`)} updatedAt={t(`${c}updatedAt`)}>
+      <p>{t(`${c}intro`)}</p>
 
-      <h2>2. Accès au service</h2>
-      <p>
-        L&apos;accès à la plateforme est réservé aux personnes disposant d&apos;un compte valide. Chaque utilisateur
-        est responsable de la confidentialité de ses identifiants et de toute activité effectuée depuis son compte.
-      </p>
+      <h2>{t(`${c}s1Title`)}</h2>
+      <p>{t(`${c}s1Intro`)}</p>
+      <ul>
+        {t(`${c}s1List`).map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+      <p>{t(`${c}s1Outro`)}</p>
 
-      <h2>3. Utilisation du service</h2>
-      <p>
-        Vous vous engagez à utiliser la plateforme conformément à sa destination : gestion de biens, de baux, de
-        paiements et des permissions associées. Toute utilisation frauduleuse, abusive ou contraire à la loi pourra
-        entraîner la suspension ou la suppression du compte concerné.
-      </p>
+      <h2>{t(`${c}s2Title`)}</h2>
+      <p>{t(`${c}s2Intro`)}</p>
+      <ul>
+        {t(`${c}s2List`).map((item) => (
+          <li key={item.role}>
+            <strong>{item.role}</strong> — {item.text}
+          </li>
+        ))}
+      </ul>
+      <p>{t(`${c}s2Outro`)}</p>
 
-      <h2>4. Données et contenus</h2>
-      <p>
-        Les données saisies sur la plateforme (biens, baux, paiements, documents) restent la propriété de
-        l&apos;utilisateur ou de l&apos;organisation qui les a créées. FADAA Locative s&apos;engage à ne les
-        utiliser que dans le cadre de la fourniture du service.
-      </p>
+      <h2>{t(`${c}s3Title`)}</h2>
+      <p>{t(`${c}s3Intro`)}</p>
+      <ul>
+        {t(`${c}s3List`).map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+      <p>{t(`${c}s3Outro`)}</p>
 
-      <h2>5. Responsabilité</h2>
-      <p>
-        FADAA Locative met tout en œuvre pour assurer la disponibilité et la fiabilité du service, sans pouvoir
-        garantir une absence totale d&apos;interruption. La plateforme ne saurait être tenue responsable des
-        litiges relevant de la relation contractuelle entre propriétaires, agences et locataires.
-      </p>
+      <h2>{t(`${c}s4Title`)}</h2>
+      <p>{t(`${c}s4P1`)}</p>
+      <p>{t(`${c}s4P2`)}</p>
 
-      <h2>6. Modification des conditions</h2>
-      <p>
-        Ces conditions peuvent être amenées à évoluer. Les utilisateurs seront informés de toute modification
-        substantielle avant son entrée en vigueur.
-      </p>
+      <h2>{t(`${c}s5Title`)}</h2>
+      <p>{t(`${c}s5P1`)}</p>
 
-      <h2>7. Contact</h2>
+      <h2>{t(`${c}s6Title`)}</h2>
+      <p>{t(`${c}s6P1`)}</p>
+
+      <h2>{t(`${c}s7Title`)}</h2>
+      <p>{t(`${c}s7P1`)}</p>
+
+      <h2>{t(`${c}s8Title`)}</h2>
+      <p>{t(`${c}s8P1`)}</p>
+
+      <h2>{t(`${c}s9Title`)}</h2>
+      <p>{t(`${c}s9P1`)}</p>
+
+      <h2>{t(`${c}s10Title`)}</h2>
       <p>
-        Pour toute question relative à ces conditions, vous pouvez nous contacter via les moyens indiqués sur la
-        page d&apos;accueil de la plateforme.
+        {t(`${c}s10Before`)}
+        <Link href="/front/contact">
+          <strong>Contact</strong>
+        </Link>
+        {t(`${c}s10After`)}
       </p>
     </LegalPage>
   );

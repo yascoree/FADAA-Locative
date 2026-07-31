@@ -102,15 +102,16 @@ html[data-theme="dark"] {
 
 html {
   height: 100%;
-}
-
-html,
-body {
   max-width: 100vw;
   overflow-x: hidden;
 }
 
 body {
+  /* Pas d'overflow-x ici : un overflow non-"visible" sur <body> en ferait un
+     scroll container distinct du viewport et casserait tout position: sticky
+     à l'intérieur (ex. le header de la landing page) — le clipping horizontal
+     de <html> ci-dessus suffit déjà à empêcher toute barre de défilement. */
+  max-width: 100vw;
   min-height: 100%;
   display: flex;
   flex-direction: column;

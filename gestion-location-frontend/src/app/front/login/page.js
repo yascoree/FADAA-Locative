@@ -11,7 +11,6 @@ import { requestPasswordReset } from "@/lib/passwordReset";
 import { fetchAvis } from "@/lib/avis";
 import Modal from "@/components/Modal";
 import LogoIcon from "@/components/LogoIcon";
-import LanguageSwitcher from "@/components/landing/LanguageSwitcher";
 import styles from "./login.module.css";
 
 const QUOTE_ROTATION_MS = 6000;
@@ -263,10 +262,6 @@ export default function LoginPage() {
 
       <main className={styles.formPanel}>
         <div className={styles.formCol}>
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.6rem" }}>
-            <LanguageSwitcher />
-          </div>
-
           <div className={styles.mobileLogo}>
             <span className={styles.logoMark}>
             <LogoIcon size={24} tone="light" />

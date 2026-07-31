@@ -21,8 +21,8 @@ import styles from "./landing.module.css";
 // chaque composant, pour rester traduisibles.
 const FEATURE_ICONS = ["bi-house", "bi-stack", "bi-people", "bi-credit-card", "bi-bar-chart", "bi-bell"];
 
-const ROLE_ICONS = ["bi-person-badge", "bi-briefcase", "bi-house-heart", "bi-speedometer2"];
-const ROLE_CTAS = [{ href: "/front/login?tab=register" }, { href: "/front/login?tab=register" }, null, null];
+const ROLE_ICONS = ["bi-person-badge", "bi-briefcase", "bi-house-heart"];
+const ROLE_CTAS = [{ href: "/front/login?tab=register" }, null, null];
 
 const WHY_FADAA_ICONS = ["bi-lock", "bi-cloud", "bi-lightning-charge", "bi-grid-3x3-gap"];
 
@@ -49,18 +49,6 @@ const TESTIMONIALS = [
     quote:
       "Les quittances prenaient un temps fou. Maintenant elles sont générées dès qu'un paiement solde l'échéance — les locataires les reçoivent instantanément.",
   },
-];
-
-const DASH_BIENS = [
-  { name: "Résidence Anfa — 4 lots", badge: "Actif" },
-  { name: "Villa Oasis — 1 lot", badge: "Actif" },
-  { name: "Immeuble Nour — 6 lots", badge: "Actif" },
-];
-
-const DASH_ACTIVITY = [
-  { text: "Paiement reçu", time: "il y a 2h" },
-  { text: "Bail créé", time: "il y a 5j" },
-  { text: "Relance d'impayé envoyée", time: "il y a 1j" },
 ];
 
 function Hero() {
@@ -103,42 +91,10 @@ function Hero() {
             <span className={styles.mockDot} />
             <span className={styles.mockDot} />
             <span className={styles.mockDot} />
+            <span className={styles.mockUrl}>app.fadaalocative.ma/dashboard</span>
           </div>
-          <div className={styles.mockBody}>
-            <div className={styles.mockTileRow}>
-              <div className={styles.mockTile}>
-                <span className={styles.mockTileLabel}>Encaissé</span>
-                <span className={styles.mockTileValue}>42 500 MAD</span>
-              </div>
-              <div className={`${styles.mockTile} ${styles.mockTileAccent}`}>
-                <span className={styles.mockTileLabel}>Occupation</span>
-                <span className={styles.mockTileValue}>87%</span>
-              </div>
-              <div className={styles.mockTile}>
-                <span className={styles.mockTileLabel}>Impayés</span>
-                <span className={styles.mockTileValue}>3</span>
-              </div>
-            </div>
-            <div className={styles.mockBars}>
-              {[45, 55, 50, 68, 60, 78, 62].map((h, i) => (
-                <span key={i} className={styles.mockBar} style={{ height: `${h}%` }} />
-              ))}
-            </div>
-            <div className={styles.mockList}>
-              <div className={styles.mockListRow}>
-                <span>K. Amrani — Résidence Anfa</span>
-                <span className={styles.mockStatusOk}>Payé</span>
-              </div>
-              <div className={styles.mockListRow}>
-                <span>S. Bennis — Villa Oasis</span>
-                <span className={styles.mockStatusOk}>Payé</span>
-              </div>
-              <div className={styles.mockListRow}>
-                <span>M. Idrissi — Immeuble Nour</span>
-                <span className={styles.mockStatusBad}>Impayé</span>
-              </div>
-            </div>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/landing/dashboard-screenshot.png" alt="" className={styles.mockScreenshot} />
         </div>
       </div>
     </section>
@@ -296,7 +252,7 @@ function HowItWorks() {
   const { t } = useLanguage();
   const steps = t("howItWorks.steps");
   return (
-    <section className={styles.section}>
+    <section id="solutions" className={styles.section}>
       <div className={styles.sectionHead}>
         <span className={styles.eyebrow}>{t("howItWorks.eyebrow")}</span>
         <h2 className={styles.sectionTitle}>{t("howItWorks.title")}</h2>
@@ -326,90 +282,33 @@ function PlatformShowcase() {
 
       <div className={styles.platformVisual} aria-hidden="true">
         <div className={styles.dashMock}>
-          <div className={styles.dashSidebar}>
-            <div className={styles.dashLogo}>
-              <span className={styles.logoMark} />
-              FADAA Locative
-            </div>
-            <nav className={styles.dashNav}>
-              <span className={styles.dashNavActive}>Dashboard</span>
-              <span>Biens</span>
-              <span>Baux</span>
-              <span>Locataires</span>
-              <span>Paiements</span>
-              <span>Quittances</span>
-              <span>Paramètres</span>
-            </nav>
+          <div className={styles.mockHeader}>
+            <span className={styles.mockDot} />
+            <span className={styles.mockDot} />
+            <span className={styles.mockDot} />
+            <span className={styles.mockUrl}>app.fadaalocative.ma/dashboard</span>
           </div>
-          <div className={styles.dashMain}>
-            <div className={styles.dashHeader}>
-              <span>Dashboard</span>
-              <span className={styles.dashUser}>Karim Tibichte</span>
-            </div>
-            <div className={styles.dashTiles}>
-              <div className={styles.dashTile}>
-                <span className={styles.dashTileLabel}>Encaissé (mois)</span>
-                <span className={styles.dashTileValue}>42 500 MAD</span>
-              </div>
-              <div className={styles.dashTile}>
-                <span className={styles.dashTileLabel}>Attendu (mois)</span>
-                <span className={styles.dashTileValue}>48 000 MAD</span>
-              </div>
-              <div className={`${styles.dashTile} ${styles.dashTileAccent}`}>
-                <span className={styles.dashTileLabel}>Occupation</span>
-                <span className={styles.dashTileValue}>87%</span>
-              </div>
-              <div className={styles.dashTile}>
-                <span className={styles.dashTileLabel}>Impayés</span>
-                <span className={styles.dashTileValue}>3</span>
-              </div>
-            </div>
-            <div className={styles.dashCols}>
-              <div className={styles.dashPanel}>
-                <h4>Biens</h4>
-                {DASH_BIENS.map((b) => (
-                  <div key={b.name} className={styles.dashPanelRow}>
-                    <span>{b.name}</span>
-                    <span className={styles.dashBadge}>{b.badge}</span>
-                  </div>
-                ))}
-              </div>
-              <div className={styles.dashPanel}>
-                <h4>Activité récente</h4>
-                {DASH_ACTIVITY.map((a) => (
-                  <div key={a.text} className={styles.dashPanelRow}>
-                    <span>{a.text}</span>
-                    <span className={styles.dashChip}>{a.time}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/landing/dashboard-screenshot.png" alt="" className={styles.mockScreenshot} />
         </div>
 
         <div className={styles.phonesStack}>
           <div className={styles.phoneBack}>
             <div className={styles.phoneScreen}>
               <span className={styles.phoneHeader}>Mes paiements</span>
-              {["Payé", "Payé", "Payé"].map((s, i) => (
-                <div key={i} className={styles.phoneListRow}>
-                  <span className={styles.phoneListLine} />
-                  <span className={styles.mockStatusOk}>{s}</span>
-                </div>
-              ))}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/landing/phone-card-total-paye.png" alt="" className={styles.phoneCardImg} />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/landing/phone-card-paye-ce-mois.png" alt="" className={styles.phoneCardImg} />
             </div>
           </div>
           <div className={styles.phoneFront}>
             <div className={styles.phoneScreen}>
               <span className={styles.phoneHeader}>Dashboard</span>
-              <div className={styles.phoneCardAccent}>
-                <span>Prochaine échéance</span>
-                <strong>3 500 MAD — 5 août</strong>
-              </div>
-              <div className={styles.phoneCard}>
-                <span>Mon bien</span>
-                <strong>Résidence Anfa — 3B</strong>
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/landing/phone-card-loyer.png" alt="" className={styles.phoneCardImg} />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/landing/phone-card-fin-bail.png" alt="" className={styles.phoneCardImg} />
             </div>
           </div>
         </div>
@@ -804,6 +703,30 @@ export default function RootPage() {
       router.replace(ROLE_DASHBOARD_PATH[user.role] || "/front/login");
     }
   }, [isLoading, user, router]);
+
+  // Chargement direct sur une URL avec ancre (#apropos, ...) ou arrivée depuis une
+  // autre page (ex: /front/contact -> /#partenaires) : le navigateur ne scrolle pas
+  // tout seul ici car le contenu (notamment les partenaires, chargés en async) n'est
+  // pas encore dans le DOM au moment du premier rendu — on retente jusqu'à ce que la
+  // cible apparaisse plutôt que de dépendre du scroll natif.
+  useEffect(() => {
+    if (isLoading || user) return;
+    const hash = window.location.hash?.slice(1);
+    if (!hash) return;
+    let attempts = 0;
+    let timer;
+    const tryScroll = () => {
+      const el = document.getElementById(hash);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else if (attempts < 20) {
+        attempts += 1;
+        timer = setTimeout(tryScroll, 100);
+      }
+    };
+    tryScroll();
+    return () => clearTimeout(timer);
+  }, [isLoading, user]);
 
   if (isLoading || user) {
     return (

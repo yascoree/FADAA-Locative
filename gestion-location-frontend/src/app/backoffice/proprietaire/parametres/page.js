@@ -8,6 +8,7 @@ import { fetchProfile, createProfile, updateProfile, uploadProfilePhoto, deleteP
 import TextField from "@/components/TextField";
 import PasswordChangeCard from "@/components/PasswordChangeCard";
 import ThemeToggle from "@/components/ThemeToggle";
+import LanguagePicker from "@/components/LanguagePicker";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -170,6 +171,9 @@ export default function ProprietaireParametresPage() {
           <ThemeToggle />
         </div>
       </div>
+
+      {/* ---- Langue ---- */}
+      <LanguagePicker styles={styles} />
 
       {/* ---- Compte ---- */}
       <div className={styles.section}>

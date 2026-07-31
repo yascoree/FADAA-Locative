@@ -20,7 +20,9 @@
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: var(--text);
   background: var(--page-bg);
-  overflow-x: hidden;
+  /* Pas d'overflow-x ici : un overflow non-"visible" sur cet ancestor du header
+     (.nav) en ferait un scroll container et casserait son position: sticky.
+     Le clipping horizontal est déjà assuré globalement par html/body (globals.css). */
 }
 
 .loadingScreen {
@@ -97,6 +99,8 @@
 
 .btnPrimary:hover {
   background: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px -12px rgba(136, 144, 99, 0.65);
 }
 
 .btnGhost {
@@ -108,6 +112,8 @@
 .btnGhost:hover {
   border-color: var(--primary);
   color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  transform: translateY(-2px);
 }
 
 .btnSecondary {
@@ -117,6 +123,8 @@
 
 .btnSecondary:hover {
   background: #c2a97e;
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px -14px rgba(58, 56, 38, 0.35);
 }
 
 .btnPrimaryLight {
@@ -126,12 +134,15 @@
 
 .btnPrimaryLight:hover {
   background: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px -14px rgba(0, 0, 0, 0.3);
 }
 
 .btnPrimary:active,
 .btnGhost:active,
-.btnPrimaryLight:active {
-  transform: translateY(1px);
+.btnPrimaryLight:active,
+.btnSecondary:active {
+  transform: translateY(0);
 }
 
 /* ---------- Nav ---------- */
@@ -190,6 +201,11 @@
   color: var(--text-muted);
   cursor: pointer;
   padding: 0;
+  transition: color 0.15s ease;
+}
+
+.langSwitch:hover {
+  color: var(--primary-dark);
 }
 
 .langSwitch i {
@@ -275,11 +291,17 @@
   font-weight: 650;
   padding: 0.6rem 1.2rem;
   border-radius: 999px;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .navRegister:hover {
   background: var(--secondary);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -10px rgba(58, 56, 38, 0.5);
+}
+
+.navRegister:active {
+  transform: translateY(0);
 }
 
 @media (max-width: 800px) {
@@ -386,6 +408,7 @@
 
 .mockHeader {
   display: flex;
+  align-items: center;
   gap: 0.4rem;
   padding: 0.85rem 1rem;
   border-bottom: 1px solid var(--border);
@@ -398,96 +421,20 @@
   background: var(--border);
 }
 
-.mockBody {
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.1rem;
-}
-
-.mockTileRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 0.6rem;
-}
-
-.mockTile {
-  border-radius: 12px;
-  padding: 0.75rem 0.8rem;
-  background: var(--tile-bg);
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.mockTileAccent {
-  background: var(--accent);
-}
-
-.mockTileLabel {
-  font-size: 0.66rem;
+.mockUrl {
+  margin-left: 0.5rem;
+  font-size: 0.62rem;
+  font-weight: 600;
   color: var(--text-muted);
+  background: var(--tile-bg);
+  padding: 0.22rem 0.65rem;
+  border-radius: 999px;
 }
 
-.mockTileAccent .mockTileLabel {
-  color: var(--secondary);
-  opacity: 0.7;
-}
-
-.mockTileValue {
-  font-size: 0.98rem;
-  font-weight: 700;
-  color: var(--secondary);
-}
-
-.mockBars {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.5rem;
-  height: 90px;
-  padding: 0 0.15rem;
-}
-
-.mockBar {
-  flex: 1;
-  border-radius: 5px 5px 0 0;
-  background: linear-gradient(180deg, var(--accent), var(--primary));
-}
-
-.mockList {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-
-.mockListRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  font-size: 0.82rem;
-  color: var(--text);
-  padding-bottom: 0.6rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.mockListRow:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.mockStatusOk {
-  font-weight: 700;
-  font-size: 0.78rem;
-  color: var(--primary-dark);
-  white-space: nowrap;
-}
-
-.mockStatusBad {
-  font-weight: 700;
-  font-size: 0.78rem;
-  color: #c1622f;
-  white-space: nowrap;
+.mockScreenshot {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 @media (max-width: 900px) {
@@ -508,6 +455,7 @@
   max-width: 1180px;
   margin: 0 auto;
   padding: clamp(2.5rem, 5vw, 4rem) 0 clamp(3rem, 6vw, 4.5rem);
+  scroll-margin-top: 96px;
 }
 
 .trust .sectionHead {
@@ -667,6 +615,9 @@
   max-width: 1180px;
   margin: 0 auto;
   padding: clamp(3rem, 6vw, 5rem) 1.5rem;
+  /* Compense le header sticky (~82px) pour que les liens d'ancre (#fonctionnalites,
+     #solutions, #apropos) ne fassent pas atterrir le titre de section sous le nav. */
+  scroll-margin-top: 96px;
 }
 
 .sectionAlt {
@@ -778,7 +729,7 @@
 
 .rolesGrid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.25rem;
 }
 
@@ -875,8 +826,16 @@
   color: var(--primary-dark);
 }
 
+.roleLink i {
+  transition: transform 0.15s ease;
+}
+
 .roleLink:hover {
   text-decoration: underline;
+}
+
+.roleLink:hover i {
+  transform: translateX(3px);
 }
 
 @media (max-width: 900px) {
@@ -983,7 +942,6 @@
 }
 
 .dashMock {
-  display: flex;
   width: 100%;
   max-width: 680px;
   background: var(--surface);
@@ -991,162 +949,6 @@
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 30px 60px -28px rgba(58, 56, 38, 0.25);
-}
-
-.dashSidebar {
-  width: 150px;
-  flex-shrink: 0;
-  background: var(--page-bg);
-  border-right: 1px solid var(--border);
-  padding: 1rem 0.75rem;
-}
-
-.dashLogo {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--secondary);
-  margin-bottom: 1.25rem;
-}
-
-.dashLogo .logoMark {
-  width: 1rem;
-  height: 1rem;
-  border-radius: 4px;
-}
-
-.dashNav {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  font-size: 0.72rem;
-  color: var(--text-muted);
-}
-
-.dashNav span {
-  padding: 0.4rem 0.55rem;
-  border-radius: 7px;
-}
-
-.dashNavActive {
-  background: var(--accent-soft);
-  color: var(--secondary);
-  font-weight: 650;
-}
-
-.dashMain {
-  flex: 1;
-  min-width: 0;
-  padding: 1rem 1.1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-.dashHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 0.8rem;
-  font-weight: 650;
-  color: var(--secondary);
-}
-
-.dashUser {
-  font-size: 0.7rem;
-  font-weight: 550;
-  color: var(--text-muted);
-}
-
-.dashTiles {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.5rem;
-}
-
-.dashTile {
-  background: var(--tile-bg);
-  border-radius: 10px;
-  padding: 0.5rem 0.55rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.dashTileAccent {
-  background: var(--accent);
-}
-
-.dashTileLabel {
-  font-size: 0.58rem;
-  color: var(--text-muted);
-}
-
-.dashTileAccent .dashTileLabel {
-  color: var(--secondary);
-  opacity: 0.7;
-}
-
-.dashTileValue {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--secondary);
-}
-
-.dashCols {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.6rem;
-}
-
-.dashPanel {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 0.6rem 0.65rem;
-}
-
-.dashPanel h4 {
-  font-size: 0.68rem;
-  font-weight: 650;
-  color: var(--secondary);
-  margin: 0 0 0.5rem;
-}
-
-.dashPanelRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.4rem;
-  font-size: 0.62rem;
-  color: var(--text);
-  padding: 0.3rem 0;
-  border-top: 1px solid var(--border);
-}
-
-.dashPanelRow:first-of-type {
-  border-top: none;
-}
-
-.dashBadge {
-  font-size: 0.56rem;
-  font-weight: 700;
-  color: var(--primary-dark);
-  background: rgba(136, 144, 99, 0.16);
-  padding: 0.12rem 0.4rem;
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-.dashChip {
-  font-size: 0.56rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  background: var(--page-bg);
-  padding: 0.12rem 0.4rem;
-  border-radius: 999px;
-  white-space: nowrap;
 }
 
 .phonesStack {
@@ -1186,7 +988,8 @@
   padding: 0.75rem 0.6rem;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.5rem;
+  overflow: hidden;
 }
 
 .phoneHeader {
@@ -1195,69 +998,14 @@
   color: var(--secondary);
 }
 
-.phoneCardAccent,
-.phoneCard {
-  border-radius: 9px;
-  padding: 0.5rem 0.55rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  font-size: 0.58rem;
-  color: var(--text-muted);
-}
-
-.phoneCardAccent {
-  background: var(--accent);
-}
-
-.phoneCardAccent strong {
-  color: var(--secondary);
-}
-
-.phoneCard {
-  background: var(--tile-bg);
-}
-
-.phoneCard strong {
-  color: var(--secondary);
-}
-
-.phoneCardAccent strong,
-.phoneCard strong {
-  font-size: 0.66rem;
-}
-
-.phoneListRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.4rem;
-  padding: 0.4rem 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.phoneListLine {
+.phoneCardImg {
   display: block;
-  height: 0.4rem;
-  width: 60%;
-  border-radius: 4px;
-  background: var(--border);
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
 }
 
 @media (max-width: 800px) {
-  .dashMock {
-    flex-direction: column;
-  }
-  .dashSidebar {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
-  .dashNav {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
   .phonesStack {
     display: none;
   }
@@ -1490,12 +1238,17 @@
   background: transparent;
   color: #fff;
   border: 1.5px solid rgba(255, 255, 255, 0.5);
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 
 .btnCtaGhost:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: #fff;
+  transform: translateY(-2px);
+}
+
+.btnCtaGhost:active {
+  transform: translateY(0);
 }
 
 /* ---------- Avis form card ---------- */
@@ -1587,11 +1340,17 @@
   font-weight: 650;
   padding: 0.75rem 1rem;
   cursor: pointer;
-  transition: background 0.15s ease, opacity 0.15s ease;
+  transition: background 0.15s ease, opacity 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .avisFormSubmit:hover:not(:disabled) {
   background: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px -14px rgba(136, 144, 99, 0.6);
+}
+
+.avisFormSubmit:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .avisFormSubmit:disabled {
@@ -1644,16 +1403,25 @@
   position: absolute;
   top: 1.1rem;
   right: 1.1rem;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: none;
+  border-radius: 50%;
   background: none;
   color: var(--text-muted);
   font-size: 1.1rem;
   cursor: pointer;
   line-height: 1;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 
 .demoModalClose:hover {
   color: var(--text);
+  background: var(--bg);
+  transform: scale(1.08);
 }
 
 .demoModalTitle {
@@ -1682,6 +1450,14 @@
   font-size: 0.8rem;
   font-weight: 650;
   color: var(--secondary);
+}
+
+/* CalendarInput vient de ui.module.css (styles partagés avec le backoffice) et
+   lit les variables --brand-* globales plutôt que la palette fixe de la landing
+   page — sans ce correctif son fond (blanc) ne matche pas celui des autres
+   champs de ce formulaire (var(--bg), ton crème). */
+.demoFieldGroup [class*="calendarTrigger"] {
+  background: var(--bg);
 }
 
 @media (max-width: 560px) {
@@ -2082,11 +1858,12 @@
   padding: 0.5rem 0.85rem;
   border-radius: 999px;
   white-space: nowrap;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, transform 0.15s ease;
 }
 
 .chatFooterCtaBtn:hover {
   background: var(--primary-dark);
+  transform: translateY(-1px);
 }
 
 .chatFooterCtaLink {
