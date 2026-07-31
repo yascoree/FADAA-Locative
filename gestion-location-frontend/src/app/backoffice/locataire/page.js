@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { fetchDashboardStats } from "@/lib/stats";
 import {
   fetchBaux,
@@ -44,6 +45,7 @@ function badgeClass(statut) {
 }
 
 export default function LocataireDashboardPage() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [baux, setBaux] = useState([]);
@@ -148,11 +150,13 @@ export default function LocataireDashboardPage() {
   }
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.common.loading")}</p>;
   }
 
   if (loadError || !stats) {
-    return <div className={`${styles.banner} ${styles.bannerError}`}>{loadError || "Impossible de charger les statistiques."}</div>;
+    return (
+      <div className={`${styles.banner} ${styles.bannerError}`}>{loadError || t("bo.locataireDashboard.unableToLoadStats")}</div>
+    );
   }
 
   const paidCount = bailEcheances.filter((e) => e.statut === ECHEANCE_STATUS.PAYE).length;
@@ -167,7 +171,9 @@ export default function LocataireDashboardPage() {
       {/* ---- Header ---- */}
       <div className={styles.dashboardHeader}>
         <div>
-          <h2 className={styles.dashboardGreeting}>Bonjour {user?.prenom || ""}, voici le résumé de votre location</h2>
+          <h2 className={styles.dashboardGreeting}>
+            {t("bo.locataireDashboard.greeting", { name: user?.prenom || "" })}
+          </h2>
         </div>
         <span className={styles.dashboardDate}>
           <i className="bi bi-calendar3" />
@@ -179,7 +185,7 @@ export default function LocataireDashboardPage() {
         <div className={styles.card}>
           <div className={styles.emptyState}>
             <i className="bi bi-house-slash" />
-            <p>Aucun bail actif pour le moment.</p>
+            <p>{t("bo.locataireDashboard.noActiveLease")}</p>
           </div>
         </div>
       ) : (
@@ -187,19 +193,24 @@ export default function LocataireDashboardPage() {
           {/* ---- Bannière prochaine échéance ---- */}
           <div className={styles.heroBanner}>
             <div>
-              <div className={styles.heroBannerLabel}>Prochaine échéance</div>
+              <div className={styles.heroBannerLabel}>{t("bo.locataireDashboard.nextDueDate")}</div>
               <div className={styles.heroBannerValue}>
-                {stats.prochaine_echeance_montant != null ? formatCurrency(stats.prochaine_echeance_montant) : "Aucune"}
+                {stats.prochaine_echeance_montant != null
+                  ? formatCurrency(stats.prochaine_echeance_montant)
+                  : t("bo.locataireDashboard.none")}
               </div>
               {stats.prochaine_echeance_date && (
                 <div className={styles.heroBannerSub}>
-                  À régler avant le {formatDate(stats.prochaine_echeance_date)} — {bienLotLabel(activeBail)}
+                  {t("bo.locataireDashboard.dueBefore", {
+                    date: formatDate(stats.prochaine_echeance_date),
+                    bienLot: bienLotLabel(activeBail),
+                  })}
                 </div>
               )}
             </div>
             <Link href="/backoffice/locataire/echeances" className={styles.heroBannerBtn}>
               <i className="bi bi-list-check" />
-              Voir mes échéances
+              {t("bo.locataireDashboard.seeMyDueDates")}
             </Link>
           </div>
 
@@ -207,18 +218,20 @@ export default function LocataireDashboardPage() {
           <div className={styles.miniStatsGrid}>
             <Link href="/backoffice/locataire/bail" className={`${styles.miniStatCard} ${styles.miniStatOlive}`}>
               <div className={styles.miniStatTop}>
-                <span className={styles.miniStatLabel}>Loyer mensuel</span>
+                <span className={styles.miniStatLabel}>{t("bo.locataireDashboard.monthlyRent")}</span>
                 <span className={styles.miniStatIcon}>
                   <i className="bi bi-cash-stack" />
                 </span>
               </div>
               <div className={styles.miniStatValue}>{formatCurrency(activeBail.loyer)}</div>
-              <div className={styles.miniStatSub}>{activeBail.charges ? "Charges incluses" : "Hors charges"}</div>
+              <div className={styles.miniStatSub}>
+                {activeBail.charges ? t("bo.locataireDashboard.chargesIncluded") : t("bo.locataireDashboard.chargesExcluded")}
+              </div>
             </Link>
 
             <Link href="/backoffice/locataire/paiements" className={`${styles.miniStatCard} ${styles.miniStatNavy}`}>
               <div className={styles.miniStatTop}>
-                <span className={styles.miniStatLabel}>Paiements à jour</span>
+                <span className={styles.miniStatLabel}>{t("bo.locataireDashboard.paymentsUpToDate")}</span>
                 <span className={styles.miniStatIcon}>
                   <i className="bi bi-check-lg" />
                 </span>
@@ -227,13 +240,15 @@ export default function LocataireDashboardPage() {
                 {paidCount} / {bailEcheances.length}
               </div>
               <div className={styles.miniStatSub}>
-                {latePaiementsCount === 0 ? "Historique sans incident" : `${latePaiementsCount} paiement(s) en retard`}
+                {latePaiementsCount === 0
+                  ? t("bo.locataireDashboard.noIncidentHistory")
+                  : t("bo.locataireDashboard.latePayments", { count: latePaiementsCount })}
               </div>
             </Link>
 
             <Link href="/backoffice/locataire/bail" className={`${styles.miniStatCard} ${styles.miniStatGold}`}>
               <div className={styles.miniStatTop}>
-                <span className={styles.miniStatLabel}>Fin du bail</span>
+                <span className={styles.miniStatLabel}>{t("bo.locataireDashboard.leaseEnd")}</span>
                 <span className={styles.miniStatIcon}>
                   <i className="bi bi-calendar-check" />
                 </span>
@@ -251,23 +266,23 @@ export default function LocataireDashboardPage() {
               <div className={styles.sectionHeaderRow}>
                 <h3 className={styles.cardTitle} style={{ marginBottom: 0 }}>
                   <i className="bi bi-receipt" style={{ color: "var(--primary)" }} />
-                  Historique des paiements
+                  {t("bo.locataireDashboard.paymentHistory")}
                 </h3>
                 <Link href="/backoffice/locataire/paiements" className={styles.viewAllLink}>
-                  Voir tout
+                  {t("bo.common.viewAll")}
                 </Link>
               </div>
               {recentPaiements.length === 0 ? (
-                <p className={styles.empty}>Aucun paiement enregistré pour le moment.</p>
+                <p className={styles.empty}>{t("bo.locataireDashboard.noPaymentsYet")}</p>
               ) : (
                 <div className={styles.tableWrap} style={{ boxShadow: "none", border: "none" }}>
                   <table className={styles.table}>
                     <thead>
                       <tr>
-                        <th>Période</th>
-                        <th>Montant</th>
-                        <th>Date de paiement</th>
-                        <th>Statut</th>
+                        <th>{t("bo.locataireDashboard.colPeriod")}</th>
+                        <th>{t("bo.locataireDashboard.colAmount")}</th>
+                        <th>{t("bo.locataireDashboard.colPaymentDate")}</th>
+                        <th>{t("bo.locataireDashboard.colStatus")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -278,7 +293,7 @@ export default function LocataireDashboardPage() {
                           <td>{formatDate(p.date_paiement)}</td>
                           <td>
                             <span className={`${styles.badge} ${isLatePaiement(p) ? styles.badgeWarning : styles.badgeActive}`}>
-                              {isLatePaiement(p) ? "Payé en retard" : "Payé"}
+                              {isLatePaiement(p) ? t("bo.locataireDashboard.paidLate") : t("bo.locataireDashboard.paid")}
                             </span>
                           </td>
                         </tr>
@@ -292,25 +307,25 @@ export default function LocataireDashboardPage() {
             <div className={styles.card}>
               <h3 className={styles.cardTitle}>
                 <i className="bi bi-house-door-fill" style={{ color: "var(--primary)" }} />
-                Mon logement
+                {t("bo.locataireDashboard.myHome")}
               </h3>
               <div className={styles.detailLine}>
-                <strong>Bien :</strong> {bien?.designation || `Bien #${activeBail.lot?.bien_id}`}
+                <strong>{t("bo.locataireDashboard.labelBien")}</strong> {bien?.designation || `Bien #${activeBail.lot?.bien_id}`}
               </div>
               <div className={styles.detailLine}>
-                <strong>Lot :</strong> {activeBail.lot?.reference || `Lot #${activeBail.lot_id}`}
+                <strong>{t("bo.locataireDashboard.labelLot")}</strong> {activeBail.lot?.reference || `Lot #${activeBail.lot_id}`}
               </div>
               {category && (
                 <div className={styles.detailLine}>
-                  <strong>Type :</strong> {category.libelle}
+                  <strong>{t("bo.locataireDashboard.labelType")}</strong> {category.libelle}
                 </div>
               )}
               <div className={styles.detailLine}>
-                <strong>Début du bail :</strong> {formatDate(activeBail.date_debut)}
+                <strong>{t("bo.locataireDashboard.labelLeaseStart")}</strong> {formatDate(activeBail.date_debut)}
               </div>
 
               <h3 className={styles.cardTitle} style={{ marginTop: "1.3rem", marginBottom: "0.5rem", fontSize: "0.9rem" }}>
-                Mon propriétaire
+                {t("bo.locataireDashboard.myOwner")}
               </h3>
               {proprietaire && (
                 <div className={styles.contactCard}>
@@ -329,9 +344,13 @@ export default function LocataireDashboardPage() {
                     <div className={styles.contactCardName}>
                       {proprietaire.prenom} {proprietaire.nom}
                     </div>
-                    <div className={styles.contactCardRole}>Propriétaire</div>
+                    <div className={styles.contactCardRole}>{t("bo.locataireDashboard.owner")}</div>
                   </div>
-                  <Link href="/backoffice/locataire/discussions" className={styles.contactCardBtn} title="Contacter">
+                  <Link
+                    href="/backoffice/locataire/discussions"
+                    className={styles.contactCardBtn}
+                    title={t("bo.locataireDashboard.contact")}
+                  >
                     <i className="bi bi-chat-dots" />
                   </Link>
                 </div>
@@ -345,14 +364,14 @@ export default function LocataireDashboardPage() {
               <div className={styles.sectionHeaderRow}>
                 <h3 className={styles.cardTitle} style={{ marginBottom: 0 }}>
                   <i className="bi bi-file-earmark-pdf-fill" style={{ color: "var(--primary)" }} />
-                  Mes quittances
+                  {t("bo.locataireDashboard.myReceipts")}
                 </h3>
                 <Link href="/backoffice/locataire/paiements" className={styles.viewAllLink}>
-                  Voir tout
+                  {t("bo.common.viewAll")}
                 </Link>
               </div>
               {recentQuittances.length === 0 ? (
-                <p className={styles.empty}>Aucune quittance pour le moment.</p>
+                <p className={styles.empty}>{t("bo.locataireDashboard.noReceiptsYet")}</p>
               ) : (
                 recentQuittances.map((q) => (
                   <div className={styles.dashQuittanceRow} key={q.id}>
@@ -361,9 +380,13 @@ export default function LocataireDashboardPage() {
                     </span>
                     <div className={styles.dashQuittanceBody}>
                       <div className={styles.dashQuittanceTitle}>
-                        Quittance — {formatDate(q.paiement?.date_paiement || q.date_generation)}
+                        {t("bo.locataireDashboard.receiptTitle", {
+                          date: formatDate(q.paiement?.date_paiement || q.date_generation),
+                        })}
                       </div>
-                      <div className={styles.dashQuittanceMeta}>Générée le {formatDate(q.date_generation)}</div>
+                      <div className={styles.dashQuittanceMeta}>
+                        {t("bo.locataireDashboard.generatedOn", { date: formatDate(q.date_generation) })}
+                      </div>
                     </div>
                     <button
                       type="button"
@@ -372,7 +395,7 @@ export default function LocataireDashboardPage() {
                       onClick={() => handleDownloadQuittance(q.id)}
                       disabled={downloadingId === q.id}
                     >
-                      {downloadingId === q.id ? "..." : "Télécharger"}
+                      {downloadingId === q.id ? t("bo.common.downloading") : t("bo.common.download")}
                     </button>
                   </div>
                 ))

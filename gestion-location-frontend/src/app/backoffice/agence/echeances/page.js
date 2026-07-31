@@ -362,6 +362,7 @@ export default function AgenceEcheancesPage() {
             }}
             options={[{ value: "", label: "Tous les statuts" }, ...STATUS_OPTIONS]}
           />
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
           <FilterChip
             checked={overdueOnly}
             onChange={(checked) => {
@@ -371,7 +372,6 @@ export default function AgenceEcheancesPage() {
           >
             En retard uniquement
           </FilterChip>
-          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>

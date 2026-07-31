@@ -21,13 +21,16 @@ from app.services import subscription_service
 from app.services.email_service import send_email
 from app.services.exceptions import BadRequest, Forbidden, NotFound
 
-PUBLIC_REGISTER_ROLES = (UtilisateurRole.PROPRIETAIRE, UtilisateurRole.GESTIONNAIRE)
+PUBLIC_REGISTER_ROLES = (UtilisateurRole.PROPRIETAIRE,)
 
 
 def register(db: Session, utilisateur_in: UtilisateurCreate) -> Utilisateur:
-    """Public registration — Proprietaire or Gestionnaire only (never Admin/Locataire)."""
+    """Public registration — Proprietaire only. A Gestionnaire has no self-service
+    signup: their account is created by a proprietaire (see
+    utilisateur_service.create_gestionnaire_invite), which is the only way they get
+    access. Admin/Locataire are also excluded (created via mandate or by an admin)."""
     if utilisateur_in.role not in PUBLIC_REGISTER_ROLES:
-        raise BadRequest("role must be PROPRIETAIRE or GESTIONNAIRE")
+        raise BadRequest("role must be PROPRIETAIRE")
 
     existing = db.query(Utilisateur).filter(Utilisateur.email == utilisateur_in.email).first()
     if existing:
@@ -126,4 +129,9 @@ def reset_password(db: Session, token: str, new_password: str) -> None:
         raise BadRequest("This link has already been used")
 
     utilisateur.mot_de_passe = hash_password(new_password)
+    if utilisateur.statut_compte == StatutCompte.INVITE_EN_ATTENTE:
+        # Un gestionnaire invité (voir create_gestionnaire_invite) est créé dans cet
+        # état avec un mot de passe aléatoire inutilisable : choisir son propre mot
+        # de passe via ce même flux d'activation le fait passer ACTIF.
+        utilisateur.statut_compte = StatutCompte.ACTIF
     db.commit()

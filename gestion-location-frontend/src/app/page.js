@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { ROLE_DASHBOARD_PATH } from "@/lib/roles";
 import { createAvis, fetchAvis } from "@/lib/avis";
 import { createDemandeDemo } from "@/lib/demandesDemo";
@@ -11,100 +12,19 @@ import { fetchPartenaires, PARTENAIRE_STATUS } from "@/lib/partenaires";
 import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import NavBar from "@/components/landing/NavBar";
 import Footer from "@/components/landing/Footer";
+import ChatBot from "@/components/landing/ChatBot";
 import CalendarInput from "@/components/CalendarInput";
 import styles from "./landing.module.css";
 
-const FEATURES = [
-  {
-    icon: "bi-house",
-    title: "Gestion des biens",
-    text: "Enregistrez immeubles, lots et documents dans un espace organisé.",
-  },
-  {
-    icon: "bi-stack",
-    title: "Gestion des baux",
-    text: "Créez un bail en quelques secondes — l'échéancier est généré automatiquement.",
-  },
-  {
-    icon: "bi-people",
-    title: "Gestion des locataires",
-    text: "Centralisez fiches, documents et historique de communication.",
-  },
-  {
-    icon: "bi-credit-card",
-    title: "Encaissement des loyers",
-    text: "Suivez les paiements, les soldes, et générez les quittances PDF automatiquement.",
-  },
-  {
-    icon: "bi-bar-chart",
-    title: "Tableau de bord analytique",
-    text: "Visibilité en temps réel sur les revenus, l'occupation et les impayés.",
-  },
-  {
-    icon: "bi-bell",
-    title: "Notifications push",
-    text: "Rappels automatiques pour les échéances, quittances et fins de bail.",
-  },
-];
+// Seules les icônes et les liens restent statiques ici — les textes viennent
+// des dictionnaires (voir src/locales/*.js) et sont assemblés par index dans
+// chaque composant, pour rester traduisibles.
+const FEATURE_ICONS = ["bi-house", "bi-stack", "bi-people", "bi-credit-card", "bi-bar-chart", "bi-bell"];
 
-const ROLES = [
-  {
-    icon: "bi-person-badge",
-    title: "Propriétaire",
-    text: "Gérez vos biens et vos baux en autonomie, ou déléguez à un gestionnaire de confiance tout en gardant un œil sur tout.",
-    cta: { label: "Créer un compte", href: "/front/login?tab=register" },
-  },
-  {
-    icon: "bi-briefcase",
-    title: "Gestionnaire / Agence",
-    text: "Gérez les biens de plusieurs propriétaires au même endroit, avec des permissions précises accordées par mandat.",
-    cta: { label: "Créer un compte", href: "/front/login?tab=register" },
-  },
-  {
-    icon: "bi-house-heart",
-    title: "Locataire",
-    text: "Consultez vos échéances, vos paiements et vos quittances. Votre propriétaire vous invite directement — aucune inscription nécessaire.",
-    cta: null,
-  },
-  {
-    icon: "bi-speedometer2",
-    title: "Administrateur",
-    text: "Supervise l'ensemble de la plateforme : utilisateurs, abonnements et journal d'activité, sur invitation uniquement.",
-    cta: null,
-  },
-];
+const ROLE_ICONS = ["bi-person-badge", "bi-briefcase", "bi-house-heart", "bi-speedometer2"];
+const ROLE_CTAS = [{ href: "/front/login?tab=register" }, { href: "/front/login?tab=register" }, null, null];
 
-const STEPS = [
-  "Créer l'agence",
-  "Ajouter les biens",
-  "Créer les baux",
-  "Assigner les locataires",
-  "Suivre les paiements",
-  "Générer les quittances",
-];
-
-const WHY_FADAA = [
-  {
-    icon: "bi-lock",
-    title: "Sécurisé",
-    text: "Données chiffrées et accès basé sur les rôles.",
-  },
-  {
-    icon: "bi-cloud",
-    title: "100% Cloud",
-    text: "Accédez à vos données partout, toujours synchronisées.",
-  },
-  {
-    icon: "bi-lightning-charge",
-    title: "Rapide",
-    text: "Réponses en moins de 500 ms sur les actions clés.",
-  },
-  {
-    icon: "bi-grid-3x3-gap",
-    title: "Multi-tenant",
-    text: "Données isolées par compte, conçu pour grandir.",
-  },
-];
+const WHY_FADAA_ICONS = ["bi-lock", "bi-cloud", "bi-lightning-charge", "bi-grid-3x3-gap"];
 
 const TESTIMONIALS = [
   {
@@ -144,38 +64,35 @@ const DASH_ACTIVITY = [
 ];
 
 function Hero() {
+  const { t } = useLanguage();
   const [showDemoModal, setShowDemoModal] = useState(false);
 
   return (
     <section className={styles.hero}>
       <div className={styles.heroText}>
-        <span className={styles.eyebrow}>La gestion locative, réinventée</span>
+        <span className={styles.eyebrow}>{t("hero.eyebrow")}</span>
         <h1 className={styles.headline}>
-          Gérez vos biens locatifs <span className={styles.headlineAccent}>plus intelligemment</span>
+          {t("hero.headline1")} <span className={styles.headlineAccent}>{t("hero.headlineAccent")}</span>
         </h1>
-        <p className={styles.subhead}>
-          FADAA Locative centralise vos biens, baux, locataires et paiements sur une seule plateforme — pour que les
-          agences et propriétaires passent moins de temps sur des tableurs et plus de temps à développer leur
-          portefeuille.
-        </p>
+        <p className={styles.subhead}>{t("hero.subhead")}</p>
         <div className={styles.heroActions}>
           <Link href="/front/login?tab=register" className={styles.btnPrimary}>
-            Commencer
+            {t("hero.ctaStart")}
           </Link>
           <button type="button" className={styles.btnSecondary} onClick={() => setShowDemoModal(true)}>
-            Demander une démo
+            {t("hero.ctaDemo")}
           </button>
         </div>
         {showDemoModal && <DemoRequestModal onClose={() => setShowDemoModal(false)} />}
         <div className={styles.statRow}>
           <span>
-            <strong>500+</strong> agences
+            <strong>500+</strong> {t("hero.statAgencies")}
           </span>
           <span>
-            <strong>12 000+</strong> lots gérés
+            <strong>12 000+</strong> {t("hero.statLots")}
           </span>
           <span>
-            <strong>99,9%</strong> de disponibilité
+            <strong>99,9%</strong> {t("hero.statUptime")}
           </span>
         </div>
       </div>
@@ -228,8 +145,24 @@ function Hero() {
   );
 }
 
+function PartnerMark({ p }) {
+  return p.logo ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={p.logo.startsWith("http") ? p.logo : `${API_BASE_URL}${p.logo}`}
+      alt={p.nom}
+      className={styles.partnerLogoItem}
+    />
+  ) : (
+    <span className={styles.logoItem}>{p.nom}</span>
+  );
+}
+
 function TrustBar() {
+  const { t } = useLanguage();
   const [partenaires, setPartenaires] = useState([]);
+  const [visible, setVisible] = useState(false);
+  const sectionRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -245,54 +178,73 @@ function TrustBar() {
     };
   }, []);
 
+  // Déclenche l'entrée animée une seule fois, quand la section atteint le
+  // viewport — pas au chargement de la page (elle est plus bas que le hero).
+  useEffect(() => {
+    const node = sectionRef.current;
+    if (!node || partenaires.length === 0) return undefined;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.2 }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [partenaires.length]);
+
   if (partenaires.length === 0) return null;
 
+  // Piste dupliquée pour un défilement en boucle parfaitement continu
+  // (translateX(-50%) ramène exactement au point de départ visuel).
+  const track = [...partenaires, ...partenaires];
+
   return (
-    <section id="partenaires" className={styles.trust}>
+    <section
+      id="partenaires"
+      ref={sectionRef}
+      className={`${styles.trust} ${visible ? styles.trustVisible : ""}`}
+    >
       <div className={styles.sectionHead}>
-        <span className={styles.eyebrow}>Partenaires</span>
-        <h2 className={styles.sectionTitle}>Ils nous font confiance</h2>
-        <p className={styles.sectionSub}>
-          Agences et propriétaires à travers le Maroc gèrent déjà leur portefeuille avec FADAA Locative.
-        </p>
+        <span className={styles.eyebrow}>{t("trust.eyebrow")}</span>
+        <h2 className={styles.sectionTitle}>{t("trust.title")}</h2>
+        <p className={styles.sectionSub}>{t("trust.sub")}</p>
       </div>
-      <div className={styles.logosRow}>
-        {partenaires.map((p) =>
-          p.logo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={p.id}
-              src={p.logo.startsWith("http") ? p.logo : `${API_BASE_URL}${p.logo}`}
-              alt={p.nom}
-              className={styles.partnerLogoItem}
-            />
-          ) : (
-            <span key={p.id} className={styles.logoItem}>
-              {p.nom}
-            </span>
-          )
-        )}
+      <div className={styles.marqueeViewport}>
+        <div className={styles.marqueeTrack}>
+          {track.map((p, i) => (
+            <div
+              className={`${styles.marqueeItem} ${i >= partenaires.length ? styles.marqueeItemDuplicate : ""}`}
+              key={`${p.id}-${i}`}
+              style={{ "--i": i % partenaires.length }}
+            >
+              <PartnerMark p={p} />
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
 }
 
 function Features() {
+  const { t } = useLanguage();
+  const items = t("features.items");
   return (
     <section id="fonctionnalites" className={styles.section}>
       <div className={styles.sectionHead}>
-        <span className={styles.eyebrow}>Fonctionnalités</span>
-        <h2 className={styles.sectionTitle}>Tout ce qu&apos;il faut pour gérer vos locations</h2>
-        <p className={styles.sectionSub}>
-          Une seule plateforme pour tout le cycle de vie locatif, de l&apos;ajout d&apos;un bien à l&apos;encaissement
-          du loyer.
-        </p>
+        <span className={styles.eyebrow}>{t("features.eyebrow")}</span>
+        <h2 className={styles.sectionTitle}>{t("features.title")}</h2>
+        <p className={styles.sectionSub}>{t("features.sub")}</p>
       </div>
       <div className={styles.featuresGrid}>
-        {FEATURES.map((f) => (
+        {items.map((f, i) => (
           <div key={f.title} className={styles.featureCard}>
             <span className={styles.featureIcon}>
-              <i className={`bi ${f.icon}`} />
+              <i className={`bi ${FEATURE_ICONS[i]}`} />
             </span>
             <h3 className={styles.featureTitle}>{f.title}</h3>
             <p className={styles.featureText}>{f.text}</p>
@@ -304,43 +256,54 @@ function Features() {
 }
 
 function Roles() {
+  const { t } = useLanguage();
+  const items = t("roles.items");
   return (
     <section id="roles" className={`${styles.section} ${styles.sectionAlt}`}>
       <div className={styles.sectionHead}>
-        <span className={styles.eyebrow}>Pour qui ?</span>
-        <h2 className={styles.sectionTitle}>Un espace pensé pour chaque rôle</h2>
-        <p className={styles.sectionSub}>Chacun voit exactement ce dont il a besoin, rien de plus.</p>
+        <span className={styles.eyebrow}>{t("roles.eyebrow")}</span>
+        <h2 className={styles.sectionTitle}>{t("roles.title")}</h2>
+        <p className={styles.sectionSub}>{t("roles.sub")}</p>
       </div>
       <div className={styles.rolesGrid}>
-        {ROLES.map((r) => (
-          <div key={r.title} className={styles.roleCard}>
-            <span className={styles.roleIcon}>
-              <i className={`bi ${r.icon}`} />
-            </span>
-            <h3 className={styles.roleTitle}>{r.title}</h3>
-            <p className={styles.roleText}>{r.text}</p>
-            {r.cta && (
-              <Link href={r.cta.href} className={styles.roleLink}>
-                {r.cta.label} <i className="bi bi-arrow-right" />
-              </Link>
-            )}
-          </div>
-        ))}
+        {items.map((r, i) => {
+          const isLocataire = i === 2;
+          const cta = ROLE_CTAS[i];
+          return (
+            <div
+              key={r.title}
+              className={`${styles.roleCard} ${isLocataire ? styles.roleCardFeatured : ""}`}
+            >
+              <span className={styles.roleIcon}>
+                <i className={`bi ${ROLE_ICONS[i]}`} />
+              </span>
+              <h3 className={styles.roleTitle}>{r.title}</h3>
+              <p className={styles.roleText}>{r.text}</p>
+              {cta && (
+                <Link href={cta.href} className={styles.roleLink}>
+                  {t("roles.createAccount")} <i className="bi bi-arrow-right" />
+                </Link>
+              )}
+            </div>
+          );
+        })}
       </div>
     </section>
   );
 }
 
 function HowItWorks() {
+  const { t } = useLanguage();
+  const steps = t("howItWorks.steps");
   return (
     <section className={styles.section}>
       <div className={styles.sectionHead}>
-        <span className={styles.eyebrow}>Solutions</span>
-        <h2 className={styles.sectionTitle}>Opérationnel en six étapes simples</h2>
+        <span className={styles.eyebrow}>{t("howItWorks.eyebrow")}</span>
+        <h2 className={styles.sectionTitle}>{t("howItWorks.title")}</h2>
       </div>
       <div className={styles.stepsTrack}>
         <span className={styles.stepsTrackLine} aria-hidden="true" />
-        {STEPS.map((label, i) => (
+        {steps.map((label, i) => (
           <div key={label} className={styles.stepItem}>
             <span className={`${styles.stepCircle} ${i === 0 ? styles.stepCircleActive : ""}`}>{i + 1}</span>
             <span className={styles.stepLabel}>{label}</span>
@@ -352,15 +315,13 @@ function HowItWorks() {
 }
 
 function PlatformShowcase() {
+  const { t } = useLanguage();
   return (
     <section className={`${styles.section} ${styles.sectionAlt}`}>
       <div className={styles.sectionHead}>
-        <span className={styles.eyebrow}>Produit</span>
-        <h2 className={styles.sectionTitle}>Une seule plateforme, du web au mobile</h2>
-        <p className={styles.sectionSub}>
-          Le même portefeuille, piloté depuis un dashboard complet au bureau et suivi en un coup d&apos;œil en
-          déplacement.
-        </p>
+        <span className={styles.eyebrow}>{t("platform.eyebrow")}</span>
+        <h2 className={styles.sectionTitle}>{t("platform.title")}</h2>
+        <p className={styles.sectionSub}>{t("platform.sub")}</p>
       </div>
 
       <div className={styles.platformVisual} aria-hidden="true">
@@ -458,24 +419,29 @@ function PlatformShowcase() {
 }
 
 function About() {
+  const { t } = useLanguage();
   return (
     <section id="apropos" className={styles.section}>
       <div className={styles.sectionHead}>
-        <span className={styles.eyebrow}>À propos</span>
-        <h2 className={styles.sectionTitle}>Adopté par les agences et propriétaires</h2>
-        <p className={styles.sectionSub}>
-          FADAA Locative est développé par IRMASERVICE pour simplifier la gestion locative au Maroc.
-        </p>
+        <span className={styles.eyebrow}>{t("about.eyebrow")}</span>
+        <h2 className={styles.sectionTitle}>{t("about.title")}</h2>
+        <p className={styles.sectionSub}>{t("about.sub")}</p>
       </div>
+      {/* Témoignages gardés en français quelle que soit la langue choisie : ce
+          sont des citations réelles attribuées à des personnes nommées, les
+          traduire romprait leur authenticité. */}
       <div className={styles.testimonialsGrid}>
-        {TESTIMONIALS.map((t) => (
-          <div key={t.name} className={`${styles.testimonialCard} ${t.accent ? styles.testimonialCardAccent : ""}`}>
-            <p className={styles.quoteText}>&ldquo;{t.quote}&rdquo;</p>
+        {TESTIMONIALS.map((item) => (
+          <div
+            key={item.name}
+            className={`${styles.testimonialCard} ${item.accent ? styles.testimonialCardAccent : ""}`}
+          >
+            <p className={styles.quoteText}>&ldquo;{item.quote}&rdquo;</p>
             <div className={styles.testimonialMeta}>
-              <span className={styles.testimonialAvatar}>{t.initials}</span>
+              <span className={styles.testimonialAvatar}>{item.initials}</span>
               <div>
-                <div className={styles.testimonialName}>{t.name}</div>
-                <div className={styles.testimonialRole}>{t.role}</div>
+                <div className={styles.testimonialName}>{item.name}</div>
+                <div className={styles.testimonialRole}>{item.role}</div>
               </div>
             </div>
           </div>
@@ -496,6 +462,7 @@ function Stars({ note }) {
 }
 
 function AvisForm() {
+  const { t } = useLanguage();
   const [rating, setRating] = useState(5);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -529,7 +496,7 @@ function AvisForm() {
     return (
       <div className={styles.avisFormCard}>
         <div className={styles.avisFormSentMsg}>
-          <i className="bi bi-check-circle-fill" /> Merci ! Votre avis sera publié après modération.
+          <i className="bi bi-check-circle-fill" /> {t("avis.thanks")}
         </div>
       </div>
     );
@@ -538,7 +505,7 @@ function AvisForm() {
   return (
     <form className={styles.avisFormCard} onSubmit={handleSubmit}>
       <div className={styles.avisFormHead}>
-        <h3>Laissez votre avis</h3>
+        <h3>{t("avis.formTitle")}</h3>
         <div className={styles.avisFormStars}>
           {[1, 2, 3, 4, 5].map((n) => (
             <button
@@ -559,7 +526,7 @@ function AvisForm() {
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Votre nom"
+          placeholder={t("avis.namePlaceholder")}
           className={styles.avisFormInput}
           required
         />
@@ -567,7 +534,7 @@ function AvisForm() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="Votre e-mail"
+          placeholder={t("avis.emailPlaceholder")}
           className={styles.avisFormInput}
           required
         />
@@ -576,7 +543,7 @@ function AvisForm() {
       <textarea
         value={comment}
         onChange={(e) => setComment(e.target.value)}
-        placeholder="Partagez votre expérience avec FADAA Locative..."
+        placeholder={t("avis.commentPlaceholder")}
         className={styles.avisFormTextarea}
         rows={3}
         required
@@ -585,13 +552,14 @@ function AvisForm() {
       {status === "error" && <p className={styles.avisFormError}>{error}</p>}
 
       <button type="submit" className={styles.avisFormSubmit} disabled={status === "busy"}>
-        {status === "busy" ? "Envoi..." : "Envoyer mon avis"}
+        {status === "busy" ? t("avis.submitting") : t("avis.submit")}
       </button>
     </form>
   );
 }
 
 function AvisSection() {
+  const { t } = useLanguage();
   const [avisList, setAvisList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -615,9 +583,9 @@ function AvisSection() {
   return (
     <section id="avis" className={styles.section}>
       <div className={styles.sectionHead}>
-        <span className={styles.eyebrow}>Avis</span>
-        <h2 className={styles.sectionTitle}>Ce que disent nos utilisateurs</h2>
-        <p className={styles.sectionSub}>Des avis vérifiés, publiés après modération.</p>
+        <span className={styles.eyebrow}>{t("avis.eyebrow")}</span>
+        <h2 className={styles.sectionTitle}>{t("avis.title")}</h2>
+        <p className={styles.sectionSub}>{t("avis.sub")}</p>
       </div>
 
       <AvisForm />
@@ -670,6 +638,7 @@ function toISODate(d) {
 }
 
 function DemoRequestModal({ onClose }) {
+  const { t } = useLanguage();
   const [nom, setNom] = useState("");
   const [email, setEmail] = useState("");
   const [telephone, setTelephone] = useState("+212 ");
@@ -709,49 +678,45 @@ function DemoRequestModal({ onClose }) {
   return (
     <div className={styles.demoOverlay} onClick={onClose}>
       <div className={styles.demoModalCard} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-        <button type="button" className={styles.demoModalClose} onClick={onClose} aria-label="Fermer">
+        <button type="button" className={styles.demoModalClose} onClick={onClose} aria-label={t("demo.close")}>
           <i className="bi bi-x-lg" />
         </button>
 
         {status === "sent" ? (
           <div className={styles.avisFormSentMsg}>
-            <i className="bi bi-check-circle-fill" /> Merci ! Votre demande a été transmise, notre équipe vous
-            recontactera rapidement.
+            <i className="bi bi-check-circle-fill" /> {t("demo.thanks")}
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
-            <h3 className={styles.demoModalTitle}>Demander une démo</h3>
-            <p className={styles.demoModalSub}>
-              Laissez-nous vos coordonnées et vos disponibilités, un membre de notre équipe vous recontactera pour
-              organiser une démonstration.
-            </p>
+            <h3 className={styles.demoModalTitle}>{t("demo.title")}</h3>
+            <p className={styles.demoModalSub}>{t("demo.sub")}</p>
 
             <label className={styles.demoFieldGroup}>
-              <span className={styles.demoFieldLabel}>Nom</span>
+              <span className={styles.demoFieldLabel}>{t("demo.nameLabel")}</span>
               <input
                 type="text"
                 value={nom}
                 onChange={(e) => setNom(e.target.value)}
-                placeholder="Votre nom"
+                placeholder={t("avis.namePlaceholder")}
                 className={styles.avisFormInput}
                 required
               />
             </label>
 
             <label className={styles.demoFieldGroup}>
-              <span className={styles.demoFieldLabel}>E-mail</span>
+              <span className={styles.demoFieldLabel}>{t("demo.emailLabel")}</span>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Votre e-mail"
+                placeholder={t("avis.emailPlaceholder")}
                 className={styles.avisFormInput}
                 required
               />
             </label>
 
             <label className={styles.demoFieldGroup}>
-              <span className={styles.demoFieldLabel}>Téléphone</span>
+              <span className={styles.demoFieldLabel}>{t("demo.phoneLabel")}</span>
               <input
                 type="tel"
                 value={telephone}
@@ -763,7 +728,7 @@ function DemoRequestModal({ onClose }) {
             </label>
 
             <label className={styles.demoFieldGroup}>
-              <span className={styles.demoFieldLabel}>Date souhaitée pour la démo</span>
+              <span className={styles.demoFieldLabel}>{t("demo.dateLabel")}</span>
               <CalendarInput
                 name="dateSouhaitee"
                 value={dateSouhaitee}
@@ -773,11 +738,11 @@ function DemoRequestModal({ onClose }) {
             </label>
 
             <label className={styles.demoFieldGroup}>
-              <span className={styles.demoFieldLabel}>Message (optionnel)</span>
+              <span className={styles.demoFieldLabel}>{t("demo.messageLabel")}</span>
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Précisez votre besoin"
+                placeholder={t("demo.messagePlaceholder")}
                 className={styles.avisFormTextarea}
                 rows={3}
               />
@@ -786,7 +751,7 @@ function DemoRequestModal({ onClose }) {
             {status === "error" && <p className={styles.avisFormError}>{error}</p>}
 
             <button type="submit" className={styles.avisFormSubmit} disabled={status === "busy"}>
-              {status === "busy" ? "Envoi..." : "Envoyer ma demande"}
+              {status === "busy" ? t("demo.submitting") : t("demo.submit")}
             </button>
           </form>
         )}
@@ -796,21 +761,20 @@ function DemoRequestModal({ onClose }) {
 }
 
 function CtaBanner() {
+  const { t } = useLanguage();
+  const why = t("cta.why");
   const [showDemoModal, setShowDemoModal] = useState(false);
 
   return (
     <section className={styles.section} style={{ paddingBottom: "1.5rem" }}>
       <div className={styles.ctaCard}>
-        <h2 className={styles.ctaTitle}>Prêt à simplifier votre gestion locative ?</h2>
-        <p className={styles.ctaSub}>
-          Rejoignez des centaines d&apos;agences et de propriétaires qui gèrent déjà leur portefeuille sur FADAA
-          Locative.
-        </p>
+        <h2 className={styles.ctaTitle}>{t("cta.title")}</h2>
+        <p className={styles.ctaSub}>{t("cta.sub")}</p>
         <div className={styles.ctaWhyGrid}>
-          {WHY_FADAA.map((w) => (
+          {why.map((w, i) => (
             <div key={w.title} className={styles.ctaWhyTile}>
               <span className={styles.ctaWhyIcon}>
-                <i className={`bi ${w.icon}`} />
+                <i className={`bi ${WHY_FADAA_ICONS[i]}`} />
               </span>
               <h3 className={styles.ctaWhyTitle}>{w.title}</h3>
               <p className={styles.ctaWhyText}>{w.text}</p>
@@ -819,10 +783,10 @@ function CtaBanner() {
         </div>
         <div className={styles.ctaActions}>
           <Link href="/front/login?tab=register" className={styles.btnPrimaryLight}>
-            Essai gratuit
+            {t("cta.ctaFree")}
           </Link>
           <button type="button" className={styles.btnCtaGhost} onClick={() => setShowDemoModal(true)}>
-            Demander une démo
+            {t("cta.ctaDemo")}
           </button>
         </div>
       </div>
@@ -862,6 +826,7 @@ export default function RootPage() {
       <AvisSection />
       <CtaBanner />
       <Footer />
+      <ChatBot />
     </div>
   );
 }

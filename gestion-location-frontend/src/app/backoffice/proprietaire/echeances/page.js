@@ -358,6 +358,7 @@ export default function ProprietaireEcheancesPage() {
             }}
             options={[{ value: "", label: "Tous les statuts" }, ...STATUS_OPTIONS]}
           />
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
           <FilterChip
             checked={overdueOnly}
             onChange={(checked) => {
@@ -367,7 +368,6 @@ export default function ProprietaireEcheancesPage() {
           >
             En retard uniquement
           </FilterChip>
-          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>

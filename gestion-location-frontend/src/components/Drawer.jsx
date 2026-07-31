@@ -12,7 +12,7 @@ import styles from "./ui.module.css";
     derrière consultable plutôt que de bloquer tout l'écran comme un Modal centré.
     `title` accepte n'importe quel contenu (ex: un en-tête d'identité riche avec
     avatar). */
-export default function Drawer({ isOpen, onClose, title, children }) {
+export default function Drawer({ isOpen, onClose, title, children, wide = false }) {
   useEffect(() => {
     if (!isOpen) return undefined;
     function handleKeyDown(e) {
@@ -26,7 +26,12 @@ export default function Drawer({ isOpen, onClose, title, children }) {
 
   return createPortal(
     <div className={styles.drawerOverlay} onClick={onClose}>
-      <div className={styles.drawerPanel} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+      <div
+        className={`${styles.drawerPanel} ${wide ? styles.drawerPanelWide : ""}`}
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className={styles.drawerHeader}>
           {title}
           <button type="button" className={styles.drawerClose} onClick={onClose} aria-label="Fermer">

@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useLanguage } from "@/context/LanguageContext";
+import LanguageSwitcher from "./LanguageSwitcher";
 import styles from "@/app/landing.module.css";
 
 export default function NavBar() {
+  const { t } = useLanguage();
+
   return (
     <header className={styles.nav}>
       <div className={styles.navInner}>
@@ -12,21 +16,19 @@ export default function NavBar() {
           <img src="/fadaa-logo-full-dark.png" alt="FADAA Locative" className={styles.brandLogoFull} />
         </Link>
         <nav className={styles.navLinks}>
-          <Link href="/#fonctionnalites">Fonctionnalités</Link>
-          <Link href="/#roles">Solutions</Link>
-          <Link href="/#apropos">À propos</Link>
-          <Link href="/front/contact">Contact</Link>
-          <Link href="/#partenaires">Partenaires</Link>
+          <Link href="/#fonctionnalites">{t("nav.fonctionnalites")}</Link>
+          <Link href="/#roles">{t("nav.solutions")}</Link>
+          <Link href="/#apropos">{t("nav.apropos")}</Link>
+          <Link href="/#partenaires">{t("nav.partenaires")}</Link>
+          <Link href="/front/contact">{t("nav.contact")}</Link>
         </nav>
         <div className={styles.navActions}>
-          <button type="button" className={styles.langSwitch}>
-            FR <i className="bi bi-chevron-down" />
-          </button>
+          <LanguageSwitcher />
           <Link href="/front/login" className={styles.navLogin}>
-            Connexion
+            {t("nav.connexion")}
           </Link>
           <Link href="/front/login?tab=register" className={styles.navRegister}>
-            Essai gratuit
+            {t("nav.essaiGratuit")}
           </Link>
         </div>
       </div>

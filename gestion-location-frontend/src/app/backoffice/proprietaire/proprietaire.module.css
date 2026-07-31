@@ -2245,7 +2245,10 @@
   position: relative;
   display: inline-flex;
   gap: 0.25rem;
-  background: #ebfadc;
+  /* var() plutôt que les teintes fixes d'origine : ce toggle vivait avec des
+     couleurs codées en dur, illisibles une fois le mode sombre activé (texte
+     var(--secondary) clair sur fond resté clair). */
+  background: var(--bg);
   border-radius: 999px;
   padding: 0.3rem;
   margin-bottom: 1rem;
@@ -2257,7 +2260,7 @@
   bottom: 0.3rem;
   left: 0;
   border-radius: 999px;
-  background: #b9e88a;
+  background: var(--primary);
   box-shadow: var(--shadow-sm);
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   z-index: 0;
@@ -2271,18 +2274,25 @@
   gap: 0.45rem;
   border: none;
   background: none;
-  color: var(--secondary);
-  opacity: 0.6;
+  color: var(--text-muted);
   font-size: 0.85rem;
   font-weight: 650;
   padding: 0.55rem 1.2rem;
   border-radius: 999px;
   cursor: pointer;
-  transition: opacity 0.25s ease;
+  transition: color 0.25s ease;
 }
 
 .discussionToggleBtn:hover {
-  opacity: 0.85;
+  color: var(--secondary);
+}
+
+.discussionToggleBtnActive {
+  color: #fff;
+}
+
+.discussionToggleBtnActive:hover {
+  color: #fff;
 }
 
 .discussionToggleBtnActive {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import {
   SUBSCRIPTION_STATUS,
@@ -25,6 +25,7 @@ import {
 } from "@/lib/subscriptions";
 import StatCard from "@/components/StatCard";
 import CountUp from "@/components/CountUp";
+import Drawer from "@/components/Drawer";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import FilterChip from "@/components/FilterChip";
 import FilterSelect from "@/components/FilterSelect";
@@ -213,6 +214,16 @@ export default function AdminAbonnementsPage() {
   const [usage, setUsage] = useState(null);
   const [usageLoading, setUsageLoading] = useState(false);
   const [detailBanner, setDetailBanner] = useState(null);
+
+  const plansScrollRef = useRef(null);
+
+  function scrollPlans(direction) {
+    const node = plansScrollRef.current;
+    if (!node) return;
+    const card = node.querySelector(`.${styles.planCard}`);
+    const amount = (card?.offsetWidth || 300) + 18; // largeur carte + gap
+    node.scrollBy({ left: direction * amount, behavior: "smooth" });
+  }
 
   const [changePlanOpen, setChangePlanOpen] = useState(false);
   const [changePlanTargetId, setChangePlanTargetId] = useState("");
@@ -528,10 +539,21 @@ export default function AdminAbonnementsPage() {
         </p>
         <Banner banner={planBanner} />
 
-        <div className={styles.plansGrid}>
+        <div className={styles.plansCarouselWrap}>
+          {sortedPlans.length > 1 && (
+            <button
+              type="button"
+              className={`${styles.plansNavBtn} ${styles.plansNavBtnPrev}`}
+              onClick={() => scrollPlans(-1)}
+              aria-label="Plans précédents"
+            >
+              <i className="bi bi-chevron-left" />
+            </button>
+          )}
+          <div className={styles.plansGrid} ref={plansScrollRef}>
           {(() => {
             const cheapestPaid = sortedPlans.find((p) => !p.is_trial);
-            return sortedPlans.map((plan) => {
+            return sortedPlans.map((plan, index) => {
               const isEditing = editingPlanId === plan.id;
               const impactCount = subscriptions.filter((s) => s.plan_id === plan.id).length;
               const tone = isEditing && editDraft ? capitalizeTone(editDraft.color) : planTones[plan.id];
@@ -539,6 +561,7 @@ export default function AdminAbonnementsPage() {
               return (
                 <div
                   key={plan.id}
+                  style={{ "--i": index }}
                   className={`${styles.planCard} ${styles[`planCard${tone}`]} ${
                     plan.is_active ? "" : styles.planCardInactive
                   } ${isEditing ? styles.planCardEditing : ""}`}
@@ -750,6 +773,17 @@ export default function AdminAbonnementsPage() {
               );
             });
           })()}
+          </div>
+          {sortedPlans.length > 1 && (
+            <button
+              type="button"
+              className={`${styles.plansNavBtn} ${styles.plansNavBtnNext}`}
+              onClick={() => scrollPlans(1)}
+              aria-label="Plans suivants"
+            >
+              <i className="bi bi-chevron-right" />
+            </button>
+          )}
         </div>
 
         {/* ---- Créer un plan ---- */}
@@ -1145,34 +1179,142 @@ export default function AdminAbonnementsPage() {
 
         {/* ---- Détail de l'abonnement (Voir) ---- */}
         {selectedRow && (
-          <div className={styles.detailCard}>
-            <div className={styles.detailHeader}>
-              <div className={styles.detailHeaderIdentity}>
-                <span className={styles.detailAvatar}>
-                  {`${selectedRow.user.prenom?.[0] || ""}${selectedRow.user.nom?.[0] || ""}`.toUpperCase() || "?"}
-                </span>
-                <div>
-                  <h3 className={styles.detailTitle}>
-                    {selectedRow.user.prenom} {selectedRow.user.nom}
-                  </h3>
-                  <div className={styles.detailHeaderTags}>
-                    <span
-                      className={`${styles.planPill} ${styles[`planPill${planTones[selectedRow.subscription.plan_id] || "Charcoal"}`]}`}
-                    >
-                      {selectedRow.subscription.plan.name}
-                    </span>
-                    <span className={`${styles.badge} ${badgeClass(selectedRow.subscription.status)}`}>
-                      {SUBSCRIPTION_STATUS_LABELS[selectedRow.subscription.status]}
-                    </span>
+          <Drawer
+            isOpen={!!selectedRow}
+            onClose={() => selectRow(null)}
+            wide
+            title={
+              <div className={styles.detailHeaderRow}>
+                <div className={styles.detailHeaderIdentity}>
+                  <span className={styles.detailAvatar}>
+                    {`${selectedRow.user.prenom?.[0] || ""}${selectedRow.user.nom?.[0] || ""}`.toUpperCase() || "?"}
+                  </span>
+                  <div>
+                    <h3 className={styles.detailTitle}>
+                      {selectedRow.user.prenom} {selectedRow.user.nom}
+                    </h3>
+                    <div className={styles.detailHeaderTags}>
+                      <span
+                        className={`${styles.planPill} ${styles[`planPill${planTones[selectedRow.subscription.plan_id] || "Charcoal"}`]}`}
+                      >
+                        {selectedRow.subscription.plan.name}
+                      </span>
+                      <span className={`${styles.badge} ${badgeClass(selectedRow.subscription.status)}`}>
+                        {SUBSCRIPTION_STATUS_LABELS[selectedRow.subscription.status]}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <button type="button" className={styles.btnOutline} onClick={() => selectRow(null)}>
-                <i className="bi bi-x-lg" />
-                Fermer
-              </button>
-            </div>
+                <div className={styles.detailHeaderActions}>
+                  <button type="button" className={styles.detailHeaderActionBtn} onClick={handleDetailSuspendToggle}>
+                    <i
+                      className={`bi ${selectedRow.subscription.status === SUBSCRIPTION_STATUS.SUSPENDU ? "bi-play-circle" : "bi-pause-circle"}`}
+                    />
+                    {selectedRow.subscription.status === SUBSCRIPTION_STATUS.SUSPENDU ? "Réactiver" : "Suspendre"}
+                  </button>
+                  {selectedRow.subscription.status !== SUBSCRIPTION_STATUS.RESILIE && (
+                    <button
+                      type="button"
+                      className={`${styles.detailHeaderActionBtn} ${styles.detailHeaderActionBtnDanger}`}
+                      onClick={handleDetailCancel}
+                    >
+                      <i className="bi bi-x-octagon" />
+                      Annuler
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={`${styles.detailHeaderActionBtn} ${changePlanOpen ? styles.detailHeaderActionBtnActive : ""}`}
+                    onClick={() => setChangePlanOpen((v) => !v)}
+                  >
+                    <i className="bi bi-arrow-left-right" />
+                    Changer le plan
+                  </button>
 
+                  {changePlanOpen && (
+                    <div className={styles.changePlanFlyout}>
+                      <div className={styles.changePlanFlyoutHeader}>
+                        <span className={styles.editFormTitle}>
+                          <i className="bi bi-arrow-left-right" />
+                          Choisir un nouveau plan
+                        </span>
+                        <button
+                          type="button"
+                          className={styles.iconBtn}
+                          onClick={() => setChangePlanOpen(false)}
+                          aria-label="Fermer"
+                        >
+                          <i className="bi bi-x-lg" />
+                        </button>
+                      </div>
+                      <Banner banner={changePlanBanner} />
+
+                      <div className={styles.planPickerGrid}>
+                        {activePlans.map((plan) => {
+                          const isCurrent = plan.id === selectedRow.subscription.plan_id;
+                          const isSelected = String(plan.id) === String(changePlanTargetId);
+                          const tone = planTones[plan.id] || "Charcoal";
+                          return (
+                            <button
+                              type="button"
+                              key={plan.id}
+                              className={`${styles.planPickerCard} ${styles[`planPickerCard${tone}`]} ${
+                                isSelected ? styles.planPickerCardSelected : ""
+                              }`}
+                              onClick={() => setChangePlanTargetId(String(plan.id))}
+                            >
+                              {isCurrent && <span className={styles.planPickerCurrentBadge}>Plan actuel</span>}
+                              <span className={styles.planPickerRadio}>
+                                <i className={`bi ${isSelected ? "bi-check-circle-fill" : "bi-circle"}`} />
+                              </span>
+                              <span className={styles.planPickerName}>{plan.name}</span>
+                              <span className={styles.planPickerPrice}>
+                                {plan.price} DH
+                                {priceUnit(plan) && <span className={styles.planPickerUnit}>{priceUnit(plan)}</span>}
+                              </span>
+                              <span className={styles.planPickerMeta}>{billingLabel(plan)}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {changePlanTarget && (
+                        <div className={styles.previewGrid}>
+                          {LIMIT_FIELDS.map((f) => (
+                            <div className={styles.limitItem} key={f.key}>
+                              <span className={styles.limitIcon}>
+                                <i className={`bi ${f.icon}`} />
+                              </span>
+                              <span className={styles.limitText}>
+                                {f.label}
+                                <span className={styles.limitValue}>{formatLimit(changePlanTarget[f.key])}</span>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className={styles.editActions}>
+                        <button
+                          type="button"
+                          className={styles.btn}
+                          onClick={handleConfirmChangePlan}
+                          disabled={changePlanBusy || Number(changePlanTargetId) === selectedRow.subscription.plan_id}
+                        >
+                          <i className="bi bi-check-lg" />
+                          {changePlanBusy ? "Application..." : "Confirmer le changement"}
+                        </button>
+                        <button type="button" className={styles.btnOutline} onClick={() => setChangePlanOpen(false)}>
+                          <i className="bi bi-x-lg" />
+                          Annuler
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            }
+          >
             <Banner banner={detailBanner} />
 
             <div className={styles.detailColumns}>
@@ -1312,101 +1454,7 @@ export default function AdminAbonnementsPage() {
               </div>
             )}
 
-            <div className={styles.detailActions}>
-              <button type="button" className={styles.btnLink} onClick={handleDetailSuspendToggle}>
-                <i className={`bi ${selectedRow.subscription.status === SUBSCRIPTION_STATUS.SUSPENDU ? "bi-play-circle" : "bi-pause-circle"}`} />
-                {selectedRow.subscription.status === SUBSCRIPTION_STATUS.SUSPENDU
-                  ? "Réactiver l'abonnement"
-                  : "Suspendre l'abonnement"}
-              </button>
-              {selectedRow.subscription.status !== SUBSCRIPTION_STATUS.RESILIE && (
-                <button type="button" className={`${styles.btnLink} ${styles.btnLinkDanger}`} onClick={handleDetailCancel}>
-                  <i className="bi bi-x-octagon" />
-                  Annuler l&apos;abonnement
-                </button>
-              )}
-              <button
-                type="button"
-                className={styles.btnOutline}
-                onClick={() => setChangePlanOpen((v) => !v)}
-                style={{ marginLeft: "auto" }}
-              >
-                <i className="bi bi-arrow-left-right" />
-                Changer le plan
-              </button>
-            </div>
-
-            {changePlanOpen && (
-              <div className={styles.changePlanPanel}>
-                <div className={styles.editFormTitle} style={{ marginBottom: "0.9rem" }}>
-                  <i className="bi bi-arrow-left-right" />
-                  Choisir un nouveau plan
-                </div>
-                <Banner banner={changePlanBanner} />
-
-                <div className={styles.planPickerGrid}>
-                  {activePlans.map((plan) => {
-                    const isCurrent = plan.id === selectedRow.subscription.plan_id;
-                    const isSelected = String(plan.id) === String(changePlanTargetId);
-                    const tone = planTones[plan.id] || "Charcoal";
-                    return (
-                      <button
-                        type="button"
-                        key={plan.id}
-                        className={`${styles.planPickerCard} ${styles[`planPickerCard${tone}`]} ${
-                          isSelected ? styles.planPickerCardSelected : ""
-                        }`}
-                        onClick={() => setChangePlanTargetId(String(plan.id))}
-                      >
-                        {isCurrent && <span className={styles.planPickerCurrentBadge}>Plan actuel</span>}
-                        <span className={styles.planPickerRadio}>
-                          <i className={`bi ${isSelected ? "bi-check-circle-fill" : "bi-circle"}`} />
-                        </span>
-                        <span className={styles.planPickerName}>{plan.name}</span>
-                        <span className={styles.planPickerPrice}>
-                          {plan.price} DH
-                          {priceUnit(plan) && <span className={styles.planPickerUnit}>{priceUnit(plan)}</span>}
-                        </span>
-                        <span className={styles.planPickerMeta}>{billingLabel(plan)}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {changePlanTarget && (
-                  <div className={styles.previewGrid}>
-                    {LIMIT_FIELDS.map((f) => (
-                      <div className={styles.limitItem} key={f.key}>
-                        <span className={styles.limitIcon}>
-                          <i className={`bi ${f.icon}`} />
-                        </span>
-                        <span className={styles.limitText}>
-                          {f.label}
-                          <span className={styles.limitValue}>{formatLimit(changePlanTarget[f.key])}</span>
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className={styles.editActions}>
-                  <button
-                    type="button"
-                    className={styles.btn}
-                    onClick={handleConfirmChangePlan}
-                    disabled={changePlanBusy || Number(changePlanTargetId) === selectedRow.subscription.plan_id}
-                  >
-                    <i className="bi bi-check-lg" />
-                    {changePlanBusy ? "Application..." : "Confirmer le changement"}
-                  </button>
-                  <button type="button" className={styles.btnOutline} onClick={() => setChangePlanOpen(false)}>
-                    <i className="bi bi-x-lg" />
-                    Annuler
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          </Drawer>
         )}
       </div>
     </div>

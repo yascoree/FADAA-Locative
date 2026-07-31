@@ -292,6 +292,13 @@
   animation: drawerSlideIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Variante plus large (prop `wide`) pour les détails denses (ex: usage vs
+   limites du plan + changement de plan) qui se sentaient à l'étroit dans les
+   480px par défaut. */
+.drawerPanelWide {
+  width: min(820px, 92vw);
+}
+
 @keyframes drawerSlideIn {
   from {
     transform: translateX(100%);

@@ -26,6 +26,21 @@ export async function fetchGestionnaires() {
   return data;
 }
 
+/** Crée un tout nouveau compte gestionnaire et lui donne l'accès (mandat) en une
+    seule étape — un gestionnaire ne pouvant plus s'inscrire lui-même, c'est
+    désormais le seul moyen pour lui d'obtenir un compte. Retourne aussi
+    invite_link quand aucun email n'a pu être envoyé (mode test, SMTP non
+    configuré) pour que le propriétaire puisse le transmettre manuellement. */
+export async function createGestionnaireInvite({ nom, prenom, email, bienId }) {
+  const { data } = await apiClient.post("/users/gestionnaires", {
+    nom,
+    prenom,
+    email,
+    bien_id: bienId || null,
+  });
+  return data;
+}
+
 export async function lookupLocataireByEmail(email) {
   const { data } = await apiClient.get("/users/lookup", { params: { email, role: "LOCATAIRE" } });
   return data;

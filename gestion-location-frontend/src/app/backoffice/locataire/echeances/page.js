@@ -7,6 +7,7 @@ import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import FilterChip from "@/components/FilterChip";
 import FilterSelect from "@/components/FilterSelect";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../locataire.module.css";
 
 function Banner({ banner }) {
@@ -138,6 +139,7 @@ export default function LocataireEcheancesPage() {
             }}
             options={[{ value: "", label: "Tous les statuts" }, ...STATUS_OPTIONS]}
           />
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
           <FilterChip
             checked={overdueOnly}
             onChange={(checked) => {
@@ -147,7 +149,6 @@ export default function LocataireEcheancesPage() {
           >
             En retard uniquement
           </FilterChip>
-          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>

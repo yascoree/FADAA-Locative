@@ -254,6 +254,24 @@ export default function AdminPartenairesPage() {
                   <div className={styles.partnerName}>{p.nom}</div>
                   {p.description && <div className={styles.partnerMeta}>{p.description}</div>}
                   {p.site_web && <div className={styles.partnerMeta}>{p.site_web}</div>}
+                  {p.email && (
+                    <div className={styles.partnerMeta}>
+                      <i className="bi bi-envelope" style={{ marginRight: "0.35rem" }} />
+                      {p.email}
+                    </div>
+                  )}
+                  {p.telephone && (
+                    <div className={styles.partnerMeta}>
+                      <i className="bi bi-telephone" style={{ marginRight: "0.35rem" }} />
+                      {p.telephone}
+                    </div>
+                  )}
+                  {p.adresse && (
+                    <div className={styles.partnerMeta}>
+                      <i className="bi bi-geo-alt" style={{ marginRight: "0.35rem" }} />
+                      {p.adresse}
+                    </div>
+                  )}
                 </div>
 
                 <span

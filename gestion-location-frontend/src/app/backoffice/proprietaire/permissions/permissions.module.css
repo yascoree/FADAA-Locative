@@ -52,6 +52,162 @@
   margin-bottom: 1.5rem;
 }
 
+/* ---------- Mode switch (créer / donner l'accès) ---------- */
+
+.modeSwitch {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+  background: var(--bg);
+  padding: 0.25rem;
+  border-radius: 999px;
+  margin-bottom: 1.2rem;
+  isolation: isolate;
+  overflow-x: auto;
+}
+
+.modeSwitchIndicator {
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  left: 0.25rem;
+  width: calc(50% - 0.25rem);
+  border-radius: 999px;
+  background: var(--primary);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.32s cubic-bezier(0.65, 0, 0.35, 1);
+  z-index: 0;
+}
+
+.modeSwitchBtn {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  /* Empêche le texte le plus long ("Créer un gestionnaire") d'être compressé
+     sous sa taille de contenu : avec flex:1 (flex-basis 0) dans un conteneur en
+     largeur automatique, le navigateur peut sous-estimer la largeur intrinsèque
+     et tronquer le texte sans ce plancher explicite. */
+  min-width: 12.5rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  font-weight: 650;
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  white-space: nowrap;
+  transition: color 0.22s ease;
+}
+
+.modeSwitchBtn:hover:not(.modeSwitchBtnActive) {
+  color: var(--secondary);
+}
+
+.modeSwitchBtnActive {
+  color: #fff;
+}
+
+/* ---------- Transition entre les deux formulaires du switch ---------- */
+
+.formPane {
+  animation: formPaneIn 0.32s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@keyframes formPaneIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.994);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .formPane {
+    animation: none;
+  }
+  .modeSwitchIndicator {
+    transition: none;
+  }
+}
+
+/* ---------- Lien d'invitation (mode test, sans SMTP) ---------- */
+
+.inviteLinkBox {
+  margin-top: 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  background: rgba(207, 187, 153, 0.16);
+  border: 1px solid rgba(207, 187, 153, 0.4);
+  border-radius: var(--radius-field);
+  padding: 0.85rem 1rem;
+  animation: bannerSlideIn 0.3s ease both;
+}
+
+.inviteLinkBox > i {
+  color: var(--primary);
+  font-size: 1.1rem;
+  margin-top: 0.1rem;
+  flex-shrink: 0;
+}
+
+.inviteLinkLabel {
+  font-size: 0.82rem;
+  color: var(--secondary);
+  line-height: 1.45;
+  margin-bottom: 0.55rem;
+}
+
+.inviteLinkRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.inviteLinkRow input {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+.inviteLinkRow button {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+
+.inviteLinkRow button:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
 .cardTitle {
   margin: 0 0 0.3rem;
   font-size: 1rem;

@@ -165,13 +165,17 @@ export default function AgenceBauxPage() {
 
   const lotOptions = useMemo(
     () => [
-      { value: "", label: "Sélectionner un lot...", disabled: true },
+      { value: "", label: "Sélectionner un lot..." },
+      // Volontairement toujours sélectionnable, même indisponible : un <option
+      // disabled> bloque l'interaction du <select> dans certains navigateurs
+      // tant que la sélection pointe dessus. On laisse l'utilisateur choisir
+      // n'importe quel lot et on l'informe (bannière ci-dessous + refus serveur
+      // en dernier recours) si son choix est occupé sur la période.
       ...creatableLots.map((l) => {
         const available = isLotAvailable(l.id, createDraft.date_debut, createDraft.date_fin);
         return {
           value: l.id,
           label: available ? lotLabel(l) : `${lotLabel(l)} — indisponible sur cette période`,
-          disabled: !available,
         };
       }),
     ],
@@ -179,21 +183,18 @@ export default function AgenceBauxPage() {
     [creatableLots, biens, baux, createDraft.date_debut, createDraft.date_fin]
   );
 
-  // Dès que les dates vident la sélection de lot (voir updateCreateDraftDate), on
-  // l'explique immédiatement — pas seulement au moment de cliquer sur "Créer".
+  // Reflète le lot réellement sélectionné (pas seulement une sélection vide) :
+  // dès que son choix actuel chevauche un bail existant sur la période saisie,
+  // on l'en informe immédiatement — pas seulement au moment de cliquer sur "Créer".
   const lotUnavailableBanner =
-    !createDraft.lot_id && (createDraft.date_debut || createDraft.date_fin)
+    createDraft.lot_id &&
+    (createDraft.date_debut || createDraft.date_fin) &&
+    !isLotAvailable(Number(createDraft.lot_id), createDraft.date_debut, createDraft.date_fin)
       ? { type: "error", message: "Ce lot est déjà occupé sur cette période. Choisissez un autre lot ou d'autres dates." }
       : null;
 
   function updateCreateDraftDate(field, value) {
-    setCreateDraft((d) => {
-      const next = { ...d, [field]: value };
-      if (next.lot_id && !isLotAvailable(Number(next.lot_id), next.date_debut, next.date_fin)) {
-        next.lot_id = "";
-      }
-      return next;
-    });
+    setCreateDraft((d) => ({ ...d, [field]: value }));
   }
 
   const filteredBaux = useMemo(() => {
@@ -251,7 +252,7 @@ export default function AgenceBauxPage() {
   async function handleSubmitCreate(e) {
     e.preventDefault();
     setCreateBanner(null);
-    if (!createDraft.lot_id) {
+    if (!createDraft.lot_id || lotUnavailableBanner) {
       createModalBodyRef.current?.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
@@ -568,7 +569,7 @@ export default function AgenceBauxPage() {
             options={lotOptions}
             value={createDraft.lot_id}
             onChange={(e) => setCreateDraft((d) => ({ ...d, lot_id: e.target.value }))}
-            hint="Choisissez les dates pour exclure les lots déjà occupés sur cette période."
+            hint="Les lots déjà occupés sur les dates choisies restent visibles, marqués « indisponible »."
             required
           />
           <SelectField
