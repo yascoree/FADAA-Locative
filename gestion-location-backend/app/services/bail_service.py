@@ -46,21 +46,28 @@ def _overlapping_bail(
 
 
 def _sync_lot_statut(db: Session, lot: Lot) -> None:
-    """Keeps Lot.statut in sync with whether it currently has an active bail.
-    Only toggles between DISPONIBLE and LOUE — a manually-set EN_MAINTENANCE or
-    HORS_SERVICE is left alone since it isn't tied to bail state."""
-    has_active_bail = (
-        db.query(Bail)
-        .filter(Bail.lot_id == lot.id, Bail.deleted_at.is_(None), Bail.statut == BailStatus.ACTIF)
-        .first()
-        is not None
-    )
-    if has_active_bail:
-        if lot.statut != LotStatus.LOUE:
-            lot.statut = LotStatus.LOUE
-            db.commit()
-    elif lot.statut == LotStatus.LOUE:
-        lot.statut = LotStatus.DISPONIBLE
+    """Keeps Lot.statut in sync with its baux: ACTIF -> LOUE, EN_ATTENTE (futur/
+    réservé) -> RESERVE, otherwise DISPONIBLE. Only toggles between those three —
+    a manually-set EN_MAINTENANCE or HORS_SERVICE is left alone since it isn't
+    tied to bail state."""
+    if lot.statut in (LotStatus.EN_MAINTENANCE, LotStatus.HORS_SERVICE):
+        return
+
+    statuts = {
+        statut
+        for (statut,) in db.query(Bail.statut)
+        .filter(Bail.lot_id == lot.id, Bail.deleted_at.is_(None), Bail.statut.in_(OCCUPYING_STATUSES))
+        .all()
+    }
+    if BailStatus.ACTIF in statuts:
+        target = LotStatus.LOUE
+    elif BailStatus.EN_ATTENTE in statuts:
+        target = LotStatus.RESERVE
+    else:
+        target = LotStatus.DISPONIBLE
+
+    if lot.statut != target:
+        lot.statut = target
         db.commit()
 
 

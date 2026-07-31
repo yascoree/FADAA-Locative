@@ -11,8 +11,9 @@ from app.database import Base
 class LotStatus(int, enum.Enum):
     DISPONIBLE = 1
     LOUE = 2
-    EN_MAINTENANCE = 3
-    HORS_SERVICE = 4
+    RESERVE = 3
+    EN_MAINTENANCE = 4
+    HORS_SERVICE = 5
 
 
 class Lot(Base):

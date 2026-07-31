@@ -11,8 +11,8 @@ export const BIEN_STATUS_LABELS = { 1: "Actif", 2: "Inactif", 3: "Archivé" };
 export const TYPE_BIEN = { IMMOBILIER: 1, VEHICULE: 2, MATERIEL: 3, AUTRE: 4 };
 export const TYPE_BIEN_LABELS = { 1: "Immobilier", 2: "Véhicule", 3: "Matériel", 4: "Autre" };
 
-export const LOT_STATUS = { DISPONIBLE: 1, LOUE: 2, EN_MAINTENANCE: 3, HORS_SERVICE: 4 };
-export const LOT_STATUS_LABELS = { 1: "Disponible", 2: "Loué", 3: "En maintenance", 4: "Hors service" };
+export const LOT_STATUS = { DISPONIBLE: 1, LOUE: 2, RESERVE: 3, EN_MAINTENANCE: 4, HORS_SERVICE: 5 };
+export const LOT_STATUS_LABELS = { 1: "Disponible", 2: "Loué", 3: "Réservé", 4: "En maintenance", 5: "Hors service" };
 
 export const BAIL_STATUS = { EN_ATTENTE: 1, ACTIF: 2, RESILIE: 3, EXPIRE: 4 };
 export const BAIL_STATUS_LABELS = { 1: "En attente", 2: "Actif", 3: "Résilié", 4: "Expiré" };
