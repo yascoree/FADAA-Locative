@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { extractErrorMessage } from "@/lib/apiClient";
+import { extractErrorMessage, isPlanLimitError } from "@/lib/apiClient";
 import {
   fetchBiens,
   fetchLots,
@@ -21,6 +21,8 @@ import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import FilterSelect from "@/components/FilterSelect";
+import PlanLimitPopup from "@/components/PlanLimitPopup";
+import { usePlanGate } from "@/hooks/usePlanGate";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -76,6 +78,8 @@ export default function ProprietaireLotsPage() {
   const [formDraft, setFormDraft] = useState(EMPTY_FORM);
   const [formBusy, setFormBusy] = useState(false);
   const [formBanner, setFormBanner] = useState(null);
+  const [planLimitMessage, setPlanLimitMessage] = useState(null);
+  const { checkBeforeOpen } = usePlanGate("lots");
 
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -151,6 +155,11 @@ export default function ProprietaireLotsPage() {
   const availableCategories = categories.filter((c) => c.type_bien === formBienType);
 
   function openCreate() {
+    const blockMessage = checkBeforeOpen();
+    if (blockMessage) {
+      setPlanLimitMessage(blockMessage);
+      return;
+    }
     setFormMode("create");
     setFormTargetId(null);
     setFormDraft({ ...EMPTY_FORM, bien_id: biens[0] ? String(biens[0].id) : "" });
@@ -206,7 +215,11 @@ export default function ProprietaireLotsPage() {
       }
       setFormOpen(false);
     } catch (err) {
-      setFormBanner({ type: "error", message: extractErrorMessage(err) });
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setFormBanner({ type: "error", message: extractErrorMessage(err) });
+      }
     } finally {
       setFormBusy(false);
     }
@@ -233,6 +246,7 @@ export default function ProprietaireLotsPage() {
 
   return (
     <div>
+      <PlanLimitPopup message={planLimitMessage} onClose={() => setPlanLimitMessage(null)} />
       <Banner banner={loadError ? { type: "error", message: loadError } : null} />
 
       {/* ---- Stats ---- */}

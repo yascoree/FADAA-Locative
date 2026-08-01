@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { extractErrorMessage } from "@/lib/apiClient";
+import { extractErrorMessage, isPlanLimitError } from "@/lib/apiClient";
 import {
   fetchBiens,
   fetchLots,
@@ -24,6 +24,8 @@ import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import RadioGroupField from "@/components/RadioGroupField";
 import FilterSelect from "@/components/FilterSelect";
+import PlanLimitPopup from "@/components/PlanLimitPopup";
+import { usePlanGate } from "@/hooks/usePlanGate";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -88,6 +90,8 @@ export default function ProprietaireBauxPage() {
   const [createDraft, setCreateDraft] = useState(EMPTY_CREATE_FORM);
   const [createBusy, setCreateBusy] = useState(false);
   const [createBanner, setCreateBanner] = useState(null);
+  const [planLimitMessage, setPlanLimitMessage] = useState(null);
+  const { checkBeforeOpen } = usePlanGate("baux_actifs");
   const createModalBodyRef = useRef(null);
 
   const [editTarget, setEditTarget] = useState(null);
@@ -223,6 +227,11 @@ export default function ProprietaireBauxPage() {
   const paginatedBaux = filteredBaux.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   function openCreate() {
+    const blockMessage = checkBeforeOpen();
+    if (blockMessage) {
+      setPlanLimitMessage(blockMessage);
+      return;
+    }
     setCreateDraft({
       ...EMPTY_CREATE_FORM,
       lot_id: lots[0] ? String(lots[0].id) : "",
@@ -262,7 +271,11 @@ export default function ProprietaireBauxPage() {
       setBaux((prev) => [...prev, { ...created, locataire, lot }]);
       setCreateOpen(false);
     } catch (err) {
-      setCreateBanner({ type: "error", message: extractErrorMessage(err) });
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setCreateBanner({ type: "error", message: extractErrorMessage(err) });
+      }
     } finally {
       setCreateBusy(false);
     }
@@ -303,7 +316,11 @@ export default function ProprietaireBauxPage() {
       setEditTarget(null);
       setEditDraft(null);
     } catch (err) {
-      setEditBanner({ type: "error", message: extractErrorMessage(err) });
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setEditBanner({ type: "error", message: extractErrorMessage(err) });
+      }
     } finally {
       setEditBusy(false);
     }
@@ -330,6 +347,7 @@ export default function ProprietaireBauxPage() {
 
   return (
     <div>
+      <PlanLimitPopup message={planLimitMessage} onClose={() => setPlanLimitMessage(null)} />
       <Banner banner={loadError ? { type: "error", message: loadError } : null} />
 
       {/* ---- Stats ---- */}

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
+import { extractErrorMessage, isPlanLimitError, API_BASE_URL } from "@/lib/apiClient";
 import { fetchLocataires, createLocataire } from "@/lib/tenants";
 import { fetchBiens, fetchBaux, fetchEcheances, fetchPaiements, BAIL_STATUS, BAIL_STATUS_LABELS, ECHEANCE_STATUS } from "@/lib/properties";
 import { ACCOUNT_STATUS, ACCOUNT_STATUS_LABELS } from "@/lib/users";
@@ -14,6 +14,8 @@ import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import FilterChip from "@/components/FilterChip";
 import FilterSelect from "@/components/FilterSelect";
+import PlanLimitPopup from "@/components/PlanLimitPopup";
+import { usePlanGate } from "@/hooks/usePlanGate";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -90,6 +92,8 @@ export default function ProprietaireLocatairesPage() {
   const [formDraft, setFormDraft] = useState(EMPTY_FORM);
   const [formBusy, setFormBusy] = useState(false);
   const [formBanner, setFormBanner] = useState(null);
+  const [planLimitMessage, setPlanLimitMessage] = useState(null);
+  const { checkBeforeOpen } = usePlanGate("locataires");
 
   const [selectedId, setSelectedId] = useState(null);
 
@@ -180,6 +184,11 @@ export default function ProprietaireLocatairesPage() {
   const selected = locataires.find((l) => l.id === selectedId) || null;
 
   function openCreate() {
+    const blockMessage = checkBeforeOpen();
+    if (blockMessage) {
+      setPlanLimitMessage(blockMessage);
+      return;
+    }
     setFormDraft(EMPTY_FORM);
     setFormBanner(null);
     setFormOpen(true);
@@ -215,7 +224,11 @@ export default function ProprietaireLocatairesPage() {
       setLocataires((prev) => [...prev, created]);
       setFormOpen(false);
     } catch (err) {
-      setFormBanner({ type: "error", message: extractErrorMessage(err) });
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setFormBanner({ type: "error", message: extractErrorMessage(err) });
+      }
     } finally {
       setFormBusy(false);
     }
@@ -227,6 +240,7 @@ export default function ProprietaireLocatairesPage() {
 
   return (
     <div>
+      <PlanLimitPopup message={planLimitMessage} onClose={() => setPlanLimitMessage(null)} />
       <Banner banner={loadError ? { type: "error", message: loadError } : null} />
 
       {/* ---- Stats ---- */}

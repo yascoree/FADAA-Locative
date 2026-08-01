@@ -6,7 +6,17 @@ import { extractErrorMessage } from "@/lib/apiClient";
 import { useAuth } from "@/context/AuthContext";
 import { LOT_STATUS_LABELS, BAIL_STATUS_LABELS } from "@/lib/properties";
 import { fetchDashboardStats, fetchRevenueStats } from "@/lib/stats";
-import { fetchMySubscription, fetchMyUsage, LIMIT_FIELDS, LIMIT_TO_USAGE_KEY, UNLIMITED, formatLimit } from "@/lib/subscriptions";
+import {
+  fetchMySubscription,
+  fetchMyUsage,
+  LIMIT_FIELDS,
+  LIMIT_TO_USAGE_KEY,
+  UNLIMITED,
+  formatLimit,
+  isSubscriptionUsable,
+  trialInfo,
+  subscriptionStatusLabel,
+} from "@/lib/subscriptions";
 import CountUp from "@/components/CountUp";
 import styles from "./proprietaire.module.css";
 
@@ -23,14 +33,6 @@ function usageFillClass(percent) {
   if (percent >= 100) return `${styles.usageFill} ${styles.usageFillDanger}`;
   if (percent >= 75) return `${styles.usageFill} ${styles.usageFillWarning}`;
   return styles.usageFill;
-}
-
-function trialInfo(subscription) {
-  if (!subscription?.plan?.is_trial || !subscription.trial_end) return null;
-  const daysRemaining = Math.ceil((new Date(subscription.trial_end) - new Date()) / 86400000);
-  if (daysRemaining < 0) return { state: "expired", daysRemaining: 0 };
-  if (daysRemaining <= 3) return { state: "warning", daysRemaining };
-  return { state: "active", daysRemaining };
 }
 
 function trialPillClass(state) {
@@ -181,6 +183,7 @@ export default function ProprietaireDashboardPage() {
 
   const today = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
   const trial = trialInfo(subscription);
+  const subscriptionBlocked = subscription ? !isSubscriptionUsable(subscription) : false;
 
   if (isLoading) {
     return <p>Chargement...</p>;
@@ -210,6 +213,19 @@ export default function ProprietaireDashboardPage() {
           {today}
         </span>
       </div>
+
+      {subscriptionBlocked && (
+        <div className={`${styles.banner} ${styles.bannerError}`} style={{ marginBottom: "1.4rem" }}>
+          <i className="bi bi-exclamation-triangle-fill" />
+          <span>
+            {subscription.plan?.is_trial
+              ? "Votre période d'essai est terminée."
+              : `Votre abonnement « ${subscription.plan?.name} » est ${subscriptionStatusLabel(subscription, subscriptionBlocked).toLowerCase()}.`}{" "}
+            Vous pouvez toujours consulter vos données, mais la création de nouveaux biens, lots, baux, gestionnaires
+            ou quittances est bloquée. <Link href="/front/contact">Contactez-nous</Link> pour le renouveler.
+          </span>
+        </div>
+      )}
 
       {/* ---- Tuiles ---- */}
       <div className={styles.heroTilesGrid}>
@@ -422,8 +438,15 @@ export default function ProprietaireDashboardPage() {
                     {subscription.plan.price} MAD · {subscription.plan.duration_days}j
                   </div>
                 </div>
-                <span className={styles.badge} style={{ background: "var(--primary-soft)", color: "#4e5738" }}>
-                  Actif
+                <span
+                  className={styles.badge}
+                  style={
+                    subscriptionBlocked
+                      ? { background: "var(--danger-soft)", color: "var(--danger)" }
+                      : { background: "var(--primary-soft)", color: "#4e5738" }
+                  }
+                >
+                  {subscriptionStatusLabel(subscription, subscriptionBlocked)}
                 </span>
               </div>
 

@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models.utilisateur import Utilisateur
 from app.schemas.paiement import PaiementAnnulation, PaiementCreate, PaiementRead
 from app.services import paiement_service
-from app.services.exceptions import BadRequest, Forbidden, NotFound
+from app.services.exceptions import BadRequest, Forbidden, NotFound, PaymentRequired
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -33,6 +33,8 @@ def create_paiement(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except Forbidden as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except PaymentRequired as exc:
+        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=str(exc))
 
 
 @router.get("/{paiement_id}", response_model=PaiementRead)

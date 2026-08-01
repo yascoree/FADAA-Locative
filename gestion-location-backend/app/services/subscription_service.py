@@ -75,6 +75,37 @@ def assign_plan(db: Session, owner_id: int, plan: SubscriptionPlan) -> Subscript
     return subscription
 
 
+def is_active(subscription: Subscription) -> bool:
+    """True if `subscription` currently grants access: status ACTIF and not past
+    its end_date (trial and paid periods both use end_date, see assign_plan/
+    create_trial_subscription)."""
+    if subscription.status != SubscriptionStatus.ACTIF:
+        return False
+    if subscription.end_date and subscription.end_date < datetime.utcnow():
+        return False
+    return True
+
+
+def expire_overdue_subscriptions(db: Session) -> int:
+    """Flips ACTIF subscriptions past their end_date (trial or paid) to EXPIRE.
+    Meant to run daily alongside the other scheduled jobs (see app.scheduler)."""
+    now = datetime.utcnow()
+    overdue = (
+        db.query(Subscription)
+        .filter(
+            Subscription.deleted_at.is_(None),
+            Subscription.status == SubscriptionStatus.ACTIF,
+            Subscription.end_date.isnot(None),
+            Subscription.end_date < now,
+        )
+        .all()
+    )
+    for subscription in overdue:
+        subscription.status = SubscriptionStatus.EXPIRE
+    db.commit()
+    return len(overdue)
+
+
 def suspend(db: Session, subscription: Subscription) -> Subscription:
     subscription.status = SubscriptionStatus.SUSPENDU
     db.commit()
@@ -100,6 +131,12 @@ def cancel(db: Session, subscription: Subscription) -> Subscription:
 
 def extend(db: Session, subscription: Subscription, new_end_date: datetime) -> Subscription:
     subscription.end_date = new_end_date
+    # Sur un plan d'essai, end_date EST la date de fin d'essai : les laisser
+    # diverger ferait dire à l'UI deux choses contradictoires sur le même
+    # abonnement (badge "Expiré" basé sur end_date, pastille "X j restants"
+    # basée sur trial_end resté à son ancienne valeur).
+    if subscription.plan.is_trial:
+        subscription.trial_end = new_end_date
     db.commit()
     db.refresh(subscription)
     return subscription

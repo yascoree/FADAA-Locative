@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
+import { extractErrorMessage, isPlanLimitError, API_BASE_URL } from "@/lib/apiClient";
 import { useAuth } from "@/context/AuthContext";
 import {
   fetchBiens,
@@ -25,6 +25,8 @@ import SelectField from "@/components/SelectField";
 import FilterSelect from "@/components/FilterSelect";
 import MapPicker from "@/components/MapPicker";
 import BienDetailsModal from "@/components/BienDetailsModal";
+import PlanLimitPopup from "@/components/PlanLimitPopup";
+import { usePlanGate } from "@/hooks/usePlanGate";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -79,6 +81,8 @@ export default function ProprietaireBiensPage() {
   const [formDraft, setFormDraft] = useState(EMPTY_FORM);
   const [formBusy, setFormBusy] = useState(false);
   const [formBanner, setFormBanner] = useState(null);
+  const [planLimitMessage, setPlanLimitMessage] = useState(null);
+  const { checkBeforeOpen } = usePlanGate("biens");
 
   const [editingPhotos, setEditingPhotos] = useState([]);
   const [stagedFiles, setStagedFiles] = useState([]);
@@ -132,6 +136,11 @@ export default function ProprietaireBiensPage() {
   const paginatedBiens = filteredBiens.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   function openCreate() {
+    const blockMessage = checkBeforeOpen();
+    if (blockMessage) {
+      setPlanLimitMessage(blockMessage);
+      return;
+    }
     setFormMode("create");
     setFormTargetId(null);
     setFormDraft({ ...EMPTY_FORM });
@@ -271,7 +280,11 @@ export default function ProprietaireBiensPage() {
       }
       setFormOpen(false);
     } catch (err) {
-      setFormBanner({ type: "error", message: extractErrorMessage(err) });
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setFormBanner({ type: "error", message: extractErrorMessage(err) });
+      }
     } finally {
       setFormBusy(false);
     }
@@ -298,6 +311,7 @@ export default function ProprietaireBiensPage() {
 
   return (
     <div>
+      <PlanLimitPopup message={planLimitMessage} onClose={() => setPlanLimitMessage(null)} />
       <Banner banner={loadError ? { type: "error", message: loadError } : null} />
 
       {/* ---- Stats ---- */}

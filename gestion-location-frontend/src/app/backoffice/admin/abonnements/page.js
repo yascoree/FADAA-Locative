@@ -1,15 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import {
   SUBSCRIPTION_STATUS,
   SUBSCRIPTION_STATUS_LABELS,
+  PLAN_CHANGE_REQUEST_STATUS,
   UNLIMITED,
   LIMIT_FIELDS,
   LIMIT_TO_USAGE_KEY,
   PLAN_COLOR_OPTIONS,
   formatLimit,
+  capitalizeTone,
+  billingLabel,
+  priceUnit,
+  planIcon,
   fetchUsers,
   fetchPlans,
   fetchSubscriptions,
@@ -22,6 +28,8 @@ import {
   updatePlan,
   deletePlan,
   setPlanActive,
+  fetchPlanChangeRequests,
+  trialInfo,
 } from "@/lib/subscriptions";
 import StatCard from "@/components/StatCard";
 import CountUp from "@/components/CountUp";
@@ -73,30 +81,6 @@ function badgeClass(status) {
 function formatDate(value) {
   if (!value) return "—";
   return new Date(value).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
-}
-
-function capitalizeTone(color) {
-  return color ? color[0].toUpperCase() + color.slice(1) : "Olive";
-}
-
-function planIcon(plan, isPopular) {
-  if (plan.is_trial) return "bi-clock-history";
-  if (isPopular) return "bi-lightning-charge-fill";
-  return "bi-building-fill";
-}
-
-function billingLabel(plan) {
-  if (plan.is_trial) return `${plan.duration_days} jour${plan.duration_days > 1 ? "s" : ""} d'essai`;
-  if (plan.duration_days >= 28 && plan.duration_days <= 31) return "Facturation mensuelle";
-  if (plan.duration_days >= 360 && plan.duration_days <= 370) return "Facturation annuelle";
-  return `Cycle de ${plan.duration_days} jours`;
-}
-
-function priceUnit(plan) {
-  if (plan.is_trial) return null;
-  if (plan.duration_days >= 28 && plan.duration_days <= 31) return "/ mois";
-  if (plan.duration_days >= 360 && plan.duration_days <= 370) return "/ an";
-  return null;
 }
 
 function usersLine(impactCount, plan) {
@@ -153,14 +137,6 @@ function diffEntries(plan, draft) {
 
 const PAGE_SIZE = 10;
 
-function trialInfo(subscription) {
-  if (!subscription.plan?.is_trial || !subscription.trial_end) return null;
-  const daysRemaining = Math.ceil((new Date(subscription.trial_end) - new Date()) / 86400000);
-  if (daysRemaining < 0) return { state: "expired", daysRemaining: 0 };
-  if (daysRemaining <= 3) return { state: "warning", daysRemaining };
-  return { state: "active", daysRemaining };
-}
-
 function trialPillClass(state) {
   if (state === "expired") return styles.trialPillExpired;
   if (state === "warning") return styles.trialPillWarning;
@@ -178,6 +154,9 @@ export default function AdminAbonnementsPage() {
   const [users, setUsers] = useState([]);
   const [plans, setPlans] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
+  // Juste le compte pour le badge du bouton vers /abonnements/demandes — le
+  // détail (approuver/rejeter) vit sur cette page dédiée, pas ici.
+  const [planChangeRequests, setPlanChangeRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
@@ -234,10 +213,16 @@ export default function AdminAbonnementsPage() {
     async function init() {
       setIsLoading(true);
       try {
-        const [userList, planList, subList] = await Promise.all([fetchUsers(), fetchPlans(), fetchSubscriptions()]);
+        const [userList, planList, subList, requestList] = await Promise.all([
+          fetchUsers(),
+          fetchPlans(),
+          fetchSubscriptions(),
+          fetchPlanChangeRequests(),
+        ]);
         setUsers(userList);
         setPlans(planList);
         setSubscriptions(subList);
+        setPlanChangeRequests(requestList);
       } catch (err) {
         setLoadError(extractErrorMessage(err));
       } finally {
@@ -274,6 +259,11 @@ export default function AdminAbonnementsPage() {
     const expiredSubs = subscriptions.filter((s) => s.status === SUBSCRIPTION_STATUS.EXPIRE).length;
     return { totalUsers: users.length, activeSubs, trialActive, expiredSubs };
   }, [users, subscriptions]);
+
+  const pendingRequestsCount = useMemo(
+    () => planChangeRequests.filter((r) => r.statut === PLAN_CHANGE_REQUEST_STATUS.EN_ATTENTE).length,
+    [planChangeRequests]
+  );
 
   const planTones = useMemo(() => {
     const map = {};
@@ -528,6 +518,32 @@ export default function AdminAbonnementsPage() {
             value={<CountUp value={stats.expiredSubs} />}
           />
         </div>
+      </div>
+
+      {/* ---- Demandes de changement de plan ---- */}
+      <div className={styles.section}>
+        <Link
+          href="/backoffice/admin/abonnements/demandes"
+          className={`${styles.requestsCta} ${pendingRequestsCount > 0 ? styles.requestsCtaActive : ""}`}
+        >
+          <span className={styles.requestsCtaOrb} aria-hidden="true" />
+          <span className={styles.requestsCtaIcon}>
+            <i className="bi bi-inbox-fill" />
+            {pendingRequestsCount > 0 && <span className={styles.requestsCtaPing} aria-hidden="true" />}
+          </span>
+          <span className={styles.requestsCtaBody}>
+            <span className={styles.requestsCtaTitle}>Demandes de changement de plan</span>
+            <span className={styles.requestsCtaSubtitle}>
+              {pendingRequestsCount > 0
+                ? `${pendingRequestsCount} demande${pendingRequestsCount > 1 ? "s" : ""} en attente de validation`
+                : "Choix envoyés par les propriétaires depuis la popup de blocage"}
+            </span>
+          </span>
+          {pendingRequestsCount > 0 && <span className={styles.requestsCtaCount}>{pendingRequestsCount}</span>}
+          <span className={styles.requestsCtaArrow}>
+            <i className="bi bi-arrow-right" />
+          </span>
+        </Link>
       </div>
 
       {/* ---- Plans d'abonnement ---- */}

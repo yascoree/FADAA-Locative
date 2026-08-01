@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { extractErrorMessage } from "@/lib/apiClient";
+import { extractErrorMessage, isPlanLimitError } from "@/lib/apiClient";
 import {
   fetchBiens,
   fetchEcheances,
@@ -24,6 +24,8 @@ import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import FilterChip from "@/components/FilterChip";
 import FilterSelect from "@/components/FilterSelect";
+import PlanLimitPopup from "@/components/PlanLimitPopup";
+import { usePlanGate } from "@/hooks/usePlanGate";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -73,6 +75,8 @@ export default function ProprietairePaiementsPage() {
   const [createDraft, setCreateDraft] = useState(EMPTY_CREATE_FORM);
   const [createBusy, setCreateBusy] = useState(false);
   const [createBanner, setCreateBanner] = useState(null);
+  const [planLimitMessage, setPlanLimitMessage] = useState(null);
+  const { checkBeforeOpen } = usePlanGate("quittances_mois");
 
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelMotif, setCancelMotif] = useState("");
@@ -235,6 +239,11 @@ export default function ProprietairePaiementsPage() {
   }
 
   function openCreate() {
+    const blockMessage = checkBeforeOpen();
+    if (blockMessage) {
+      setPlanLimitMessage(blockMessage);
+      return;
+    }
     const firstLocataire = locatairesWithEcheances[0];
     const firstEcheance = firstLocataire ? echeancesForLocataire(firstLocataire.id)[0] : null;
     setCreateDraft({
@@ -277,7 +286,11 @@ export default function ProprietairePaiementsPage() {
 
       setCreateOpen(false);
     } catch (err) {
-      setCreateBanner({ type: "error", message: extractErrorMessage(err) });
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setCreateBanner({ type: "error", message: extractErrorMessage(err) });
+      }
     } finally {
       setCreateBusy(false);
     }
@@ -320,6 +333,7 @@ export default function ProprietairePaiementsPage() {
 
   return (
     <div>
+      <PlanLimitPopup message={planLimitMessage} onClose={() => setPlanLimitMessage(null)} />
       <Banner banner={loadError ? { type: "error", message: loadError } : null} />
       <Banner banner={listBanner} />
 

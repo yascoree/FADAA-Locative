@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { extractErrorMessage } from "@/lib/apiClient";
+import { extractErrorMessage, isPlanLimitError } from "@/lib/apiClient";
 import {
   fetchBiens,
   fetchBaux,
@@ -26,6 +26,7 @@ import SelectField from "@/components/SelectField";
 import FilterChip from "@/components/FilterChip";
 import FilterSelect from "@/components/FilterSelect";
 import { fetchGestionnairePermissionIndex } from "@/lib/mandates";
+import PlanLimitPopup from "@/components/PlanLimitPopup";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -91,6 +92,7 @@ export default function AgenceEcheancesPage() {
   const [payDraft, setPayDraft] = useState(null);
   const [payBusy, setPayBusy] = useState(false);
   const [payBanner, setPayBanner] = useState(null);
+  const [planLimitMessage, setPlanLimitMessage] = useState(null);
 
   const [relanceBusyId, setRelanceBusyId] = useState(null);
   const [relanceBanner, setRelanceBanner] = useState(null);
@@ -278,7 +280,11 @@ export default function AgenceEcheancesPage() {
       setPayTarget(null);
       setPayDraft(null);
     } catch (err) {
-      setPayBanner({ type: "error", message: extractErrorMessage(err) });
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setPayBanner({ type: "error", message: extractErrorMessage(err) });
+      }
     } finally {
       setPayBusy(false);
     }
@@ -307,6 +313,7 @@ export default function AgenceEcheancesPage() {
 
   return (
     <div>
+      <PlanLimitPopup message={planLimitMessage} onClose={() => setPlanLimitMessage(null)} />
       <Banner banner={loadError ? { type: "error", message: loadError } : null} />
 
       {/* ---- Stats ---- */}

@@ -1,0 +1,196 @@
+/* ---------- Cartes de plan complètes — mêmes classes/logique que le
+   catalogue admin (admin.module.css .planCard), pour un design réellement
+   partagé plutôt qu'une simple imitation visuelle. Rendues en <button> ici
+   (contrairement aux <div> read-only de l'admin) puisqu'elles sont
+   sélectionnables. Utilisé par PlanLimitPopup (popup de blocage) et par la
+   section "Abonnement" des Paramètres (choix proactif) — même composant,
+   même rendu partout. ---------- */
+
+.planGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  width: 100%;
+}
+
+.planCard {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: var(--surface, #fff);
+  border-radius: var(--radius-card, 20px);
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.05));
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.planCard:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--brand-shadow-lift, 0 10px 28px -10px rgba(58, 56, 38, 0.24));
+}
+
+.planCardSelected {
+  box-shadow: 0 0 0 3px var(--primary, #889063), var(--brand-shadow-lift, 0 10px 28px -10px rgba(58, 56, 38, 0.24));
+}
+
+.planCardLocked {
+  cursor: not-allowed;
+  filter: grayscale(0.85);
+  opacity: 0.55;
+}
+
+.planCardLocked:hover {
+  transform: none;
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.05));
+}
+
+.planLockBadge {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.24rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text, #2a2820);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.planCheck {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  z-index: 2;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--border, #e3ddd0);
+}
+
+.planCardSelected .planCheck {
+  color: var(--primary, #889063);
+}
+
+.planRibbon {
+  position: absolute;
+  top: 0.9rem;
+  right: -2.7rem;
+  z-index: 1;
+  transform: rotate(45deg);
+  background: linear-gradient(135deg, var(--brand-gold, #d9ac3d), var(--brand-gold-dark, #a97a1a));
+  color: #3a2b05;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.3rem 2.7rem;
+}
+
+.planCardHeader {
+  padding: 1.2rem 1.1rem 1rem;
+  color: #fff;
+  position: relative;
+  background: linear-gradient(135deg, var(--tone-charcoal), var(--tone-charcoal-dark));
+}
+
+.planCardTerracotta .planCardHeader {
+  background: linear-gradient(135deg, var(--tone-terracotta), var(--tone-terracotta-dark));
+}
+
+.planCardCharcoal .planCardHeader {
+  background: linear-gradient(135deg, var(--tone-charcoal), var(--tone-charcoal-dark));
+}
+
+.planCardNavy .planCardHeader {
+  background: linear-gradient(135deg, var(--tone-navy), var(--tone-navy-dark));
+}
+
+.planCardOlive .planCardHeader {
+  background: linear-gradient(135deg, var(--tone-olive), var(--tone-olive-dark));
+}
+
+.planIcon {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  margin-bottom: 0.7rem;
+}
+
+.planName {
+  font-weight: 700;
+  color: #fff;
+  font-size: 0.98rem;
+}
+
+.planPriceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  margin-top: 0.3rem;
+}
+
+.planPrice {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.planPriceUnit {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.planMeta {
+  font-size: 0.74rem;
+  color: rgba(255, 255, 255, 0.78);
+  margin-top: 0.1rem;
+}
+
+.planCardBody {
+  padding: 1rem 1.1rem 1.1rem;
+}
+
+.planLimitsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.planLimitRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--text, #2a2820);
+}
+
+.planLimitValue {
+  font-weight: 700;
+  color: var(--secondary, #3a3826);
+  font-variant-numeric: tabular-nums;
+}

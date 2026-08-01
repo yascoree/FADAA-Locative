@@ -1,0 +1,300 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(10, 10, 8, 0.55);
+  backdrop-filter: blur(3px);
+  animation: planPopupOverlayIn 0.2s ease both;
+}
+
+@keyframes planPopupOverlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.card {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  max-height: min(88vh, 640px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.6rem;
+  padding: 2.2rem 1.8rem 1.8rem;
+  overflow: hidden;
+  border-radius: var(--radius-card, 20px);
+  border: 1px solid var(--accent, #cfbb99);
+  background:
+    linear-gradient(160deg, var(--primary-soft, rgba(136, 144, 99, 0.14)) 0%, var(--accent-soft, rgba(207, 187, 153, 0.32)) 100%),
+    var(--surface, #fff);
+  box-shadow: var(--shadow-md, 0 6px 20px -8px rgba(0, 0, 0, 0.25));
+  animation: planPopupCardIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: max-width 0.25s ease;
+}
+
+.cardWide {
+  max-width: 860px;
+}
+
+@keyframes planPopupCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.close {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  width: 1.9rem;
+  height: 1.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  color: var(--text-muted, #8c8570);
+  background: rgba(255, 255, 255, 0.55);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.close:hover {
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--text, #2a2820);
+}
+
+.orbA,
+.orbB {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.orbA {
+  top: -60px;
+  right: -50px;
+  width: 170px;
+  height: 170px;
+  background: radial-gradient(circle, var(--brand-gold, #d9ac3d) 0%, transparent 70%);
+  opacity: 0.35;
+}
+
+.orbB {
+  bottom: -70px;
+  left: -60px;
+  width: 190px;
+  height: 190px;
+  background: radial-gradient(circle, var(--primary, #889063) 0%, transparent 72%);
+  opacity: 0.22;
+}
+
+.iconBadge {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  margin-bottom: 0.3rem;
+  border-radius: 50%;
+  font-size: 1.7rem;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary, #889063) 0%, var(--primary-dark, #6d7450) 100%);
+  box-shadow: 0 8px 22px -6px rgba(0, 0, 0, 0.4);
+}
+
+.iconBadge::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  border: 2px solid var(--brand-gold, #d9ac3d);
+  opacity: 0.55;
+  animation: planPopupPulse 2.2s ease-out infinite;
+}
+
+@keyframes planPopupPulse {
+  0% {
+    transform: scale(0.82);
+    opacity: 0.6;
+  }
+  70% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+.eyebrow {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--primary-dark, #6d7450);
+}
+
+.title {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 750;
+  color: var(--text, #2a2820);
+}
+
+.message {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  font-weight: 500;
+  color: var(--text-muted, #8c8570);
+}
+
+.actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.68rem 1.1rem;
+  border-radius: 999px;
+  font-size: 0.86rem;
+  font-weight: 650;
+  color: #fff;
+  background: linear-gradient(120deg, var(--primary, #889063) 0%, var(--primary-dark, #6d7450) 100%);
+  box-shadow: 0 6px 16px -5px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, gap 0.15s ease;
+}
+
+.cta:hover:not(:disabled) {
+  gap: 0.65rem;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px -5px rgba(0, 0, 0, 0.42);
+}
+
+.cta:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ctaOutline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.62rem 1.1rem;
+  border-radius: 999px;
+  font-size: 0.86rem;
+  font-weight: 650;
+  color: var(--primary-dark, #6d7450);
+  background: transparent;
+  border: 1.5px solid var(--primary, #889063);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.ctaOutline:hover {
+  background: var(--primary-soft, rgba(136, 144, 99, 0.12));
+  transform: translateY(-1px);
+}
+
+.secondaryLink {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--primary-dark, #6d7450);
+}
+
+.secondaryLink:hover {
+  text-decoration: underline;
+}
+
+.dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.56rem 1.1rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 620;
+  color: var(--text-muted, #8c8570);
+  background: transparent;
+  border: 1.5px solid var(--border, #e3ddd0);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.dismiss:hover {
+  color: var(--text, #2a2820);
+  background: var(--bg, #fafafa);
+  border-color: var(--text-muted, #8c8570);
+  transform: translateY(-1px);
+}
+
+/* ---------- Vue "choisir un plan" ---------- */
+
+.pickerView {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.pickerHint {
+  margin: 0 0 0.4rem;
+  font-size: 0.82rem;
+  color: var(--text-muted, #8c8570);
+}
+
+.pickerLoading {
+  font-size: 0.84rem;
+  color: var(--text-muted, #8c8570);
+  padding: 1rem 0;
+}
+
+.pickerError {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--danger, #b5533e);
+}

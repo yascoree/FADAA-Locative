@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { extractErrorMessage } from "@/lib/apiClient";
+import { extractErrorMessage, isPlanLimitError } from "@/lib/apiClient";
 import {
   fetchBiens,
   fetchBaux,
@@ -25,6 +25,8 @@ import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import FilterChip from "@/components/FilterChip";
 import FilterSelect from "@/components/FilterSelect";
+import PlanLimitPopup from "@/components/PlanLimitPopup";
+import { usePlanGate } from "@/hooks/usePlanGate";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -89,6 +91,8 @@ export default function ProprietaireEcheancesPage() {
   const [payDraft, setPayDraft] = useState(null);
   const [payBusy, setPayBusy] = useState(false);
   const [payBanner, setPayBanner] = useState(null);
+  const [planLimitMessage, setPlanLimitMessage] = useState(null);
+  const { checkBeforeOpen } = usePlanGate("quittances_mois");
 
   const [relanceBusyId, setRelanceBusyId] = useState(null);
   const [relanceBanner, setRelanceBanner] = useState(null);
@@ -243,6 +247,11 @@ export default function ProprietaireEcheancesPage() {
   }
 
   function openPay(echeance) {
+    const blockMessage = checkBeforeOpen();
+    if (blockMessage) {
+      setPlanLimitMessage(blockMessage);
+      return;
+    }
     const reste = Number(echeance.montant_du || 0) - paidSoFar(echeance.id);
     setPayTarget(echeance);
     setPayDraft({
@@ -274,7 +283,11 @@ export default function ProprietaireEcheancesPage() {
       setPayTarget(null);
       setPayDraft(null);
     } catch (err) {
-      setPayBanner({ type: "error", message: extractErrorMessage(err) });
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setPayBanner({ type: "error", message: extractErrorMessage(err) });
+      }
     } finally {
       setPayBusy(false);
     }
@@ -303,6 +316,7 @@ export default function ProprietaireEcheancesPage() {
 
   return (
     <div>
+      <PlanLimitPopup message={planLimitMessage} onClose={() => setPlanLimitMessage(null)} />
       <Banner banner={loadError ? { type: "error", message: loadError } : null} />
 
       {/* ---- Stats ---- */}

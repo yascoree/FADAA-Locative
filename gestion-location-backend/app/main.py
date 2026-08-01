@@ -23,6 +23,7 @@ from app.api import (
     paiements,
     partenaires,
     permissions,
+    plan_change_requests,
     profils,
     quittances,
     reclamations,
@@ -60,6 +61,7 @@ app.include_router(auth.router)
 app.include_router(utilisateurs.router)
 app.include_router(subscription_plans.router)
 app.include_router(subscriptions.router)
+app.include_router(plan_change_requests.router)
 app.include_router(profils.router)
 app.include_router(locataires.router)
 app.include_router(categories.router)

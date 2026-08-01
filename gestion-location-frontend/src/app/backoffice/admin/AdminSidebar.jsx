@@ -7,6 +7,7 @@ import { API_BASE_URL } from "@/lib/apiClient";
 import { fetchNotifications, NOTIFICATION_STATUS, NOTIFICATION_TYPE } from "@/lib/notifications";
 import { fetchDemandesDemo, DEMANDE_DEMO_STATUS } from "@/lib/demandesDemo";
 import { fetchContactMessages, CONTACT_MESSAGE_STATUS } from "@/lib/contactMessages";
+import { fetchPlanChangeRequests, PLAN_CHANGE_REQUEST_STATUS } from "@/lib/subscriptions";
 import LogoIcon from "@/components/LogoIcon";
 import styles from "./admin.module.css";
 
@@ -35,7 +36,12 @@ const NAV_SECTIONS = [
   {
     label: "Plateforme",
     items: [
-      { href: "/backoffice/admin/abonnements", label: "Abonnements", icon: "bi-credit-card" },
+      {
+        href: "/backoffice/admin/abonnements",
+        label: "Abonnements",
+        icon: "bi-credit-card",
+        badgeKey: "planRequests",
+      },
       { href: "/backoffice/admin/architecture", label: "Catégories", icon: "bi-diagram-3" },
       { href: "/backoffice/admin/avis", label: "Avis", icon: "bi-chat-square-quote" },
       { href: "/backoffice/admin/partenaires", label: "Partenaires", icon: "bi-buildings" },
@@ -55,16 +61,23 @@ export default function AdminSidebar({ user, onLogout }) {
   const initial = `${user?.prenom?.[0] || ""}${user?.nom?.[0] || ""}`.toUpperCase();
   const itemRefs = useRef({});
   const [bubble, setBubble] = useState(null);
-  const [badges, setBadges] = useState({ discussions: 0, demandesDemo: 0, messagesContact: 0, notifications: 0 });
+  const [badges, setBadges] = useState({
+    discussions: 0,
+    demandesDemo: 0,
+    messagesContact: 0,
+    notifications: 0,
+    planRequests: 0,
+  });
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
-        const [list, demandes, messages] = await Promise.all([
+        const [list, demandes, messages, planRequests] = await Promise.all([
           fetchNotifications(),
           fetchDemandesDemo(),
           fetchContactMessages(),
+          fetchPlanChangeRequests(),
         ]);
         if (cancelled) return;
         const unread = list.filter((n) => n.statut === NOTIFICATION_STATUS.NON_LUE);
@@ -73,6 +86,7 @@ export default function AdminSidebar({ user, onLogout }) {
           demandesDemo: demandes.filter((d) => d.statut === DEMANDE_DEMO_STATUS.NOUVELLE).length,
           messagesContact: messages.filter((m) => m.statut === CONTACT_MESSAGE_STATUS.NOUVEAU).length,
           notifications: unread.filter((n) => n.type !== NOTIFICATION_TYPE.DISCUSSION).length,
+          planRequests: planRequests.filter((r) => r.statut === PLAN_CHANGE_REQUEST_STATUS.EN_ATTENTE).length,
         });
       } catch {
         // Les badges sont un simple confort d'UX : une erreur ne doit jamais casser la sidebar.

@@ -23,6 +23,7 @@ from app.models.subscription import Subscription
 from app.models.historique import Historique
 from app.models.demande_demo import DemandeDemo
 from app.models.contact_message import ContactMessage
+from app.models.plan_change_request import PlanChangeRequest
 
 __all__ = [
     "Utilisateur",
@@ -50,4 +51,5 @@ __all__ = [
     "Historique",
     "DemandeDemo",
     "ContactMessage",
+    "PlanChangeRequest",
 ]

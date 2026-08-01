@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
+import { extractErrorMessage, isPlanLimitError, API_BASE_URL } from "@/lib/apiClient";
 import {
   fetchMandates,
   fetchPermissionCatalog,
@@ -21,6 +21,7 @@ import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import SearchableSelect from "@/components/SearchableSelect";
 import FilterSelect from "@/components/FilterSelect";
+import PlanLimitPopup from "@/components/PlanLimitPopup";
 import styles from "./permissions.module.css";
 
 const RESOURCE_ICONS = {
@@ -75,6 +76,7 @@ export default function GestionPermissionPage() {
   const [sortBy, setSortBy] = useState("recent");
   const [inviteBusy, setInviteBusy] = useState(false);
   const [banner, setBanner] = useState(null);
+  const [planLimitMessage, setPlanLimitMessage] = useState(null);
 
   // "new" = créer un tout nouveau compte gestionnaire (seul moyen désormais,
   // un gestionnaire ne pouvant plus s'inscrire lui-même) ; "existing" = donner
@@ -152,7 +154,11 @@ export default function GestionPermissionPage() {
       setSelectedMandatByGestionnaire((prev) => ({ ...prev, [gestionnaire.id]: mandat.id }));
       await reload();
     } catch (err) {
-      setBanner({ type: "error", message: extractErrorMessage(err) });
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setBanner({ type: "error", message: extractErrorMessage(err) });
+      }
     } finally {
       setInviteBusy(false);
     }
@@ -188,7 +194,11 @@ export default function GestionPermissionPage() {
       setSelectedMandatByGestionnaire((prev) => ({ ...prev, [utilisateur.id]: mandat.id }));
       await reload();
     } catch (err) {
-      setBanner({ type: "error", message: extractErrorMessage(err) });
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setBanner({ type: "error", message: extractErrorMessage(err) });
+      }
     } finally {
       setCreateBusy(false);
     }
@@ -200,7 +210,11 @@ export default function GestionPermissionPage() {
       await setMandateStatus(mandat.id, isRevoked ? MANDAT_STATUS.ACTIF : MANDAT_STATUS.REVOQUE);
       await reload();
     } catch (err) {
-      setBanner({ type: "error", message: extractErrorMessage(err) });
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setBanner({ type: "error", message: extractErrorMessage(err) });
+      }
     }
   }
 
@@ -275,6 +289,7 @@ export default function GestionPermissionPage() {
 
   return (
     <div>
+      <PlanLimitPopup message={planLimitMessage} onClose={() => setPlanLimitMessage(null)} />
       <div className={styles.pageHeader}>
         <div>
           <h2 className={styles.pageTitle}>

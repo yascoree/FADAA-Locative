@@ -7,7 +7,7 @@ from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.gestionnaire_invite import GestionnaireInviteCreate, GestionnaireInviteRead
 from app.schemas.utilisateur import UtilisateurCreate, UtilisateurRead, UtilisateurUpdate
 from app.services import utilisateur_service
-from app.services.exceptions import BadRequest, Forbidden, NotFound
+from app.services.exceptions import BadRequest, Forbidden, NotFound, PaymentRequired
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -63,6 +63,8 @@ def create_gestionnaire(
         utilisateur, mandat, invite_link = utilisateur_service.create_gestionnaire_invite(db, proprietaire, payload)
     except BadRequest as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except PaymentRequired as exc:
+        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=str(exc))
     return {"utilisateur": utilisateur, "mandat": mandat, "invite_link": invite_link}
 
 
