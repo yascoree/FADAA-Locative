@@ -552,76 +552,26 @@ input[type="checkbox"].checkbox {
   text-decoration: underline;
 }
 
-/* Role selector */
+/* Account type badge */
 
-.roleSelect {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.6rem;
-  margin-bottom: 1.1rem;
-}
-
-.roleOption {
-  position: relative;
-  cursor: pointer;
-}
-
-.roleOption input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  margin: 0;
-  cursor: pointer;
-}
-
-.roleCard {
-  position: relative;
+.accountBadge {
   display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-field);
-  padding: 0.65rem 2rem 0.65rem 0.8rem;
-  background: var(--surface);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
-}
-
-.roleCardActive {
-  border-color: var(--primary);
-  background-color: rgba(136, 144, 99, 0.08);
-  box-shadow: 0 0 0 3px rgba(136, 144, 99, 0.16);
-}
-
-.roleCheck {
-  position: absolute;
-  top: 0.6rem;
-  right: 0.6rem;
-  font-size: 1rem;
-  line-height: 1;
-  color: var(--primary);
-  opacity: 0;
-  transform: scale(0.6);
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-
-.roleCardActive .roleCheck {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.roleTitle {
-  font-size: 0.86rem;
-  font-weight: 650;
-  color: var(--secondary);
-}
-
-.roleCardActive .roleTitle {
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1px solid rgba(136, 144, 99, 0.3);
+  background: rgba(136, 144, 99, 0.1);
   color: var(--primary-dark);
+  font-size: 0.8rem;
+  font-weight: 650;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  margin: 0 auto 1.1rem;
 }
 
-.roleSub {
-  font-size: 0.72rem;
-  color: var(--text-muted);
+.accountBadge i {
+  font-size: 0.9rem;
 }
 
 /* Banners + token box */

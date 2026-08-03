@@ -23,5 +23,4 @@ export const ROLE_DASHBOARD_PATH = {
 // Rôles utilisables pour l'inscription publique (voir POST /auth/register côté backend).
 export const PUBLIC_REGISTER_ROLES = [
   { value: ROLES.PROPRIETAIRE, label: "Propriétaire", hint: "Je gère mes propres biens" },
-  { value: ROLES.GESTIONNAIRE, label: "Gestionnaire", hint: "Je gère des biens pour d'autres" },
 ];

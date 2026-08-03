@@ -4,6 +4,26 @@
    fichiers de src/components — les dashboards par rôle gardent leurs propres
    modules CSS. */
 
+/* ---------- RouteProgressBar ---------- */
+
+.routeProgress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 35%;
+  background: linear-gradient(90deg, var(--brand-primary), var(--brand-tone-navy));
+  z-index: 2000;
+  border-radius: 0 3px 3px 0;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--brand-primary) 70%, transparent);
+  transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease 0.2s;
+}
+
+.routeProgressDone {
+  width: 100%;
+  opacity: 0;
+}
+
 /* ---------- StatusBadge ---------- */
 
 .badge {
@@ -248,9 +268,90 @@
   margin-top: 1.4rem;
 }
 
+/* ---------- Drawer (panneau latéral) ---------- */
+/* Pour un détail consulté depuis une longue liste : contrairement à un panneau
+   inline en bas de page, il reste visible quel que soit le scroll, et la liste
+   derrière reste consultable (pas de contexte perdu comme avec un Modal centré). */
+
+.drawerOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 20, 15, 0.32);
+  z-index: 1000;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawerPanel {
+  width: min(480px, 100vw);
+  height: 100%;
+  background: var(--brand-surface);
+  box-shadow: -16px 0 40px -12px rgba(30, 28, 20, 0.28);
+  display: flex;
+  flex-direction: column;
+  animation: drawerSlideIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Variante plus large (prop `wide`) pour les détails denses (ex: usage vs
+   limites du plan + changement de plan) qui se sentaient à l'étroit dans les
+   480px par défaut. */
+.drawerPanelWide {
+  width: min(820px, 92vw);
+}
+
+@keyframes drawerSlideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.drawerHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.4rem 1.5rem 1.15rem;
+  border-bottom: 1px solid var(--brand-border);
+  flex-shrink: 0;
+}
+
+.drawerClose {
+  border: none;
+  background: none;
+  color: var(--brand-text-muted);
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 0.95rem;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.drawerClose:hover {
+  background: var(--brand-danger-soft);
+  color: var(--brand-danger);
+}
+
+.drawerBody {
+  padding: 1.4rem 1.5rem 1.8rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  flex: 1;
+  min-height: 0;
+}
+
 /* ---------- Buttons (shared with Modal/ConfirmationDialog) ---------- */
 
 .btn {
+  position: relative;
+  overflow: hidden;
   border: none;
   background: var(--brand-primary);
   color: #fff;
@@ -281,6 +382,34 @@
   cursor: not-allowed;
 }
 
+/* Ripple au clic : un cercle part du centre, grandit instantanément à
+   l'appui, puis rétrécit/s'estompe en douceur au relâchement — pur CSS, pas
+   de JS ni de position de curseur, mais un vrai retour tactile à l'action. */
+.btn::after,
+.btnOutline::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease;
+}
+
+.btn::after {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.btn:active:not(:disabled)::after {
+  transform: translate(-50%, -50%) scale(18);
+  opacity: 1;
+  transition: transform 0.2s ease-out, opacity 0.1s ease-out;
+}
+
 .btnDanger {
   background: var(--brand-danger);
 }
@@ -290,6 +419,8 @@
 }
 
 .btnOutline {
+  position: relative;
+  overflow: hidden;
   border: 1px solid var(--brand-border);
   background: var(--brand-surface);
   color: var(--brand-secondary);
@@ -312,6 +443,16 @@
 
 .btnOutline:active:not(:disabled) {
   transform: translateY(0) scale(0.97);
+}
+
+.btnOutline::after {
+  background: color-mix(in srgb, var(--brand-primary) 35%, transparent);
+}
+
+.btnOutline:active:not(:disabled)::after {
+  transform: translate(-50%, -50%) scale(18);
+  opacity: 1;
+  transition: transform 0.2s ease-out, opacity 0.1s ease-out;
 }
 
 /* ---------- LoadingState / EmptyState / ErrorState ---------- */

@@ -7,6 +7,7 @@ import { ROLES } from "@/lib/roles";
 import AdminSidebar from "./AdminSidebar";
 import NotificationBell from "@/components/NotificationBell";
 import PageTransition from "@/components/PageTransition";
+import RouteProgressBar from "@/components/RouteProgressBar";
 import styles from "./admin.module.css";
 
 const PAGE_TITLES = {
@@ -55,6 +56,7 @@ export default function AdminLayout({ children }) {
 
   return (
     <div className={styles.shell}>
+      <RouteProgressBar />
       <AdminSidebar user={user} onLogout={handleLogout} />
       <div className={styles.main}>
         <header className={`${styles.topbar} ${isScrolled ? styles.topbarScrolled : ""}`}>
@@ -65,6 +67,8 @@ export default function AdminLayout({ children }) {
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
+      {/* Ancre pour les portails (Modal, Drawer) : voir proprietaire/layout.js. */}
+      <div id="portal-root" />
     </div>
   );
 }

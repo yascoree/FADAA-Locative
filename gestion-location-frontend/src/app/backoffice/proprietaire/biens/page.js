@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
+import { useSearchParams } from "next/navigation";
+import { extractErrorMessage, isPlanLimitError, API_BASE_URL } from "@/lib/apiClient";
 import { useAuth } from "@/context/AuthContext";
 import {
   fetchBiens,
@@ -24,6 +25,8 @@ import SelectField from "@/components/SelectField";
 import FilterSelect from "@/components/FilterSelect";
 import MapPicker from "@/components/MapPicker";
 import BienDetailsModal from "@/components/BienDetailsModal";
+import PlanLimitPopup from "@/components/PlanLimitPopup";
+import { usePlanGate } from "@/hooks/usePlanGate";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -61,6 +64,7 @@ const EMPTY_FORM = {
 
 export default function ProprietaireBiensPage() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
 
   const [biens, setBiens] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,6 +81,8 @@ export default function ProprietaireBiensPage() {
   const [formDraft, setFormDraft] = useState(EMPTY_FORM);
   const [formBusy, setFormBusy] = useState(false);
   const [formBanner, setFormBanner] = useState(null);
+  const [planLimitMessage, setPlanLimitMessage] = useState(null);
+  const { checkBeforeOpen } = usePlanGate("biens");
 
   const [editingPhotos, setEditingPhotos] = useState([]);
   const [stagedFiles, setStagedFiles] = useState([]);
@@ -130,6 +136,11 @@ export default function ProprietaireBiensPage() {
   const paginatedBiens = filteredBiens.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   function openCreate() {
+    const blockMessage = checkBeforeOpen();
+    if (blockMessage) {
+      setPlanLimitMessage(blockMessage);
+      return;
+    }
     setFormMode("create");
     setFormTargetId(null);
     setFormDraft({ ...EMPTY_FORM });
@@ -138,6 +149,16 @@ export default function ProprietaireBiensPage() {
     setEditingPhotos([]);
     setFormOpen(true);
   }
+
+  useEffect(() => {
+    function openIfRequested() {
+      if (searchParams.get("create") === "1") {
+        openCreate();
+      }
+    }
+    openIfRequested();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function openEdit(bien) {
     setFormMode("edit");
@@ -259,7 +280,11 @@ export default function ProprietaireBiensPage() {
       }
       setFormOpen(false);
     } catch (err) {
-      setFormBanner({ type: "error", message: extractErrorMessage(err) });
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setFormBanner({ type: "error", message: extractErrorMessage(err) });
+      }
     } finally {
       setFormBusy(false);
     }
@@ -286,6 +311,7 @@ export default function ProprietaireBiensPage() {
 
   return (
     <div>
+      <PlanLimitPopup message={planLimitMessage} onClose={() => setPlanLimitMessage(null)} />
       <Banner banner={loadError ? { type: "error", message: loadError } : null} />
 
       {/* ---- Stats ---- */}
@@ -303,7 +329,9 @@ export default function ProprietaireBiensPage() {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem" }}>
           <div>
             <h2 className={styles.sectionTitle}>
-              <i className="bi bi-table" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
+              <span className={styles.sectionIconBadge}>
+                <i className="bi bi-houses" />
+              </span>
               Mes biens
             </h2>
             <p className={styles.sectionSubtitle}>
@@ -317,15 +345,18 @@ export default function ProprietaireBiensPage() {
         </div>
 
         <div className={styles.filtersRow}>
-          <input
-            type="text"
-            placeholder="Rechercher par désignation, type, description..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setCurrentPage(1);
-            }}
-          />
+          <div className={styles.searchFieldWrap}>
+            <i className={`bi bi-search ${styles.searchFieldIcon}`} />
+            <input
+              type="text"
+              placeholder="Rechercher par désignation, type, description..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+            />
+          </div>
           <FilterSelect
             value={statusFilter}
             onChange={(v) => {

@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { extractErrorMessage } from "@/lib/apiClient";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { extractErrorMessage, isPlanLimitError } from "@/lib/apiClient";
 import {
   fetchBiens,
   fetchLots,
@@ -19,6 +21,8 @@ import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import FilterSelect from "@/components/FilterSelect";
+import PlanLimitPopup from "@/components/PlanLimitPopup";
+import { usePlanGate } from "@/hooks/usePlanGate";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -55,6 +59,7 @@ const EMPTY_FORM = {
 };
 
 export default function ProprietaireLotsPage() {
+  const searchParams = useSearchParams();
   const [lots, setLots] = useState([]);
   const [biens, setBiens] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -73,6 +78,8 @@ export default function ProprietaireLotsPage() {
   const [formDraft, setFormDraft] = useState(EMPTY_FORM);
   const [formBusy, setFormBusy] = useState(false);
   const [formBanner, setFormBanner] = useState(null);
+  const [planLimitMessage, setPlanLimitMessage] = useState(null);
+  const { checkBeforeOpen } = usePlanGate("lots");
 
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -86,6 +93,13 @@ export default function ProprietaireLotsPage() {
         setLots(lotsList);
         setBiens(biensList);
         setCategories(categoriesList);
+        if (searchParams.get("create") === "1" && biensList.length > 0) {
+          setFormMode("create");
+          setFormTargetId(null);
+          setFormDraft({ ...EMPTY_FORM, bien_id: String(biensList[0].id) });
+          setFormBanner(null);
+          setFormOpen(true);
+        }
       } catch (err) {
         setLoadError(extractErrorMessage(err));
       } finally {
@@ -93,6 +107,7 @@ export default function ProprietaireLotsPage() {
       }
     }
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const stats = useMemo(() => {
@@ -140,6 +155,11 @@ export default function ProprietaireLotsPage() {
   const availableCategories = categories.filter((c) => c.type_bien === formBienType);
 
   function openCreate() {
+    const blockMessage = checkBeforeOpen();
+    if (blockMessage) {
+      setPlanLimitMessage(blockMessage);
+      return;
+    }
     setFormMode("create");
     setFormTargetId(null);
     setFormDraft({ ...EMPTY_FORM, bien_id: biens[0] ? String(biens[0].id) : "" });
@@ -195,7 +215,11 @@ export default function ProprietaireLotsPage() {
       }
       setFormOpen(false);
     } catch (err) {
-      setFormBanner({ type: "error", message: extractErrorMessage(err) });
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setFormBanner({ type: "error", message: extractErrorMessage(err) });
+      }
     } finally {
       setFormBusy(false);
     }
@@ -222,6 +246,7 @@ export default function ProprietaireLotsPage() {
 
   return (
     <div>
+      <PlanLimitPopup message={planLimitMessage} onClose={() => setPlanLimitMessage(null)} />
       <Banner banner={loadError ? { type: "error", message: loadError } : null} />
 
       {/* ---- Stats ---- */}
@@ -260,7 +285,18 @@ export default function ProprietaireLotsPage() {
         </div>
 
         {biens.length === 0 && (
-          <p className={styles.empty}>Vous devez d&apos;abord créer un bien avant de pouvoir ajouter des lots.</p>
+          <div className={styles.prereqNotice}>
+            <span className={styles.prereqNoticeIcon}>
+              <i className="bi bi-exclamation-lg" />
+            </span>
+            <span className={styles.prereqNoticeText}>
+              Vous devez d&apos;abord créer un bien avant de pouvoir ajouter des lots.
+            </span>
+            <Link href="/backoffice/proprietaire/biens?create=1" className={styles.prereqNoticeAction}>
+              Créer un bien
+              <i className="bi bi-arrow-right" />
+            </Link>
+          </div>
         )}
 
         <div className={styles.filtersRow}>

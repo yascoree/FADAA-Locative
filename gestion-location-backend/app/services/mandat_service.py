@@ -117,7 +117,16 @@ def update_mandat(db: Session, current_user: Utilisateur, mandat_id: int, mandat
         raise NotFound("Mandate not found")
     if not _can_view_mandat(current_user, mandat):
         raise Forbidden("Not allowed to modify this mandate")
-    for field, value in mandat_in.model_dump(exclude_unset=True).items():
+
+    update_data = mandat_in.model_dump(exclude_unset=True)
+    prospective_statut = update_data.get("statut", mandat.statut)
+    if prospective_statut == MandatStatus.ACTIF and mandat.statut != MandatStatus.ACTIF:
+        # Réactiver un mandat révoqué remet un gestionnaire actif dans le quota du
+        # plan, exactement comme en créer un nouveau (voir create_mandat) — même
+        # garde-fou qu'un bail qu'on repasse à ACTIF (bail_service.update_bail).
+        enforce_limit(db, mandat.proprietaire_id, "gestionnaires")
+
+    for field, value in update_data.items():
         setattr(mandat, field, value)
     db.commit()
     db.refresh(mandat)

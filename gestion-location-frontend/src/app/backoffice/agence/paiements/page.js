@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { extractErrorMessage } from "@/lib/apiClient";
+import { extractErrorMessage, isPlanLimitError } from "@/lib/apiClient";
 import {
   fetchBiens,
   fetchEcheances,
@@ -25,6 +25,7 @@ import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import FilterChip from "@/components/FilterChip";
 import FilterSelect from "@/components/FilterSelect";
+import PlanLimitPopup from "@/components/PlanLimitPopup";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -75,6 +76,7 @@ export default function AgencePaiementsPage() {
   const [createDraft, setCreateDraft] = useState(EMPTY_CREATE_FORM);
   const [createBusy, setCreateBusy] = useState(false);
   const [createBanner, setCreateBanner] = useState(null);
+  const [planLimitMessage, setPlanLimitMessage] = useState(null);
 
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelMotif, setCancelMotif] = useState("");
@@ -290,7 +292,11 @@ export default function AgencePaiementsPage() {
 
       setCreateOpen(false);
     } catch (err) {
-      setCreateBanner({ type: "error", message: extractErrorMessage(err) });
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setCreateBanner({ type: "error", message: extractErrorMessage(err) });
+      }
     } finally {
       setCreateBusy(false);
     }
@@ -333,6 +339,7 @@ export default function AgencePaiementsPage() {
 
   return (
     <div>
+      <PlanLimitPopup message={planLimitMessage} onClose={() => setPlanLimitMessage(null)} />
       <Banner banner={loadError ? { type: "error", message: loadError } : null} />
       <Banner banner={listBanner} />
 
@@ -625,8 +632,10 @@ export default function AgencePaiementsPage() {
               <strong>Montant payé (ce paiement) :</strong> {formatCurrency(detailsTarget.montant)}
             </div>
             <div className={styles.detailLine}>
-              <strong>Total payé sur cette échéance :</strong>{" "}
-              {formatCurrency(paidSoFar(detailsTarget.echeance_id))}
+              <strong>Reste à payer sur cette échéance :</strong>{" "}
+              {formatCurrency(
+                Math.max(0, Number(detailsTarget.echeance?.montant_du || 0) - paidSoFar(detailsTarget.echeance_id))
+              )}
             </div>
             <div className={styles.detailLine}>
               <strong>Montant total dû :</strong> {formatCurrency(detailsTarget.echeance?.montant_du)}

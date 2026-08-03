@@ -7,6 +7,8 @@ import { updateUser } from "@/lib/users";
 import { fetchProfile, createProfile, updateProfile, uploadProfilePhoto, deleteProfilePhoto } from "@/lib/profile";
 import TextField from "@/components/TextField";
 import PasswordChangeCard from "@/components/PasswordChangeCard";
+import ThemeToggle from "@/components/ThemeToggle";
+import LanguagePicker from "@/components/LanguagePicker";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -155,6 +157,23 @@ export default function AgenceParametresPage() {
         </h2>
         <p className={styles.sectionSubtitle}>Gérez vos informations personnelles et la sécurité de votre compte.</p>
       </div>
+
+      {/* ---- Apparence ---- */}
+      <div className={styles.section}>
+        <div className={styles.card}>
+          <h3 className={styles.cardTitle}>
+            <i className="bi bi-palette-fill" style={{ color: "var(--primary)" }} />
+            Apparence
+          </h3>
+          <p className={styles.sectionSubtitle} style={{ margin: "-0.4rem 0 1rem" }}>
+            Choisissez le thème de votre interface — le choix est mémorisé sur cet appareil.
+          </p>
+          <ThemeToggle />
+        </div>
+      </div>
+
+      {/* ---- Langue ---- */}
+      <LanguagePicker styles={styles} />
 
       {/* ---- Compte ---- */}
       <div className={styles.section}>

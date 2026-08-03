@@ -10,7 +10,8 @@ from app.models.lot import Lot
 from app.models.mandat import Mandat, MandatStatus
 from app.models.paiement import Paiement
 from app.models.quittance import Quittance
-from app.services.exceptions import BadRequest
+from app.services import subscription_service
+from app.services.exceptions import PaymentRequired
 
 
 def compute_owner_usage(db: Session, owner_id: int) -> dict:
@@ -123,13 +124,18 @@ def enforce_limit(db: Session, owner_id: int, resource: str) -> None:
     plan = subscription.plan if subscription else None
     if plan is None:
         return
+    if not subscription_service.is_active(subscription):
+        raise PaymentRequired(
+            f"Votre abonnement « {plan.name} » a expiré ou est suspendu. "
+            "Renouvelez-le ou passez à un plan supérieur pour continuer."
+        )
     field_name, label = _LIMIT_FIELDS[resource]
     limit = getattr(plan, field_name)
     if limit is None or limit < 0:
         return
     usage = compute_owner_usage(db, owner_id)
     if usage[resource] >= limit:
-        raise BadRequest(
+        raise PaymentRequired(
             f"Limite du plan « {plan.name} » atteinte pour {label} ({limit}). "
             "Passez à un plan supérieur pour continuer."
         )

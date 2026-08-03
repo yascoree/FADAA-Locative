@@ -315,6 +315,20 @@
   letter-spacing: -0.01em;
 }
 
+.sectionIconBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 9px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-size: 0.88rem;
+  margin-right: 0.55rem;
+  vertical-align: middle;
+}
+
 .sectionSubtitle {
   color: var(--text-muted);
   font-size: 0.86rem;
@@ -371,10 +385,83 @@
   border: 1px solid rgba(181, 83, 62, 0.3);
 }
 
+.bannerError a {
+  color: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+}
+
 .empty {
   font-size: 0.84rem;
   color: var(--text-muted);
   padding: 0.5rem 0;
+}
+
+/* ---------- Notice "prérequis manquant" (ex: pas de bien avant un lot) ---------- */
+
+.prereqNotice {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  background: var(--warning-soft);
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+  border-radius: var(--radius-field);
+  padding: 0.65rem 0.85rem;
+  margin: 0.75rem 0 1.15rem;
+  flex-wrap: wrap;
+}
+
+.prereqNoticeIcon {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--warning) 18%, transparent);
+  color: var(--warning);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.prereqNoticeText {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.prereqNoticeAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.79rem;
+  font-weight: 700;
+  color: var(--warning);
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, transparent);
+  padding: 0.38rem 0.8rem;
+  border-radius: 999px;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.12s ease, color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.prereqNoticeAction:hover {
+  background: var(--warning);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.prereqNoticeAction:active {
+  transform: translateY(0) scale(0.96);
+}
+
+.prereqNoticeAction i {
+  font-size: 0.76rem;
 }
 
 .btn {
@@ -644,6 +731,80 @@
   margin-top: 0.15rem;
 }
 
+/* ---------- Bouton "Abonnement" des Paramètres — ouvre PlanLimitPopup ---------- */
+
+.subscriptionCtaButton {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  padding: 1rem 1.2rem;
+  border: none;
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.subscriptionCtaButton:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.subscriptionCtaIcon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.8rem;
+  height: 2.8rem;
+  border-radius: 12px;
+  font-size: 1.2rem;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+}
+
+.subscriptionCtaBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.subscriptionCtaTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--secondary);
+}
+
+.subscriptionCtaSubtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.subscriptionCtaArrow {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--text-muted);
+  transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.subscriptionCtaButton:hover .subscriptionCtaArrow {
+  transform: translateX(3px);
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+}
+
 .usageGrid {
   display: flex;
   flex-direction: column;
@@ -744,6 +905,14 @@
   background: var(--surface);
   color: var(--text);
   color-scheme: light;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.filtersRow input[type="text"]:focus,
+.filtersRow select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
 .filtersRow input[type="text"] {
@@ -756,36 +925,58 @@
   background: var(--surface);
 }
 
+.searchFieldWrap {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+}
+
+.searchFieldWrap input[type="text"] {
+  width: 100%;
+  padding-left: 2.3rem;
+}
+
+.searchFieldIcon {
+  position: absolute;
+  left: 0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
 .tableWrap {
   overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-sm);
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  font-size: 0.86rem;
 }
 
 .table th {
   text-align: left;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   color: var(--text-muted);
   font-weight: 700;
-  padding: 0.7rem 0.9rem;
+  padding: 0.8rem 1rem;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
-  background: var(--bg);
 }
 
 .table td {
-  padding: 0.6rem 0.9rem;
-  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
   vertical-align: middle;
 }
 
@@ -793,8 +984,12 @@
   border-bottom: none;
 }
 
+.table tbody tr {
+  transition: background 0.12s ease;
+}
+
 .table tbody tr:hover {
-  background: rgba(136, 144, 99, 0.05);
+  background: var(--primary-soft);
 }
 
 .bienCell,
@@ -822,27 +1017,123 @@
   background: var(--primary-soft) !important;
 }
 
-/* ---------- Detail panel ---------- */
+/* ---------- Identité locataire en ligne de tableau ---------- */
 
-.detailCard {
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: blur(14px) saturate(160%);
-  -webkit-backdrop-filter: blur(14px) saturate(160%);
-  border: 1px solid color-mix(in srgb, white 50%, var(--border));
-  border-left: 4px solid var(--primary);
-  border-radius: var(--radius-card);
-  padding: 1.5rem 1.6rem;
-  margin-top: 1.4rem;
-  box-shadow: var(--shadow-md);
-}
-
-.detailHeader {
+.tenantAvatarRing {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 50%;
+  padding: 2px;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.2rem;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 2px solid var(--border);
+  transition: border-color 0.15s ease;
 }
+
+.tenantAvatarRingActive {
+  border-color: var(--primary);
+}
+
+.tenantAvatarRingOverdue {
+  border-color: var(--danger);
+}
+
+.tenantAvatarRingPending {
+  border-color: var(--warning);
+}
+
+.tenantAvatarRingDisabled {
+  border-color: var(--text-muted);
+  opacity: 0.75;
+}
+
+.tenantAvatarRingLg {
+  width: 3.6rem;
+  height: 3.6rem;
+  border-width: 2.5px;
+  padding: 3px;
+}
+
+.tenantAvatarRingLg .tenantAvatarInner {
+  font-size: 1.1rem;
+}
+
+.tenantAvatarInner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(155deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.78rem;
+  overflow: hidden;
+}
+
+.tenantOverdueTag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--danger);
+  background: var(--danger-soft);
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: fit-content;
+  margin-top: 0.2rem;
+}
+
+.tenantBiensRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.tenantBienChip {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tenantBienChip i {
+  color: var(--primary);
+  font-size: 0.68rem;
+  flex-shrink: 0;
+}
+
+.tenantRowOverdue td:first-child {
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+
+.badgeWithIcon {
+  gap: 0.3rem;
+}
+
+.badgeWithIcon::before {
+  display: none;
+}
+
+.badgeWithIcon i {
+  font-size: 0.78rem;
+}
+
+/* ---------- Detail panel ---------- */
 
 .detailTitle {
   font-size: 1.08rem;
@@ -854,11 +1145,70 @@
   gap: 0.6rem;
 }
 
-.detailColumns {
+.detailHeaderIdentity {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.detailHeaderMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.tenantStatTiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.4rem;
-  margin-bottom: 1.4rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.8rem;
+  margin: 1.3rem 0 1.6rem;
+}
+
+.tenantStatTile {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  background: var(--bg);
+  border-radius: var(--radius-field);
+  padding: 0.75rem 0.9rem;
+}
+
+.tenantStatTileIcon {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 10px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.tenantStatTileIconDanger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.tenantStatTileLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.tenantStatTileValue {
+  font-size: 1.1rem;
+  font-weight: 750;
+  color: var(--secondary);
+  margin-top: 0.1rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .detailBlockTitle {
@@ -1604,61 +1954,62 @@
 }
 
 .thumbSm {
-  width: 2.4rem;
-  height: 2.4rem;
-  border-radius: 8px;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 10px;
   object-fit: cover;
   flex-shrink: 0;
   background: var(--bg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 
 .thumbPlaceholder {
-  width: 2.4rem;
-  height: 2.4rem;
-  border-radius: 8px;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 10px;
   background: var(--bg);
   color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
+  font-size: 1.05rem;
   flex-shrink: 0;
+  border: 1px solid var(--border);
 }
 
 .tableActions {
   display: flex;
-  gap: 0.4rem;
+  gap: 0.3rem;
   white-space: nowrap;
 }
 
 .iconBtn {
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: 1px solid transparent;
+  background: none;
   color: var(--text-muted);
-  width: 2rem;
-  height: 2rem;
-  border-radius: 8px;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 0.88rem;
-  transition: all 0.12s ease;
+  font-size: 0.9rem;
+  transition: background 0.12s ease, color 0.12s ease, transform 0.12s ease;
 }
 
 .iconBtn:hover {
-  border-color: var(--primary);
   color: var(--primary);
   background: var(--primary-soft);
-  transform: scale(1.08);
+  transform: translateY(-1px);
 }
 
 .iconBtn:active {
-  transform: scale(0.92);
+  transform: translateY(0) scale(0.92);
 }
 
 .iconBtnDanger:hover {
-  border-color: var(--danger);
   color: var(--danger);
   background: var(--danger-soft);
 }
@@ -1668,7 +2019,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.85rem 0.9rem;
+  padding: 0.9rem 1rem;
   border-top: 1px solid var(--border);
   font-size: 0.82rem;
   color: var(--text-muted);
@@ -1974,7 +2325,10 @@
   position: relative;
   display: inline-flex;
   gap: 0.25rem;
-  background: #ebfadc;
+  /* var() plutôt que les teintes fixes d'origine : ce toggle vivait avec des
+     couleurs codées en dur, illisibles une fois le mode sombre activé (texte
+     var(--secondary) clair sur fond resté clair). */
+  background: var(--bg);
   border-radius: 999px;
   padding: 0.3rem;
   margin-bottom: 1rem;
@@ -1986,7 +2340,7 @@
   bottom: 0.3rem;
   left: 0;
   border-radius: 999px;
-  background: #b9e88a;
+  background: var(--primary);
   box-shadow: var(--shadow-sm);
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   z-index: 0;
@@ -2000,18 +2354,25 @@
   gap: 0.45rem;
   border: none;
   background: none;
-  color: var(--secondary);
-  opacity: 0.6;
+  color: var(--text-muted);
   font-size: 0.85rem;
   font-weight: 650;
   padding: 0.55rem 1.2rem;
   border-radius: 999px;
   cursor: pointer;
-  transition: opacity 0.25s ease;
+  transition: color 0.25s ease;
 }
 
 .discussionToggleBtn:hover {
-  opacity: 0.85;
+  color: var(--secondary);
+}
+
+.discussionToggleBtnActive {
+  color: #fff;
+}
+
+.discussionToggleBtnActive:hover {
+  color: #fff;
 }
 
 .discussionToggleBtnActive {

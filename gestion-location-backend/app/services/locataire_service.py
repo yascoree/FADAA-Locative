@@ -9,6 +9,7 @@ from app.models.lot import Lot
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.utilisateur import UtilisateurCreate, UtilisateurUpdate
 from app.services.exceptions import BadRequest, Forbidden, NotFound
+from app.services.usage_service import enforce_limit
 
 
 def _is_my_tenant(db: Session, current_user: Utilisateur, tenant_id: int) -> bool:
@@ -87,6 +88,13 @@ def create_locataire(db: Session, current_user: Utilisateur, locataire_in: Utili
     existing = db.query(Utilisateur).filter(Utilisateur.email == locataire_in.email).first()
     if existing:
         raise BadRequest("Email already registered")
+
+    # Le quota "locataires" du plan ne compte normalement que les locataires liés
+    # à un bail actif (voir usage_service.compute_owner_usage), mais un abonnement
+    # expiré/suspendu doit bloquer TOUTE création — y compris un compte locataire
+    # pas encore rattaché à un bail — pas seulement le dépassement de quota.
+    if current_user.role == UtilisateurRole.PROPRIETAIRE:
+        enforce_limit(db, current_user.id, "locataires")
 
     locataire = Utilisateur(
         nom=locataire_in.nom,

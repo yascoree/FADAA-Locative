@@ -8,6 +8,7 @@ import {
   DEMANDE_DEMO_STATUS,
   DEMANDE_DEMO_STATUS_LABELS,
 } from "@/lib/demandesDemo";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../admin.module.css";
 
 function Banner({ banner }) {
@@ -30,6 +31,7 @@ function formatDate(value) {
 }
 
 export default function AdminDemandesDemoPage() {
+  const { t } = useLanguage();
   const [demandes, setDemandes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -66,7 +68,7 @@ export default function AdminDemandesDemoPage() {
   }
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.common.loading")}</p>;
   }
 
   return (
@@ -76,12 +78,9 @@ export default function AdminDemandesDemoPage() {
       <div className={styles.section} style={{ marginBottom: 0 }}>
         <h2 className={styles.sectionTitle}>
           <i className="bi bi-calendar2-check" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-          Demandes de démo
+          {t("bo.adminDemandesDemo.title")}
         </h2>
-        <p className={styles.sectionSubtitle}>
-          Demandes soumises depuis la landing page publique. Contactez la personne puis marquez la demande comme
-          traitée.
-        </p>
+        <p className={styles.sectionSubtitle}>{t("bo.adminDemandesDemo.subtitle")}</p>
 
         <Banner banner={banner} />
 
@@ -89,20 +88,20 @@ export default function AdminDemandesDemoPage() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Nom</th>
-                <th>Contact</th>
-                <th>Date souhaitée</th>
-                <th>Message</th>
-                <th>Reçue le</th>
-                <th>Statut</th>
-                <th>Actions</th>
+                <th>{t("bo.adminDemandesDemo.colName")}</th>
+                <th>{t("bo.adminDemandesDemo.colContact")}</th>
+                <th>{t("bo.adminDemandesDemo.colDesiredDate")}</th>
+                <th>{t("bo.adminDemandesDemo.colMessage")}</th>
+                <th>{t("bo.adminDemandesDemo.colReceivedOn")}</th>
+                <th>{t("bo.adminDemandesDemo.colStatus")}</th>
+                <th>{t("bo.adminDemandesDemo.colActions")}</th>
               </tr>
             </thead>
             <tbody>
               {demandes.length === 0 && (
                 <tr>
                   <td colSpan={7} className={styles.empty}>
-                    Aucune demande de démo pour le moment.
+                    {t("bo.adminDemandesDemo.noRequests")}
                   </td>
                 </tr>
               )}
@@ -133,7 +132,7 @@ export default function AdminDemandesDemoPage() {
                             className={styles.iconBtn}
                             onClick={() => handleMarkContactee(d)}
                             disabled={busy}
-                            title="Marquer comme contactée"
+                            title={t("bo.adminDemandesDemo.markContacted")}
                           >
                             <i className="bi bi-check-lg" />
                           </button>

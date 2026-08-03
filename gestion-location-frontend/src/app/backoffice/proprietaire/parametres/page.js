@@ -7,6 +7,9 @@ import { updateUser } from "@/lib/users";
 import { fetchProfile, createProfile, updateProfile, uploadProfilePhoto, deleteProfilePhoto } from "@/lib/profile";
 import TextField from "@/components/TextField";
 import PasswordChangeCard from "@/components/PasswordChangeCard";
+import ThemeToggle from "@/components/ThemeToggle";
+import LanguagePicker from "@/components/LanguagePicker";
+import PlanLimitPopup from "@/components/PlanLimitPopup";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -38,6 +41,11 @@ export default function ProprietaireParametresPage() {
   const [accountBanner, setAccountBanner] = useState(null);
 
   const [passwordSuccessBanner, setPasswordSuccessBanner] = useState(null);
+
+  // Ouvre exactement la même popup que lorsqu'une action est bloquée faute
+  // d'abonnement (voir components/PlanLimitPopup) — ici sans blocage réel,
+  // juste pour permettre de changer de plan à tout moment depuis les Paramètres.
+  const [planPopupMessage, setPlanPopupMessage] = useState(null);
 
   useEffect(() => {
     if (!user) return;
@@ -155,6 +163,45 @@ export default function ProprietaireParametresPage() {
         </h2>
         <p className={styles.sectionSubtitle}>Gérez vos informations personnelles et la sécurité de votre compte.</p>
       </div>
+
+      {/* ---- Abonnement ---- */}
+      <div className={styles.section}>
+        <button
+          type="button"
+          className={styles.subscriptionCtaButton}
+          onClick={() => setPlanPopupMessage("Consultez les plans disponibles et changez d'abonnement à tout moment.")}
+        >
+          <span className={styles.subscriptionCtaIcon}>
+            <i className="bi bi-credit-card-2-front-fill" />
+          </span>
+          <span className={styles.subscriptionCtaBody}>
+            <span className={styles.subscriptionCtaTitle}>Abonnement</span>
+            <span className={styles.subscriptionCtaSubtitle}>Consulter ou changer de plan</span>
+          </span>
+          <span className={styles.subscriptionCtaArrow}>
+            <i className="bi bi-arrow-right" />
+          </span>
+        </button>
+      </div>
+
+      <PlanLimitPopup message={planPopupMessage} onClose={() => setPlanPopupMessage(null)} />
+
+      {/* ---- Apparence ---- */}
+      <div className={styles.section}>
+        <div className={styles.card}>
+          <h3 className={styles.cardTitle}>
+            <i className="bi bi-palette-fill" style={{ color: "var(--primary)" }} />
+            Apparence
+          </h3>
+          <p className={styles.sectionSubtitle} style={{ margin: "-0.4rem 0 1rem" }}>
+            Choisissez le thème de votre interface — le choix est mémorisé sur cet appareil.
+          </p>
+          <ThemeToggle />
+        </div>
+      </div>
+
+      {/* ---- Langue ---- */}
+      <LanguagePicker styles={styles} />
 
       {/* ---- Compte ---- */}
       <div className={styles.section}>

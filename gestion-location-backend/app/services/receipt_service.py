@@ -32,11 +32,33 @@ QUITTANCE_STATUS_COLORS = {
     QuittanceStatus.ANNULEE: "#c0392b",
 }
 
+# Mêmes teintes que --brand-primary/--brand-primary-dark/--brand-text/... dans
+# app/globals.css côté front : le PDF doit avoir le même habillage que l'app.
+PRIMARY = HexColor("#889063")
+PRIMARY_DARK = HexColor("#6d7450")
+TEXT = HexColor("#2a2820")
+TEXT_MUTED = HexColor("#8c8570")
+BORDER = HexColor("#e3ddd0")
+CARD_BG = HexColor("#fcfbf8")
+WHITE = HexColor("#ffffff")
+
 # app/services/receipt_service.py -> parents[2] = racine du backend.
 # Volontairement HORS de uploads/ (qui est monté en statique, donc public) : une
 # quittance contient des données personnelles/financières et ne doit être
 # accessible que via /receipts/{id}/download, avec vérification des droits.
 RECEIPTS_DIR = Path(__file__).resolve().parents[2] / "storage" / "receipts"
+
+ASSETS_DIR = Path(__file__).resolve().parents[1] / "assets"
+LOGO_FULL_PATH = ASSETS_DIR / "logo-full.png"
+LOGO_FULL_RATIO = 978 / 450  # largeur / hauteur du PNG source
+ICON_PATH = ASSETS_DIR / "icon.png"
+ICON_RATIO = 384 / 368
+
+PAGE_W, PAGE_H = A4
+MARGIN = 18 * mm
+HEADER_H = 42 * mm
+FOOTER_H = 13 * mm
+CONTENT_W = PAGE_W - 2 * MARGIN
 
 
 def _format_date(value):
@@ -45,6 +67,124 @@ def _format_date(value):
 
 def _format_amount(value):
     return f"{value:.2f} MAD" if value is not None else "—"
+
+
+def _draw_watermark(c: canvas.Canvas) -> None:
+    """Icône géante et très pâle derrière tout le contenu — apporte de la
+    texture/du "background" sans jamais gêner la lecture."""
+    if not ICON_PATH.exists():
+        return
+    size = 150 * mm
+    x = (PAGE_W - size) / 2
+    y = (PAGE_H - HEADER_H - FOOTER_H) / 2 + FOOTER_H - size / 2
+    c.saveState()
+    c.setFillAlpha(0.05)
+    c.drawImage(str(ICON_PATH), x, y, width=size, height=size / ICON_RATIO, mask="auto", preserveAspectRatio=True)
+    c.restoreState()
+
+
+def _draw_header(c: canvas.Canvas, quittance: Quittance) -> None:
+    c.setFillColor(PRIMARY)
+    c.rect(0, PAGE_H - HEADER_H, PAGE_W, HEADER_H, stroke=0, fill=1)
+    c.setFillColor(PRIMARY_DARK)
+    c.rect(0, PAGE_H - HEADER_H, PAGE_W, 1.4 * mm, stroke=0, fill=1)
+
+    # Logo bien visible : carte blanche arrondie dans le bandeau de couleur, pour
+    # un contraste maximal quel que soit l'écran/l'imprimante.
+    chip_w, chip_h, chip_pad = 60 * mm, 21 * mm, 3 * mm
+    chip_x, chip_y = MARGIN, PAGE_H - HEADER_H + (HEADER_H - chip_h) / 2
+    c.setFillColor(WHITE)
+    c.roundRect(chip_x, chip_y, chip_w, chip_h, 3 * mm, stroke=0, fill=1)
+    if LOGO_FULL_PATH.exists():
+        logo_h = chip_h - 2 * chip_pad
+        logo_w = logo_h * LOGO_FULL_RATIO
+        if logo_w > chip_w - 2 * chip_pad:
+            logo_w = chip_w - 2 * chip_pad
+            logo_h = logo_w / LOGO_FULL_RATIO
+        c.drawImage(
+            str(LOGO_FULL_PATH),
+            chip_x + (chip_w - logo_w) / 2,
+            chip_y + (chip_h - logo_h) / 2,
+            width=logo_w,
+            height=logo_h,
+            mask="auto",
+            preserveAspectRatio=True,
+        )
+
+    title_x = chip_x + chip_w + 8 * mm
+    c.setFillColor(WHITE)
+    c.setFont("Helvetica-Bold", 20)
+    c.drawString(title_x, PAGE_H - HEADER_H / 2 + 1 * mm, "QUITTANCE DE LOYER")
+    c.setFont("Helvetica", 9.5)
+    c.setFillColor(HexColor("#f1efe6"))
+    c.drawString(
+        title_x,
+        PAGE_H - HEADER_H / 2 - 7 * mm,
+        f"Quittance n° {quittance.id} — générée le {_format_date(quittance.date_generation)}",
+    )
+
+
+def _draw_status_pill(c: canvas.Canvas, quittance: Quittance, y: float) -> None:
+    label = QUITTANCE_STATUS_LABELS.get(quittance.statut, "—").upper()
+    color = HexColor(QUITTANCE_STATUS_COLORS.get(quittance.statut, "#000000"))
+    c.setFont("Helvetica-Bold", 9)
+    text_w = c.stringWidth(label, "Helvetica-Bold", 9)
+    pad_x, pill_h = 4.5 * mm, 7.5 * mm
+    pill_w = text_w + 2 * pad_x
+    pill_x = PAGE_W - MARGIN - pill_w
+    c.setFillColor(color)
+    c.roundRect(pill_x, y, pill_w, pill_h, pill_h / 2, stroke=0, fill=1)
+    c.setFillColor(WHITE)
+    c.drawCentredString(pill_x + pill_w / 2, y + pill_h / 2 - 3.1, label)
+
+
+def _section(c: canvas.Canvas, y_top: float, title: str, rows: list[tuple[str, str]]) -> float:
+    """Dessine une carte de section (titre + lignes label/valeur) et renvoie le
+    y du haut de la prochaine carte."""
+    row_h = 7.6 * mm
+    title_h = 11 * mm
+    box_h = title_h + row_h * len(rows) + 4 * mm
+    box_y = y_top - box_h
+
+    c.setFillColor(CARD_BG)
+    c.setStrokeColor(BORDER)
+    c.setLineWidth(0.7)
+    c.roundRect(MARGIN, box_y, CONTENT_W, box_h, 2.5 * mm, stroke=1, fill=1)
+
+    bullet_x = MARGIN + 5 * mm
+    text_x = MARGIN + 8.5 * mm
+    title_y = y_top - 7.5 * mm
+    c.setFillColor(PRIMARY)
+    c.rect(bullet_x - 1.6 * mm, title_y - 0.2, 3.2 * mm, 3.2 * mm, stroke=0, fill=1)
+    c.setFillColor(PRIMARY_DARK)
+    c.setFont("Helvetica-Bold", 11.5)
+    c.drawString(text_x, title_y, title.upper())
+
+    c.setStrokeColor(BORDER)
+    c.setLineWidth(0.5)
+    c.line(MARGIN + 4 * mm, y_top - title_h, PAGE_W - MARGIN - 4 * mm, y_top - title_h)
+
+    row_y = y_top - title_h - 6 * mm
+    label_x = MARGIN + 8.5 * mm
+    value_x = MARGIN + 62 * mm
+    for label, value in rows:
+        c.setFont("Helvetica", 9.5)
+        c.setFillColor(TEXT_MUTED)
+        c.drawString(label_x, row_y, label)
+        c.setFont("Helvetica-Bold", 10.5)
+        c.setFillColor(TEXT)
+        c.drawString(value_x, row_y, str(value))
+        row_y -= row_h
+
+    return box_y - 6 * mm
+
+
+def _draw_footer(c: canvas.Canvas) -> None:
+    c.setFillColor(PRIMARY)
+    c.rect(0, 0, PAGE_W, FOOTER_H, stroke=0, fill=1)
+    c.setFillColor(WHITE)
+    c.setFont("Helvetica", 8)
+    c.drawCentredString(PAGE_W / 2, FOOTER_H / 2 - 2.6, "Document généré automatiquement par FADAA Locative")
 
 
 def generate_receipt_pdf(db: Session, quittance: Quittance) -> str:
@@ -61,83 +201,75 @@ def generate_receipt_pdf(db: Session, quittance: Quittance) -> str:
     bien = db.get(Bien, lot.bien_id)
     locataire = db.get(Utilisateur, bail.locataire_id)
     proprietaire = db.get(Utilisateur, bien.proprietaire_id)
+    encaisseur = db.get(Utilisateur, paiement.encaisse_par)
 
     RECEIPTS_DIR.mkdir(parents=True, exist_ok=True)
     file_path = RECEIPTS_DIR / f"quittance_{quittance.id}.pdf"
 
     c = canvas.Canvas(str(file_path), pagesize=A4)
-    width, height = A4
-    left = 22 * mm
-    y = height - 30 * mm
 
-    c.setFont("Helvetica-Bold", 18)
-    c.drawString(left, y, "Quittance de loyer")
-    y -= 10 * mm
+    _draw_watermark(c)
+    _draw_header(c, quittance)
 
-    c.setFont("Helvetica", 10)
-    c.drawString(left, y, f"Quittance n° {quittance.id} — générée le {_format_date(quittance.date_generation)}")
-    y -= 8 * mm
+    pill_y = PAGE_H - HEADER_H - 10 * mm - 7.5 * mm
+    _draw_status_pill(c, quittance, pill_y)
+    y = pill_y - 6 * mm
 
-    c.setFont("Helvetica-Bold", 10)
-    c.setFillColor(HexColor(QUITTANCE_STATUS_COLORS.get(quittance.statut, "#000000")))
-    c.drawString(left, y, f"Statut : {QUITTANCE_STATUS_LABELS.get(quittance.statut, '—')}")
-    c.setFillColor(HexColor("#000000"))
-    y -= 14 * mm
-
-    def line(label, value):
-        nonlocal y
-        c.setFont("Helvetica-Bold", 10)
-        c.drawString(left, y, label)
-        c.setFont("Helvetica", 10)
-        c.drawString(left + 55 * mm, y, str(value))
-        y -= 7 * mm
-
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(left, y, "Bailleur")
-    y -= 8 * mm
-    line("Nom :", f"{proprietaire.prenom} {proprietaire.nom}" if proprietaire else "—")
-    line("Email :", proprietaire.email if proprietaire else "—")
-    y -= 4 * mm
-
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(left, y, "Locataire")
-    y -= 8 * mm
-    line("Nom :", f"{locataire.prenom} {locataire.nom}" if locataire else "—")
-    line("Email :", locataire.email if locataire else "—")
-    y -= 4 * mm
-
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(left, y, "Bien loué")
-    y -= 8 * mm
-    line("Désignation :", bien.designation or f"Bien #{bien.id}")
-    line("Lot :", lot.reference or f"Lot #{lot.id}")
-    y -= 4 * mm
-
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(left, y, "Paiement")
-    y -= 8 * mm
-    line("Période (échéance) :", _format_date(echeance.date_echeance))
-    line("Montant payé :", _format_amount(paiement.montant))
-    line("Mode de paiement :", MODE_PAIEMENT_LABELS.get(paiement.mode_paiement, "—"))
-    line("Date de paiement :", _format_date(paiement.date_paiement))
+    y = _section(
+        c,
+        y,
+        "Bailleur",
+        [
+            ("Nom :", f"{proprietaire.prenom} {proprietaire.nom}" if proprietaire else "—"),
+        ],
+    )
+    y = _section(
+        c,
+        y,
+        "Locataire",
+        [
+            ("Nom :", f"{locataire.prenom} {locataire.nom}" if locataire else "—"),
+        ],
+    )
+    y = _section(
+        c,
+        y,
+        "Bien loué",
+        [
+            ("Désignation :", bien.designation or f"Bien #{bien.id}"),
+            ("Lot :", lot.reference or f"Lot #{lot.id}"),
+        ],
+    )
+    y = _section(
+        c,
+        y,
+        "Paiement",
+        [
+            ("Période (échéance) :", _format_date(echeance.date_echeance)),
+            ("Montant payé :", _format_amount(paiement.montant)),
+            ("Mode de paiement :", MODE_PAIEMENT_LABELS.get(paiement.mode_paiement, "—")),
+            ("Date de paiement :", _format_date(paiement.date_paiement)),
+            ("Encaissé par :", f"{encaisseur.prenom} {encaisseur.nom}" if encaisseur else "—"),
+        ],
+    )
 
     if quittance.statut == QuittanceStatus.ANNULEE:
         annulateur = db.get(Utilisateur, paiement.annule_par) if paiement.annule_par else None
-        y -= 4 * mm
-        c.setFillColor(HexColor("#c0392b"))
-        c.setFont("Helvetica-Bold", 10)
         annulateur_label = f"{annulateur.prenom} {annulateur.nom}" if annulateur else "—"
-        c.drawString(
-            left,
-            y,
+        note = (
             f"Paiement annulé le {_format_date(paiement.date_annulation)} par {annulateur_label}"
-            + (f" — Motif : {paiement.motif_annulation}" if paiement.motif_annulation else ""),
+            + (f" — Motif : {paiement.motif_annulation}" if paiement.motif_annulation else "")
         )
-        c.setFillColor(HexColor("#000000"))
-        y -= 7 * mm
+        note_h = 10 * mm
+        c.setFillColor(HexColor("#fbeceb"))
+        c.setStrokeColor(HexColor("#e6b3ad"))
+        c.setLineWidth(0.7)
+        c.roundRect(MARGIN, y - note_h, CONTENT_W, note_h, 2.5 * mm, stroke=1, fill=1)
+        c.setFillColor(HexColor("#c0392b"))
+        c.setFont("Helvetica-Bold", 9)
+        c.drawString(MARGIN + 5 * mm, y - note_h / 2 - 3, note)
 
-    c.setFont("Helvetica-Oblique", 8)
-    c.drawString(left, 15 * mm, "Document généré automatiquement par FADAA Locative.")
+    _draw_footer(c)
 
     c.showPage()
     c.save()

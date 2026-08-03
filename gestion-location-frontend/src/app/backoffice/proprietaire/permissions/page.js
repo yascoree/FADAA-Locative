@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
+import { extractErrorMessage, isPlanLimitError, API_BASE_URL } from "@/lib/apiClient";
 import {
   fetchMandates,
   fetchPermissionCatalog,
@@ -10,6 +10,7 @@ import {
   saveMandatePermissions,
   fetchGestionnaires,
   createMandate,
+  createGestionnaireInvite,
   setMandateStatus,
   groupPermissionCatalog,
   formatMandateStatusLine,
@@ -20,6 +21,7 @@ import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import SearchableSelect from "@/components/SearchableSelect";
 import FilterSelect from "@/components/FilterSelect";
+import PlanLimitPopup from "@/components/PlanLimitPopup";
 import styles from "./permissions.module.css";
 
 const RESOURCE_ICONS = {
@@ -74,6 +76,18 @@ export default function GestionPermissionPage() {
   const [sortBy, setSortBy] = useState("recent");
   const [inviteBusy, setInviteBusy] = useState(false);
   const [banner, setBanner] = useState(null);
+  const [planLimitMessage, setPlanLimitMessage] = useState(null);
+
+  // "new" = créer un tout nouveau compte gestionnaire (seul moyen désormais,
+  // un gestionnaire ne pouvant plus s'inscrire lui-même) ; "existing" = donner
+  // l'accès à un gestionnaire déjà présent sur la plateforme.
+  const [addMode, setAddMode] = useState("new");
+  const [newPrenom, setNewPrenom] = useState("");
+  const [newNom, setNewNom] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newScopeBienId, setNewScopeBienId] = useState("all");
+  const [createBusy, setCreateBusy] = useState(false);
+  const [inviteLink, setInviteLink] = useState(null);
 
   const [expandedGestionnaireId, setExpandedGestionnaireId] = useState(null);
   const [selectedMandatByGestionnaire, setSelectedMandatByGestionnaire] = useState({});
@@ -140,9 +154,53 @@ export default function GestionPermissionPage() {
       setSelectedMandatByGestionnaire((prev) => ({ ...prev, [gestionnaire.id]: mandat.id }));
       await reload();
     } catch (err) {
-      setBanner({ type: "error", message: extractErrorMessage(err) });
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setBanner({ type: "error", message: extractErrorMessage(err) });
+      }
     } finally {
       setInviteBusy(false);
+    }
+  }
+
+  async function handleCreateGestionnaire(e) {
+    e.preventDefault();
+    setBanner(null);
+    setInviteLink(null);
+    setCreateBusy(true);
+    try {
+      const bienId = newScopeBienId === "all" ? null : Number(newScopeBienId);
+      const { utilisateur, mandat, invite_link } = await createGestionnaireInvite({
+        nom: newNom,
+        prenom: newPrenom,
+        email: newEmail,
+        bienId,
+      });
+      const scopeLabel = bienId ? biens.find((b) => b.id === bienId)?.designation || `bien #${bienId}` : "tous vos biens";
+      setBanner({
+        type: "success",
+        message: `Compte créé pour ${utilisateur.prenom} ${utilisateur.nom}, avec accès à ${scopeLabel}.`,
+      });
+      setInviteLink(invite_link || null);
+      setNewPrenom("");
+      setNewNom("");
+      setNewEmail("");
+      setNewScopeBienId("all");
+      setGestionnaires((prev) => [...prev, utilisateur]);
+      const granted = await fetchMandatePermissions(mandat.id);
+      setGrantedByMandate((prev) => ({ ...prev, [mandat.id]: new Set(granted.map((item) => item.permission.code)) }));
+      setExpandedGestionnaireId(utilisateur.id);
+      setSelectedMandatByGestionnaire((prev) => ({ ...prev, [utilisateur.id]: mandat.id }));
+      await reload();
+    } catch (err) {
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setBanner({ type: "error", message: extractErrorMessage(err) });
+      }
+    } finally {
+      setCreateBusy(false);
     }
   }
 
@@ -152,7 +210,11 @@ export default function GestionPermissionPage() {
       await setMandateStatus(mandat.id, isRevoked ? MANDAT_STATUS.ACTIF : MANDAT_STATUS.REVOQUE);
       await reload();
     } catch (err) {
-      setBanner({ type: "error", message: extractErrorMessage(err) });
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setBanner({ type: "error", message: extractErrorMessage(err) });
+      }
     }
   }
 
@@ -227,6 +289,7 @@ export default function GestionPermissionPage() {
 
   return (
     <div>
+      <PlanLimitPopup message={planLimitMessage} onClose={() => setPlanLimitMessage(null)} />
       <div className={styles.pageHeader}>
         <div>
           <h2 className={styles.pageTitle}>
@@ -247,54 +310,192 @@ export default function GestionPermissionPage() {
       </div>
 
       <div className={styles.card}>
-        <h3 className={styles.cardTitle}>
-          <i className="bi bi-person-plus-fill" />
-          Donner l&apos;accès à un gestionnaire
-        </h3>
-        <p className={styles.subtitle}>Recherchez un gestionnaire déjà inscrit sur la plateforme pour lui donner accès.</p>
+        <div className={styles.modeSwitch} role="tablist" aria-label="Ajouter un gestionnaire">
+          <span
+            className={styles.modeSwitchIndicator}
+            style={{ transform: addMode === "existing" ? "translateX(100%)" : "translateX(0%)" }}
+            aria-hidden="true"
+          />
+          <button
+            type="button"
+            role="tab"
+            aria-selected={addMode === "new"}
+            className={`${styles.modeSwitchBtn} ${addMode === "new" ? styles.modeSwitchBtnActive : ""}`}
+            onClick={() => {
+              setAddMode("new");
+              setBanner(null);
+              setInviteLink(null);
+            }}
+          >
+            <i className="bi bi-person-fill-add" />
+            Créer un gestionnaire
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={addMode === "existing"}
+            className={`${styles.modeSwitchBtn} ${addMode === "existing" ? styles.modeSwitchBtnActive : ""}`}
+            onClick={() => {
+              setAddMode("existing");
+              setBanner(null);
+              setInviteLink(null);
+            }}
+          >
+            <i className="bi bi-person-check-fill" />
+            Donner l&apos;accès
+          </button>
+        </div>
 
-        <form onSubmit={handleInvite}>
-          <div className={styles.inviteRow}>
-            <div className={styles.inviteField}>
-              <label htmlFor="gestionnaire-search">Gestionnaire</label>
-              <SearchableSelect
-                id="gestionnaire-search"
-                items={gestionnaires}
-                getId={(g) => g.id}
-                getLabel={(g) => `${g.prenom} ${g.nom}`}
-                getMeta={(g) => g.email}
-                value={selectedGestionnaire}
-                onSelect={setSelectedGestionnaire}
-                placeholder="Rechercher un gestionnaire..."
-              />
-            </div>
-            <div className={`${styles.inviteField} ${styles.scopeField}`}>
-              <label htmlFor="gestionnaire-scope">Portée</label>
-              <FilterSelect
-                id="gestionnaire-scope"
-                value={scopeBienId}
-                onChange={setScopeBienId}
-                options={[
-                  { value: "all", label: "Tous mes biens" },
-                  ...biens.map((b) => ({ value: b.id, label: b.designation || `Bien #${b.id}` })),
-                ]}
-              />
-            </div>
-            <button type="submit" className={styles.inviteButton} disabled={inviteBusy || !selectedGestionnaire}>
-              <i className="bi bi-plus-lg" />
-              {inviteBusy ? "Ajout..." : "Donner l'accès"}
-            </button>
-          </div>
-        </form>
+        <div key={addMode} className={styles.formPane}>
+          {addMode === "new" ? (
+            <>
+              <h3 className={styles.cardTitle}>
+                <i className="bi bi-person-fill-add" />
+                Créer un compte gestionnaire
+              </h3>
+              <p className={styles.subtitle}>
+                Un gestionnaire ne peut pas s&apos;inscrire lui-même : créez son compte et il recevra un lien pour
+                choisir son mot de passe.
+              </p>
 
-        <p className={styles.note}>
-          <i className="bi bi-info-circle-fill" />
-          Un nouveau mandat reçoit automatiquement le droit de voir le(s) bien(s) concerné(s). Pour
-          ajouter un autre bien à un gestionnaire déjà présent, réinvitez-le ci-dessus avec une portée différente,
-          puis ouvrez ses permissions pour choisir le bien à configurer.
-        </p>
+              <form onSubmit={handleCreateGestionnaire}>
+                <div className={styles.inviteRow}>
+                  <div className={styles.inviteField} style={{ flex: 1, minWidth: 160 }}>
+                    <label htmlFor="new-gest-prenom">Prénom</label>
+                    <input
+                      id="new-gest-prenom"
+                      type="text"
+                      value={newPrenom}
+                      onChange={(e) => setNewPrenom(e.target.value)}
+                      placeholder="Prénom"
+                      required
+                    />
+                  </div>
+                  <div className={styles.inviteField} style={{ flex: 1, minWidth: 160 }}>
+                    <label htmlFor="new-gest-nom">Nom</label>
+                    <input
+                      id="new-gest-nom"
+                      type="text"
+                      value={newNom}
+                      onChange={(e) => setNewNom(e.target.value)}
+                      placeholder="Nom"
+                      required
+                    />
+                  </div>
+                  <div className={styles.inviteField}>
+                    <label htmlFor="new-gest-email">Adresse e-mail</label>
+                    <input
+                      id="new-gest-email"
+                      type="email"
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      placeholder="gestionnaire@exemple.com"
+                      required
+                    />
+                  </div>
+                  <div className={`${styles.inviteField} ${styles.scopeField}`}>
+                    <label htmlFor="new-gest-scope">Portée</label>
+                    <FilterSelect
+                      id="new-gest-scope"
+                      value={newScopeBienId}
+                      onChange={setNewScopeBienId}
+                      options={[
+                        { value: "all", label: "Tous mes biens" },
+                        ...biens.map((b) => ({ value: b.id, label: b.designation || `Bien #${b.id}` })),
+                      ]}
+                    />
+                  </div>
+                  <button type="submit" className={styles.inviteButton} disabled={createBusy}>
+                    <i className="bi bi-plus-lg" />
+                    {createBusy ? "Création..." : "Créer le compte"}
+                  </button>
+                </div>
+              </form>
 
-        <Banner banner={banner} />
+              <p className={styles.note}>
+                <i className="bi bi-info-circle-fill" />
+                Le nouveau gestionnaire reçoit automatiquement le droit de voir le(s) bien(s) concerné(s) — affinez
+                ses droits ci-dessous une fois le compte créé.
+              </p>
+
+              {inviteLink && (
+                <div className={styles.inviteLinkBox}>
+                  <i className="bi bi-link-45deg" />
+                  <div>
+                    <div className={styles.inviteLinkLabel}>
+                      Aucun service d&apos;envoi d&apos;email n&apos;est configuré : transmettez ce lien au
+                      gestionnaire pour qu&apos;il choisisse son mot de passe.
+                    </div>
+                    <div className={styles.inviteLinkRow}>
+                      <input type="text" readOnly value={inviteLink} onFocus={(e) => e.target.select()} />
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard?.writeText(inviteLink)}
+                      >
+                        <i className="bi bi-clipboard" /> Copier
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <Banner banner={banner} />
+            </>
+          ) : (
+            <>
+              <h3 className={styles.cardTitle}>
+                <i className="bi bi-person-check-fill" />
+                Donner l&apos;accès à un gestionnaire existant
+              </h3>
+              <p className={styles.subtitle}>
+                Recherchez un gestionnaire déjà inscrit sur la plateforme pour lui donner accès.
+              </p>
+
+              <form onSubmit={handleInvite}>
+                <div className={styles.inviteRow}>
+                  <div className={styles.inviteField}>
+                    <label htmlFor="gestionnaire-search">Gestionnaire</label>
+                    <SearchableSelect
+                      id="gestionnaire-search"
+                      items={gestionnaires}
+                      getId={(g) => g.id}
+                      getLabel={(g) => `${g.prenom} ${g.nom}`}
+                      getMeta={(g) => g.email}
+                      value={selectedGestionnaire}
+                      onSelect={setSelectedGestionnaire}
+                      placeholder="Rechercher un gestionnaire..."
+                    />
+                  </div>
+                  <div className={`${styles.inviteField} ${styles.scopeField}`}>
+                    <label htmlFor="gestionnaire-scope">Portée</label>
+                    <FilterSelect
+                      id="gestionnaire-scope"
+                      value={scopeBienId}
+                      onChange={setScopeBienId}
+                      options={[
+                        { value: "all", label: "Tous mes biens" },
+                        ...biens.map((b) => ({ value: b.id, label: b.designation || `Bien #${b.id}` })),
+                      ]}
+                    />
+                  </div>
+                  <button type="submit" className={styles.inviteButton} disabled={inviteBusy || !selectedGestionnaire}>
+                    <i className="bi bi-plus-lg" />
+                    {inviteBusy ? "Ajout..." : "Donner l'accès"}
+                  </button>
+                </div>
+              </form>
+
+              <p className={styles.note}>
+                <i className="bi bi-info-circle-fill" />
+                Un nouveau mandat reçoit automatiquement le droit de voir le(s) bien(s) concerné(s). Pour
+                ajouter un autre bien à un gestionnaire déjà présent, réinvitez-le ci-dessus avec une portée
+                différente, puis ouvrez ses permissions pour choisir le bien à configurer.
+              </p>
+
+              <Banner banner={banner} />
+            </>
+          )}
+        </div>
       </div>
 
       {!isLoading && gestionnaireGroups.length === 0 && (

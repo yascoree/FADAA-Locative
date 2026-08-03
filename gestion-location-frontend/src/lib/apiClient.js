@@ -14,6 +14,13 @@ export function setAuthToken(token) {
   }
 }
 
+// 402 = abonnement expiré/suspendu ou limite du plan atteinte (voir
+// app.services.exceptions.PaymentRequired côté backend) : signal dédié pour que
+// l'UI distingue ce cas d'une erreur de validation classique.
+export function isPlanLimitError(error) {
+  return error?.response?.status === 402;
+}
+
 export function extractErrorMessage(error) {
   const detail = error?.response?.data?.detail;
   if (Array.isArray(detail)) {

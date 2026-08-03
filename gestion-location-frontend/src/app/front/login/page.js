@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { ROLE_DASHBOARD_PATH, PUBLIC_REGISTER_ROLES } from "@/lib/roles";
 import { extractErrorMessage } from "@/lib/apiClient";
 import { requestPasswordReset } from "@/lib/passwordReset";
@@ -11,11 +12,6 @@ import { fetchAvis } from "@/lib/avis";
 import Modal from "@/components/Modal";
 import LogoIcon from "@/components/LogoIcon";
 import styles from "./login.module.css";
-
-const FALLBACK_QUOTE = {
-  text: "Depuis qu'on gère nos biens avec FADAA, chaque gestionnaire sait exactement ce qu'il a le droit de faire — plus aucune mauvaise surprise.",
-  attribution: "Nadia B. — propriétaire de 8 biens",
-};
 
 const QUOTE_ROTATION_MS = 6000;
 
@@ -39,6 +35,7 @@ function Stars({ note }) {
 }
 
 function BrandPanel() {
+  const { t } = useLanguage();
   const [avisList, setAvisList] = useState([]);
   const [quoteIndex, setQuoteIndex] = useState(0);
 
@@ -80,24 +77,22 @@ function BrandPanel() {
       </div>
 
       <div className={styles.brandMiddle}>
-        <div className={styles.brandEyebrow}>Plateforme de gestion locative</div>
-        <h1 className={styles.brandHeadline}>La gestion locative, enfin sous contrôle.</h1>
-        <p className={styles.brandSub}>
-          Biens, baux, paiements et permissions de vos gestionnaires — tout au même endroit.
-        </p>
+        <div className={styles.brandEyebrow}>{t("login.brandEyebrow")}</div>
+        <h1 className={styles.brandHeadline}>{t("login.brandHeadline")}</h1>
+        <p className={styles.brandSub}>{t("login.brandSub")}</p>
 
         <div className={styles.statRow}>
           <div>
             <div className={styles.statValue}>500+</div>
-            <div className={styles.statLabel}>biens gérés sur la plateforme</div>
+            <div className={styles.statLabel}>{t("login.statBiens")}</div>
           </div>
           <div>
             <div className={styles.statValue}>98%</div>
-            <div className={styles.statLabel}>de propriétaires satisfaits</div>
+            <div className={styles.statLabel}>{t("login.statSatisfaction")}</div>
           </div>
           <div>
             <div className={styles.statValue}>4.9</div>
-            <div className={styles.statLabel}>note moyenne des utilisateurs</div>
+            <div className={styles.statLabel}>{t("login.statNote")}</div>
           </div>
         </div>
       </div>
@@ -117,8 +112,8 @@ function BrandPanel() {
             </>
           ) : (
             <>
-              <p className={styles.quoteText}>{FALLBACK_QUOTE.text}</p>
-              <p className={styles.quoteAttr}>{FALLBACK_QUOTE.attribution}</p>
+              <p className={styles.quoteText}>{t("login.fallbackQuoteText")}</p>
+              <p className={styles.quoteAttr}>{t("login.fallbackQuoteAttribution")}</p>
             </>
           )}
         </div>
@@ -128,6 +123,7 @@ function BrandPanel() {
 }
 
 function PasswordField({ id, label, value, onChange, placeholder, autoComplete, minLength, invalid }) {
+  const { t } = useLanguage();
   const [visible, setVisible] = useState(false);
   return (
     <div className={styles.field}>
@@ -147,7 +143,7 @@ function PasswordField({ id, label, value, onChange, placeholder, autoComplete, 
         <button
           type="button"
           className={styles.pwToggle}
-          aria-label={visible ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+          aria-label={visible ? t("login.hidePassword") : t("login.showPassword")}
           onClick={() => setVisible((v) => !v)}
         >
           <EyeIcon />
@@ -161,6 +157,7 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, register } = useAuth();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") === "register" ? "register" : "login");
 
   // ---- Login form state ----
@@ -179,7 +176,7 @@ export default function LoginPage() {
   const [forgotError, setForgotError] = useState(null);
 
   // ---- Register form state ----
-  const [role, setRole] = useState(PUBLIC_REGISTER_ROLES[0].value);
+  const role = PUBLIC_REGISTER_ROLES[0].value;
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
@@ -280,7 +277,7 @@ export default function LoginPage() {
               aria-selected={activeTab === "login"}
               onClick={() => switchTab("login")}
             >
-              Se connecter
+              {t("login.tabLogin")}
             </button>
             <button
               type="button"
@@ -289,24 +286,24 @@ export default function LoginPage() {
               aria-selected={activeTab === "register"}
               onClick={() => switchTab("register")}
             >
-              Créer un compte
+              {t("login.tabRegister")}
             </button>
           </div>
 
           {activeTab === "login" ? (
             <form onSubmit={handleLogin}>
-              <h2 className={styles.formTitle}>Bon retour parmi nous</h2>
+              <h2 className={styles.formTitle}>{t("login.loginTitle")}</h2>
               <p className={styles.formSubtext}>
-                Pas encore de compte ?{" "}
+                {t("login.loginSubtitlePrefix")}{" "}
                 <button type="button" onClick={() => switchTab("register")}>
-                  Créer un compte
+                  {t("login.loginSubtitleLink")}
                 </button>
               </p>
 
               {loginBanner && <div className={`${styles.banner} ${styles.bannerError}`}>{loginBanner.message}</div>}
 
               <div className={styles.field}>
-                <label htmlFor="login-email">Adresse e-mail</label>
+                <label htmlFor="login-email">{t("login.emailLabel")}</label>
                 <input
                   type="email"
                   id="login-email"
@@ -320,7 +317,7 @@ export default function LoginPage() {
 
               <PasswordField
                 id="login-password"
-                label="Mot de passe"
+                label={t("login.passwordLabel")}
                 value={loginPassword}
                 onChange={setLoginPassword}
                 placeholder="••••••••"
@@ -330,24 +327,24 @@ export default function LoginPage() {
               <div className={styles.rowBetween}>
                 <label className={styles.rememberRow}>
                   <input type="checkbox" className={styles.checkbox} checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-                  Se souvenir de moi
+                  {t("login.remember")}
                 </label>
                 <button type="button" className={styles.forgotLink} onClick={openForgotPassword}>
-                  Mot de passe oublié ?
+                  {t("login.forgot")}
                 </button>
               </div>
 
               <button type="submit" className={styles.btnSubmit} disabled={loginBusy}>
-                {loginBusy ? "Connexion..." : "Se connecter"}
+                {loginBusy ? t("login.submitting") : t("login.submit")}
               </button>
             </form>
           ) : (
             <form onSubmit={handleRegister} noValidate>
-              <h2 className={styles.formTitle}>Créez votre compte</h2>
+              <h2 className={styles.formTitle}>{t("login.registerTitle")}</h2>
               <p className={styles.formSubtext}>
-                Déjà un compte ?{" "}
+                {t("login.registerSubtitlePrefix")}{" "}
                 <button type="button" onClick={() => switchTab("login")}>
-                  Se connecter
+                  {t("login.registerSubtitleLink")}
                 </button>
               </p>
 
@@ -357,47 +354,32 @@ export default function LoginPage() {
                 </div>
               )}
 
-              <span className={styles.fieldLabel}>Type de compte</span>
-              <div className={styles.roleSelect}>
-                {PUBLIC_REGISTER_ROLES.map((option) => (
-                  <label key={option.value} className={styles.roleOption}>
-                    <input
-                      type="radio"
-                      name="register-role"
-                      value={option.value}
-                      checked={role === option.value}
-                      onChange={() => setRole(option.value)}
-                    />
-                    <span className={`${styles.roleCard} ${role === option.value ? styles.roleCardActive : ""}`}>
-                      <i className={`bi bi-check-circle-fill ${styles.roleCheck}`} />
-                      <span className={styles.roleTitle}>{option.label}</span>
-                      <span className={styles.roleSub}>{option.hint}</span>
-                    </span>
-                  </label>
-                ))}
-              </div>
+              <span className={styles.accountBadge}>
+                <i className="bi bi-house-check-fill" />
+                {t("login.accountBadge")}
+              </span>
 
               <div className={styles.nameGrid}>
                 <div className={styles.field}>
-                  <label htmlFor="register-firstname">Prénom</label>
+                  <label htmlFor="register-firstname">{t("login.firstNameLabel")}</label>
                   <input
                     type="text"
                     id="register-firstname"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="Prénom"
+                    placeholder={t("login.firstNameLabel")}
                     autoComplete="given-name"
                     required
                   />
                 </div>
                 <div className={styles.field}>
-                  <label htmlFor="register-lastname">Nom</label>
+                  <label htmlFor="register-lastname">{t("login.lastNameLabel")}</label>
                   <input
                     type="text"
                     id="register-lastname"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Nom"
+                    placeholder={t("login.lastNameLabel")}
                     autoComplete="family-name"
                     required
                   />
@@ -405,7 +387,7 @@ export default function LoginPage() {
               </div>
 
               <div className={styles.field}>
-                <label htmlFor="register-email">Adresse e-mail</label>
+                <label htmlFor="register-email">{t("login.emailLabel")}</label>
                 <input
                   type="email"
                   id="register-email"
@@ -419,7 +401,7 @@ export default function LoginPage() {
 
               <PasswordField
                 id="register-password"
-                label="Mot de passe"
+                label={t("login.passwordLabel")}
                 value={registerPassword}
                 onChange={setRegisterPassword}
                 placeholder="8 caractères minimum"
@@ -430,14 +412,14 @@ export default function LoginPage() {
               <div>
                 <PasswordField
                   id="register-password-confirm"
-                  label="Confirmer le mot de passe"
+                  label={t("login.confirmPasswordLabel")}
                   value={registerConfirm}
                   onChange={setRegisterConfirm}
                   placeholder="Retapez votre mot de passe"
                   autoComplete="new-password"
                   invalid={passwordMismatchTyped}
                 />
-                {passwordMismatchTyped && <p className={styles.fieldError}>Les mots de passe ne correspondent pas.</p>}
+                {passwordMismatchTyped && <p className={styles.fieldError}>{t("login.passwordMismatch")}</p>}
               </div>
 
               <div className={`${styles.checkboxRow} ${styles.termsRow}`}>
@@ -449,49 +431,46 @@ export default function LoginPage() {
                   onChange={(e) => setTerms(e.target.checked)}
                 />
                 <label htmlFor="register-terms">
-                  J&apos;accepte les{" "}
+                  {t("login.termsPrefix")}{" "}
                   <Link href="/front/conditions-utilisation" target="_blank">
-                    Conditions d&apos;utilisation
+                    {t("login.termsLink")}
                   </Link>{" "}
-                  et la{" "}
+                  {t("login.andWord")}{" "}
                   <Link href="/front/politique-confidentialite" target="_blank">
-                    Politique de confidentialité
+                    {t("login.privacyLink")}
                   </Link>
                 </label>
               </div>
 
               <button type="submit" className={styles.btnSubmit} disabled={!canSubmitRegister}>
-                {registerBusy ? "Création..." : "Créer mon compte"}
+                {registerBusy ? t("login.submitCreating") : t("login.submitCreate")}
               </button>
             </form>
           )}
 
-         
-
           <p className={styles.legalNote}>
-            {activeTab === "login" ? "En vous connectant" : "En créant votre compte"}, vous acceptez nos{" "}
+            {activeTab === "login" ? t("login.legalLoginPrefix") : t("login.legalRegisterPrefix")}, {t("login.legalMiddle")}{" "}
             <Link href="/front/conditions-utilisation" target="_blank">
-              Conditions d&apos;utilisation
+              {t("login.termsLink")}
             </Link>{" "}
-            et notre{" "}
+            {t("login.legalAnd")}{" "}
             <Link href="/front/politique-confidentialite" target="_blank">
-              Politique de confidentialité
+              {t("login.privacyLink")}
             </Link>
             .
           </p>
         </div>
       </main>
 
-      <Modal isOpen={forgotOpen} onClose={closeForgotPassword} title="Mot de passe oublié ?">
+      <Modal isOpen={forgotOpen} onClose={closeForgotPassword} title={t("login.forgotModalTitle")}>
         {forgotSubmitted ? (
           <div>
             <p className={styles.formSubtext} style={{ margin: 0 }}>
-              Si un compte existe avec cette adresse, un email de réinitialisation vient d&apos;être envoyé.
+              {t("login.forgotSentText")}
             </p>
             {forgotDebugLink && (
               <div className={styles.formSubtext} style={{ marginTop: "0.9rem" }}>
-                <strong>Mode test</strong> (aucun service d&apos;envoi d&apos;email n&apos;est encore branché) — voici
-                le lien directement :
+                <strong>{t("login.forgotTestModeLabel")}</strong> {t("login.forgotTestModeText")}
                 <br />
                 <a href={forgotDebugLink} style={{ wordBreak: "break-all" }}>
                   {forgotDebugLink}
@@ -499,16 +478,16 @@ export default function LoginPage() {
               </div>
             )}
             <button type="button" className={styles.btnSubmit} style={{ marginTop: "1.2rem" }} onClick={closeForgotPassword}>
-              Fermer
+              {t("login.forgotClose")}
             </button>
           </div>
         ) : (
           <form onSubmit={handleSubmitForgotPassword}>
             <p className={styles.formSubtext} style={{ margin: "0 0 1rem" }}>
-              Indiquez l&apos;adresse e-mail de votre compte, nous vous enverrons les instructions.
+              {t("login.forgotModalText")}
             </p>
             <div className={styles.field}>
-              <label htmlFor="forgot-email">Adresse e-mail</label>
+              <label htmlFor="forgot-email">{t("login.emailLabel")}</label>
               <input
                 type="email"
                 id="forgot-email"
@@ -525,7 +504,7 @@ export default function LoginPage() {
               </p>
             )}
             <button type="submit" className={styles.btnSubmit} disabled={forgotBusy}>
-              {forgotBusy ? "Envoi..." : "Envoyer les instructions"}
+              {forgotBusy ? t("login.forgotSubmitting") : t("login.forgotSubmit")}
             </button>
           </form>
         )}

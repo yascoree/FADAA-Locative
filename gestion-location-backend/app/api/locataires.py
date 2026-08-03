@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models.utilisateur import Utilisateur
 from app.schemas.utilisateur import UtilisateurCreate, UtilisateurRead, UtilisateurUpdate
 from app.services import locataire_service
-from app.services.exceptions import BadRequest, Forbidden, NotFound
+from app.services.exceptions import BadRequest, Forbidden, NotFound, PaymentRequired
 
 router = APIRouter(prefix="/tenants", tags=["tenants"])
 
@@ -32,6 +32,8 @@ def create_locataire(
         return locataire_service.create_locataire(db, current_user, locataire_in)
     except BadRequest as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except PaymentRequired as exc:
+        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=str(exc))
 
 
 @router.get("/{locataire_id}", response_model=UtilisateurRead)

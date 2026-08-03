@@ -24,6 +24,7 @@ class NotificationType(int, enum.Enum):
     RECLAMATION = 9
     DEMANDE_DEMO = 10
     CONTACT_MESSAGE = 11
+    PLAN_CHANGE_REQUEST = 12
 
 
 class Notification(Base):

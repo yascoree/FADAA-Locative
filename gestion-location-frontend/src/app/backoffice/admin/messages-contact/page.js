@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { extractErrorMessage } from "@/lib/apiClient";
 import {
   fetchContactMessages,
@@ -8,6 +8,10 @@ import {
   CONTACT_MESSAGE_STATUS,
   CONTACT_MESSAGE_STATUS_LABELS,
 } from "@/lib/contactMessages";
+import StatCard from "@/components/StatCard";
+import CountUp from "@/components/CountUp";
+import Drawer from "@/components/Drawer";
+import FilterSelect from "@/components/FilterSelect";
 import styles from "../admin.module.css";
 
 function Banner({ banner }) {
@@ -24,6 +28,10 @@ function messageBadgeClass(statut) {
   return styles.badgeSuspended;
 }
 
+function initialsOf(m) {
+  return `${m.prenom?.[0] || ""}${m.nom?.[0] || ""}`.toUpperCase() || "?";
+}
+
 function formatDate(value) {
   if (!value) return "—";
   return new Date(value).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
@@ -36,6 +44,10 @@ export default function AdminMessagesContactPage() {
 
   const [banner, setBanner] = useState(null);
   const [busyId, setBusyId] = useState(null);
+
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [selectedId, setSelectedId] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -65,6 +77,32 @@ export default function AdminMessagesContactPage() {
     }
   }
 
+  const stats = useMemo(
+    () => ({
+      total: messages.length,
+      nouveaux: messages.filter((m) => m.statut === CONTACT_MESSAGE_STATUS.NOUVEAU).length,
+      traites: messages.filter((m) => m.statut === CONTACT_MESSAGE_STATUS.TRAITE).length,
+    }),
+    [messages]
+  );
+
+  const filteredMessages = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return messages.filter((m) => {
+      if (term) {
+        const haystack = [m.prenom, m.nom, m.email, m.telephone, m.sujet, m.message]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(term)) return false;
+      }
+      if (statusFilter && String(m.statut) !== statusFilter) return false;
+      return true;
+    });
+  }, [messages, search, statusFilter]);
+
+  const selected = messages.find((m) => m.id === selectedId) || null;
+
   if (isLoading) {
     return <p>Chargement...</p>;
   }
@@ -83,72 +121,167 @@ export default function AdminMessagesContactPage() {
           message comme traité.
         </p>
 
+        <div className={styles.statsGrid} style={{ marginTop: "1.25rem", marginBottom: "1.5rem" }}>
+          <StatCard icon="bi-inbox-fill" tone="primary" label="Messages reçus" value={<CountUp value={stats.total} />} />
+          <StatCard
+            icon="bi-envelope-exclamation-fill"
+            tone="warning"
+            label="Nouveaux"
+            value={<CountUp value={stats.nouveaux} />}
+          />
+          <StatCard icon="bi-check-circle-fill" tone="accent" label="Traités" value={<CountUp value={stats.traites} />} />
+        </div>
+
         <Banner banner={banner} />
 
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Nom</th>
-                <th>Contact</th>
-                <th>Sujet</th>
-                <th>Message</th>
-                <th>Reçu le</th>
-                <th>Statut</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {messages.length === 0 && (
-                <tr>
-                  <td colSpan={7} className={styles.empty}>
-                    Aucun message de contact pour le moment.
-                  </td>
-                </tr>
-              )}
-              {messages.map((m) => {
-                const busy = busyId === m.id;
-                return (
-                  <tr key={m.id}>
-                    <td>
-                      <span className={styles.userName}>
-                        {m.prenom} {m.nom}
-                      </span>
-                    </td>
-                    <td>
-                      <div>{m.email}</div>
-                      {m.telephone && <div className={styles.tableSubtext}>{m.telephone}</div>}
-                    </td>
-                    <td>{m.sujet}</td>
-                    <td style={{ maxWidth: 280 }}>{m.message}</td>
-                    <td>{formatDate(m.date_creation)}</td>
-                    <td>
-                      <span className={`${styles.badge} ${messageBadgeClass(m.statut)}`}>
-                        {CONTACT_MESSAGE_STATUS_LABELS[m.statut]}
-                      </span>
-                    </td>
-                    <td>
-                      {m.statut !== CONTACT_MESSAGE_STATUS.TRAITE && (
-                        <div className={styles.tableActions}>
-                          <button
-                            type="button"
-                            className={styles.iconBtn}
-                            onClick={() => handleMarkTraite(m)}
-                            disabled={busy}
-                            title="Marquer comme traité"
-                          >
-                            <i className="bi bi-check-lg" />
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className={styles.filtersRow}>
+          <div className={styles.searchInputWrap}>
+            <i className={`bi bi-search ${styles.searchIcon}`} />
+            <input
+              type="text"
+              className={styles.searchInput}
+              placeholder="Rechercher par nom, e-mail, sujet, message..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <FilterSelect
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={[
+              { value: "", label: "Tous les statuts" },
+              ...Object.entries(CONTACT_MESSAGE_STATUS_LABELS).map(([value, label]) => ({ value, label })),
+            ]}
+          />
+        </div>
+
+        {filteredMessages.length === 0 && (
+          <p className={styles.empty}>
+            <i className="bi bi-inbox" style={{ display: "block", fontSize: "1.6rem", marginBottom: "0.5rem" }} />
+            Aucun message ne correspond à ces critères.
+          </p>
+        )}
+
+        <div className={styles.messageInboxList}>
+          {filteredMessages.map((m, index) => {
+            const isNew = m.statut === CONTACT_MESSAGE_STATUS.NOUVEAU;
+            return (
+              <button
+                type="button"
+                key={m.id}
+                style={{ "--i": index }}
+                className={`${styles.messageCard} ${isNew ? styles.messageCardNew : ""} ${
+                  selectedId === m.id ? styles.messageCardSelected : ""
+                }`}
+                onClick={() => setSelectedId(m.id)}
+              >
+                <span className={styles.messageCardAvatar}>{initialsOf(m)}</span>
+                <div className={styles.messageCardBody}>
+                  <div className={styles.messageCardTopRow}>
+                    <span className={styles.messageCardName}>
+                      {m.prenom} {m.nom}
+                    </span>
+                    <span className={styles.messageCardDate}>{formatDate(m.date_creation)}</span>
+                  </div>
+                  <div className={styles.messageCardSubject}>
+                    {isNew && <span className={styles.messageCardDot} />}
+                    {m.sujet}
+                  </div>
+                  <p className={styles.messageCardSnippet}>{m.message}</p>
+                </div>
+                <span className={`${styles.badge} ${messageBadgeClass(m.statut)}`}>
+                  {CONTACT_MESSAGE_STATUS_LABELS[m.statut]}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
+
+      {selected && (
+        <Drawer
+          isOpen={!!selected}
+          onClose={() => setSelectedId(null)}
+          title={
+            <div className={styles.detailHeaderRow}>
+              <div className={styles.detailHeaderIdentity}>
+                <span className={styles.detailAvatar}>{initialsOf(selected)}</span>
+                <div>
+                  <h3 className={styles.detailTitle}>
+                    {selected.prenom} {selected.nom}
+                  </h3>
+                  <div className={styles.detailHeaderTags}>
+                    <span className={`${styles.badge} ${messageBadgeClass(selected.statut)}`}>
+                      {CONTACT_MESSAGE_STATUS_LABELS[selected.statut]}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className={styles.detailHeaderActions}>
+                {selected.statut !== CONTACT_MESSAGE_STATUS.TRAITE && (
+                  <button
+                    type="button"
+                    className={styles.detailHeaderActionBtn}
+                    onClick={() => handleMarkTraite(selected)}
+                    disabled={busyId === selected.id}
+                  >
+                    <i className="bi bi-check-lg" />
+                    {busyId === selected.id ? "..." : "Marquer traité"}
+                  </button>
+                )}
+              </div>
+            </div>
+          }
+        >
+          <div className={styles.detailBlockTitle}>
+            <i className="bi bi-person-fill" />
+            Contact
+          </div>
+          <div className={styles.detailInfoList}>
+            <div className={styles.detailInfoRow}>
+              <span className={styles.detailInfoIcon}>
+                <i className="bi bi-envelope" />
+              </span>
+              <span className={styles.detailInfoBody}>
+                <span className={styles.detailInfoLabel}>Email</span>
+                <a className={styles.detailInfoValue} href={`mailto:${selected.email}`}>
+                  {selected.email}
+                </a>
+              </span>
+            </div>
+            {selected.telephone && (
+              <div className={styles.detailInfoRow}>
+                <span className={styles.detailInfoIcon}>
+                  <i className="bi bi-telephone" />
+                </span>
+                <span className={styles.detailInfoBody}>
+                  <span className={styles.detailInfoLabel}>Téléphone</span>
+                  <a className={styles.detailInfoValue} href={`tel:${selected.telephone}`}>
+                    {selected.telephone}
+                  </a>
+                </span>
+              </div>
+            )}
+            <div className={styles.detailInfoRow}>
+              <span className={styles.detailInfoIcon}>
+                <i className="bi bi-calendar-event" />
+              </span>
+              <span className={styles.detailInfoBody}>
+                <span className={styles.detailInfoLabel}>Reçu le</span>
+                <span className={styles.detailInfoValue}>{formatDate(selected.date_creation)}</span>
+              </span>
+            </div>
+          </div>
+
+          <div className={styles.detailBlockTitle} style={{ marginTop: "1.4rem" }}>
+            <i className="bi bi-chat-square-text-fill" />
+            {selected.sujet}
+          </div>
+          <div className={styles.messageQuoteCard}>
+            <p className={styles.messageQuoteText}>{selected.message}</p>
+          </div>
+        </Drawer>
+      )}
     </div>
   );
 }

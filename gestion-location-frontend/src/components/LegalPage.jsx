@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import LogoIcon from "@/components/LogoIcon";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "./LegalPage.module.css";
 
 /** Mise en page commune aux pages légales (CGU, confidentialité). */
 export default function LegalPage({ title, updatedAt, children }) {
+  const { t } = useLanguage();
   return (
     <div className={styles.wrap}>
       <header className={styles.header}>
@@ -16,13 +18,18 @@ export default function LegalPage({ title, updatedAt, children }) {
           <span className={styles.logoWord}>FADAA Locative</span>
         </Link>
         <Link href="/front/login" className={styles.backLink}>
-          ← Retour
+          {t("legal.common.backLink")}
         </Link>
       </header>
 
       <main className={styles.content}>
         <h1 className={styles.title}>{title}</h1>
-        {updatedAt && <p className={styles.updatedAt}>Dernière mise à jour : {updatedAt}</p>}
+        {updatedAt && (
+          <p className={styles.updatedAt}>
+            {t("legal.common.updatedAtPrefix")}
+            {updatedAt}
+          </p>
+        )}
         <div className={styles.body}>{children}</div>
       </main>
     </div>
