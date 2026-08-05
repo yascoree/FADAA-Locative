@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { extractErrorMessage } from "@/lib/apiClient";
 import {
   fetchDemandesDemo,
@@ -30,11 +30,21 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
+const buildFilters = (t) => [
+  { value: "all", label: t("bo.adminDemandesDemo.filterAll") },
+  { value: DEMANDE_DEMO_STATUS.NOUVELLE, label: t("bo.adminDemandesDemo.filterNew") },
+  { value: DEMANDE_DEMO_STATUS.CONTACTEE, label: t("bo.adminDemandesDemo.filterContacted") },
+];
+
 export default function AdminDemandesDemoPage() {
   const { t } = useLanguage();
+  const FILTERS = useMemo(() => buildFilters(t), [t]);
   const [demandes, setDemandes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
+  const [filter, setFilter] = useState(DEMANDE_DEMO_STATUS.NOUVELLE);
+  const tabRefs = useRef([]);
+  const [indicator, setIndicator] = useState({ left: 0, width: 0 });
 
   const [banner, setBanner] = useState(null);
   const [busyId, setBusyId] = useState(null);
@@ -53,6 +63,24 @@ export default function AdminDemandesDemoPage() {
     }
     init();
   }, []);
+
+  const counts = useMemo(() => {
+    const nouvelles = demandes.filter((d) => d.statut === DEMANDE_DEMO_STATUS.NOUVELLE).length;
+    return { nouvelles, contactees: demandes.length - nouvelles, total: demandes.length };
+  }, [demandes]);
+
+  const filteredDemandes = useMemo(() => {
+    if (filter === "all") return demandes;
+    return demandes.filter((d) => d.statut === filter);
+  }, [demandes, filter]);
+
+  useEffect(() => {
+    const activeIndex = FILTERS.findIndex((f) => f.value === filter);
+    const el = tabRefs.current[activeIndex];
+    if (el) {
+      setIndicator({ left: el.offsetLeft, width: el.offsetWidth });
+    }
+  }, [filter, counts.nouvelles, FILTERS, isLoading]);
 
   async function handleMarkContactee(demande) {
     setBanner(null);
@@ -84,6 +112,32 @@ export default function AdminDemandesDemoPage() {
 
         <Banner banner={banner} />
 
+        <div className={styles.requestFilterTabs} role="tablist" aria-label={t("bo.adminDemandesDemo.filterAriaLabel")}>
+          <span
+            className={styles.requestFilterIndicator}
+            style={{ transform: `translateX(${indicator.left}px)`, width: indicator.width }}
+            aria-hidden="true"
+          />
+          {FILTERS.map((f, i) => (
+            <button
+              key={f.value}
+              ref={(el) => {
+                tabRefs.current[i] = el;
+              }}
+              type="button"
+              role="tab"
+              aria-selected={filter === f.value}
+              className={`${styles.requestFilterTab} ${filter === f.value ? styles.requestFilterTabActive : ""}`}
+              onClick={() => setFilter(f.value)}
+            >
+              {f.label}
+              {f.value === DEMANDE_DEMO_STATUS.NOUVELLE && counts.nouvelles > 0 && (
+                <span className={styles.requestFilterTabBadge}>{counts.nouvelles}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
@@ -98,14 +152,14 @@ export default function AdminDemandesDemoPage() {
               </tr>
             </thead>
             <tbody>
-              {demandes.length === 0 && (
+              {filteredDemandes.length === 0 && (
                 <tr>
                   <td colSpan={7} className={styles.empty}>
                     {t("bo.adminDemandesDemo.noRequests")}
                   </td>
                 </tr>
               )}
-              {demandes.map((d) => {
+              {filteredDemandes.map((d) => {
                 const busy = busyId === d.id;
                 return (
                   <tr key={d.id}>

@@ -3,16 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { extractErrorMessage, isPlanLimitError } from "@/lib/apiClient";
+import { extractErrorMessage, isPlanLimitError, API_BASE_URL } from "@/lib/apiClient";
 import {
   fetchBiens,
   fetchLots,
   fetchCategories,
+  fetchBaux,
   createLot,
   updateLot,
   deleteLot,
+  uploadLotPhoto,
+  deleteLotPhoto,
   LOT_STATUS,
   LOT_STATUS_LABELS,
+  BAIL_STATUS,
 } from "@/lib/properties";
 import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
@@ -22,7 +26,9 @@ import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import FilterSelect from "@/components/FilterSelect";
 import PlanLimitPopup from "@/components/PlanLimitPopup";
+import LotDetailsModal from "@/components/LotDetailsModal";
 import { usePlanGate } from "@/hooks/usePlanGate";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -46,6 +52,10 @@ function formatCurrency(value) {
   return `${Number(value).toLocaleString("fr-FR", { maximumFractionDigits: 2 })} MAD`;
 }
 
+function photoUrl(url) {
+  return `${API_BASE_URL}${url}`;
+}
+
 const STATUS_OPTIONS = Object.entries(LOT_STATUS_LABELS).map(([value, label]) => ({ value, label }));
 const PAGE_SIZE = 10;
 
@@ -56,15 +66,19 @@ const EMPTY_FORM = {
   description: "",
   loyer_reference: "",
   statut: String(LOT_STATUS.DISPONIBLE),
+  valorisation: "",
 };
 
 export default function ProprietaireLotsPage() {
+  const { t } = useLanguage();
   const searchParams = useSearchParams();
   const [lots, setLots] = useState([]);
   const [biens, setBiens] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [baux, setBaux] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
+  const [detailsTarget, setDetailsTarget] = useState(null);
 
   const [search, setSearch] = useState("");
   const [bienFilter, setBienFilter] = useState("");
@@ -81,6 +95,10 @@ export default function ProprietaireLotsPage() {
   const [planLimitMessage, setPlanLimitMessage] = useState(null);
   const { checkBeforeOpen } = usePlanGate("lots");
 
+  const [editingPhotos, setEditingPhotos] = useState([]);
+  const [stagedFiles, setStagedFiles] = useState([]);
+  const [photoBusy, setPhotoBusy] = useState(false);
+
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
@@ -89,10 +107,16 @@ export default function ProprietaireLotsPage() {
     async function init() {
       setIsLoading(true);
       try {
-        const [lotsList, biensList, categoriesList] = await Promise.all([fetchLots(), fetchBiens(), fetchCategories()]);
+        const [lotsList, biensList, categoriesList, bauxList] = await Promise.all([
+          fetchLots(),
+          fetchBiens(),
+          fetchCategories(),
+          fetchBaux(),
+        ]);
         setLots(lotsList);
         setBiens(biensList);
         setCategories(categoriesList);
+        setBaux(bauxList);
         if (searchParams.get("create") === "1" && biensList.length > 0) {
           setFormMode("create");
           setFormTargetId(null);
@@ -148,6 +172,12 @@ export default function ProprietaireLotsPage() {
     return categories.find((c) => c.id === categorieId)?.libelle || "—";
   }
 
+  function currentBailForLot(lotId) {
+    return baux.find(
+      (b) => b.lot_id === lotId && (b.statut === BAIL_STATUS.ACTIF || b.statut === BAIL_STATUS.EN_ATTENTE)
+    );
+  }
+
   // Sous-catégories proposables pour le bien actuellement sélectionné dans le
   // formulaire — filtrées sur le même type_bien que ce bien (voir logique
   // Bien.type / Categorie.type_bien côté backend).
@@ -164,6 +194,8 @@ export default function ProprietaireLotsPage() {
     setFormTargetId(null);
     setFormDraft({ ...EMPTY_FORM, bien_id: biens[0] ? String(biens[0].id) : "" });
     setFormBanner(null);
+    setStagedFiles([]);
+    setEditingPhotos([]);
     setFormOpen(true);
   }
 
@@ -177,14 +209,75 @@ export default function ProprietaireLotsPage() {
       description: lot.description || "",
       loyer_reference: lot.loyer_reference ?? "",
       statut: String(lot.statut),
+      valorisation: lot.valorisation ?? "",
     });
+    setEditingPhotos(lot.photos || []);
+    setStagedFiles([]);
     setFormBanner(null);
     setFormOpen(true);
   }
 
   function closeForm() {
-    if (formBusy) return;
+    if (formBusy || photoBusy) return;
+    stagedFiles.forEach((f) => URL.revokeObjectURL(f.preview));
     setFormOpen(false);
+  }
+
+  function handleStageFiles(e) {
+    const files = Array.from(e.target.files || []);
+    setStagedFiles((prev) => [...prev, ...files.map((file) => ({ file, preview: URL.createObjectURL(file) }))]);
+    e.target.value = "";
+  }
+
+  function removeStagedFile(index) {
+    setStagedFiles((prev) => {
+      const copy = [...prev];
+      URL.revokeObjectURL(copy[index].preview);
+      copy.splice(index, 1);
+      return copy;
+    });
+  }
+
+  async function handleAddPhotosToExisting(e) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (files.length === 0 || !formTargetId) return;
+    setPhotoBusy(true);
+    setFormBanner(null);
+    try {
+      const uploaded = [];
+      for (const file of files) {
+        // Séquentiel : évite de saturer l'API si beaucoup de photos sont sélectionnées d'un coup.
+        // eslint-disable-next-line no-await-in-loop
+        uploaded.push(await uploadLotPhoto(formTargetId, file));
+      }
+      setEditingPhotos((prev) => [...prev, ...uploaded]);
+      setLots((prev) =>
+        prev.map((l) => (l.id === formTargetId ? { ...l, photos: [...(l.photos || []), ...uploaded] } : l))
+      );
+    } catch (err) {
+      setFormBanner({ type: "error", message: extractErrorMessage(err) });
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
+  async function handleRemoveExistingPhoto(photo) {
+    setPhotoBusy(true);
+    setFormBanner(null);
+    try {
+      await deleteLotPhoto(formTargetId, photo.id);
+      setEditingPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+      setLots((prev) =>
+        prev.map((l) =>
+          l.id === formTargetId ? { ...l, photos: (l.photos || []).filter((p) => p.id !== photo.id) } : l
+        )
+      );
+    } catch (err) {
+      setFormBanner({ type: "error", message: extractErrorMessage(err) });
+    } finally {
+      setPhotoBusy(false);
+    }
   }
 
   async function handleSubmitForm(e) {
@@ -200,8 +293,17 @@ export default function ProprietaireLotsPage() {
           description: formDraft.description,
           loyerReference: formDraft.loyer_reference === "" ? null : Number(formDraft.loyer_reference),
           statut: Number(formDraft.statut),
+          valorisation: formDraft.valorisation,
         });
-        setLots((prev) => [...prev, created]);
+        const photos = [];
+        if (stagedFiles.length > 0) {
+          for (const staged of stagedFiles) {
+            // eslint-disable-next-line no-await-in-loop
+            photos.push(await uploadLotPhoto(created.id, staged.file));
+          }
+          stagedFiles.forEach((f) => URL.revokeObjectURL(f.preview));
+        }
+        setLots((prev) => [...prev, { ...created, photos }]);
       } else {
         const updated = await updateLot(formTargetId, {
           bien_id: Number(formDraft.bien_id),
@@ -210,6 +312,7 @@ export default function ProprietaireLotsPage() {
           description: formDraft.description || null,
           loyer_reference: formDraft.loyer_reference === "" ? null : Number(formDraft.loyer_reference),
           statut: Number(formDraft.statut),
+          valorisation: formDraft.valorisation === "" ? null : Number(formDraft.valorisation),
         });
         setLots((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
       }
@@ -241,7 +344,7 @@ export default function ProprietaireLotsPage() {
   }
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.common.loading")}</p>;
   }
 
   return (
@@ -252,11 +355,11 @@ export default function ProprietaireLotsPage() {
       {/* ---- Stats ---- */}
       <div className={styles.section}>
         <div className={styles.statsGrid}>
-          <StatCard icon="bi-grid-3x3-gap-fill" tone="primary" label="Lots" value={stats.total} />
-          <StatCard icon="bi-check-circle-fill" tone="accent" label="Disponibles" value={stats.disponibles} />
-          <StatCard icon="bi-key-fill" tone="primary" label="Loués" value={stats.loues} />
-          <StatCard icon="bi-tools" tone="warning" label="En maintenance" value={stats.enMaintenance} />
-          <StatCard icon="bi-slash-circle" tone="danger" label="Hors service" value={stats.horsService} />
+          <StatCard icon="bi-grid-3x3-gap-fill" tone="primary" label={t("bo.proprietaireLots.statTotal")} value={stats.total} />
+          <StatCard icon="bi-check-circle-fill" tone="accent" label={t("bo.proprietaireLots.statAvailable")} value={stats.disponibles} />
+          <StatCard icon="bi-key-fill" tone="primary" label={t("bo.proprietaireLots.statRented")} value={stats.loues} />
+          <StatCard icon="bi-tools" tone="warning" label={t("bo.proprietaireLots.statMaintenance")} value={stats.enMaintenance} />
+          <StatCard icon="bi-slash-circle" tone="danger" label={t("bo.proprietaireLots.statOutOfService")} value={stats.horsService} />
         </div>
       </div>
 
@@ -266,10 +369,10 @@ export default function ProprietaireLotsPage() {
           <div>
             <h2 className={styles.sectionTitle}>
               <i className="bi bi-table" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-              Mes lots
+              {t("bo.proprietaireLots.title")}
             </h2>
             <p className={styles.sectionSubtitle}>
-              {filteredLots.length} lot(s) affiché(s) sur {lots.length}.
+              {t("bo.proprietaireLots.subtitle", { shown: filteredLots.length, total: lots.length })}
             </p>
           </div>
           <button
@@ -277,10 +380,10 @@ export default function ProprietaireLotsPage() {
             className={styles.btn}
             onClick={openCreate}
             disabled={biens.length === 0}
-            title={biens.length === 0 ? "Ajoutez d'abord un bien" : undefined}
+            title={biens.length === 0 ? t("bo.proprietaireLots.addBienFirst") : undefined}
           >
             <i className="bi bi-plus-lg" />
-            Nouveau lot
+            {t("bo.proprietaireLots.newLot")}
           </button>
         </div>
 
@@ -289,11 +392,9 @@ export default function ProprietaireLotsPage() {
             <span className={styles.prereqNoticeIcon}>
               <i className="bi bi-exclamation-lg" />
             </span>
-            <span className={styles.prereqNoticeText}>
-              Vous devez d&apos;abord créer un bien avant de pouvoir ajouter des lots.
-            </span>
+            <span className={styles.prereqNoticeText}>{t("bo.proprietaireLots.prereqText")}</span>
             <Link href="/backoffice/proprietaire/biens?create=1" className={styles.prereqNoticeAction}>
-              Créer un bien
+              {t("bo.proprietaireLots.prereqAction")}
               <i className="bi bi-arrow-right" />
             </Link>
           </div>
@@ -302,7 +403,7 @@ export default function ProprietaireLotsPage() {
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher par référence, bien, loyer, description..."
+            placeholder={t("bo.proprietaireLots.searchPlaceholder")}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -316,7 +417,7 @@ export default function ProprietaireLotsPage() {
               setCurrentPage(1);
             }}
             options={[
-              { value: "", label: "Tous les biens" },
+              { value: "", label: t("bo.proprietaireLots.allBiens") },
               ...biens.map((b) => ({ value: b.id, label: b.designation || `Bien #${b.id}` })),
             ]}
           />
@@ -326,7 +427,7 @@ export default function ProprietaireLotsPage() {
               setStatusFilter(v);
               setCurrentPage(1);
             }}
-            options={[{ value: "", label: "Tous les statuts" }, ...STATUS_OPTIONS]}
+            options={[{ value: "", label: t("bo.common.allStatuses") }, ...STATUS_OPTIONS]}
           />
           <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
@@ -335,26 +436,39 @@ export default function ProprietaireLotsPage() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Référence</th>
-                <th>Bien</th>
-                <th>Sous-catégorie</th>
-                <th>Loyer de référence</th>
-                <th>Statut</th>
-                <th>Actions</th>
+                <th>{t("bo.proprietaireLots.colReference")}</th>
+                <th>{t("bo.proprietaireLots.colBien")}</th>
+                <th>{t("bo.proprietaireLots.colSubcategory")}</th>
+                <th>{t("bo.proprietaireLots.colReferenceRent")}</th>
+                <th>{t("bo.proprietaireLots.colStatus")}</th>
+                <th>{t("bo.proprietaireLots.colPhotos")}</th>
+                <th>{t("bo.proprietaireLots.colActions")}</th>
               </tr>
             </thead>
             <tbody>
               {filteredLots.length === 0 && (
                 <tr>
-                  <td colSpan={6} className={styles.empty}>
-                    Aucun lot ne correspond à ces critères.
+                  <td colSpan={7} className={styles.empty}>
+                    {t("bo.common.noMatch")}
                   </td>
                 </tr>
               )}
-              {paginatedLots.map((l) => (
+              {paginatedLots.map((l) => {
+                const cover = l.photos?.[0];
+                return (
                 <tr key={l.id}>
                   <td>
-                    <span className={styles.userName}>{l.reference || `Lot #${l.id}`}</span>
+                    <div className={styles.bienCell}>
+                      {cover ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img className={styles.thumbSm} src={photoUrl(cover.url)} alt="" />
+                      ) : (
+                        <span className={styles.thumbPlaceholder}>
+                          <i className="bi bi-grid-3x3-gap" />
+                        </span>
+                      )}
+                      <span className={styles.userName}>{l.reference || `Lot #${l.id}`}</span>
+                    </div>
                   </td>
                   <td>{bienName(l.bien_id)}</td>
                   <td>{l.categorie_id ? categoryName(l.categorie_id) : "—"}</td>
@@ -364,9 +478,18 @@ export default function ProprietaireLotsPage() {
                       {LOT_STATUS_LABELS[l.statut] || "—"}
                     </span>
                   </td>
+                  <td>{l.photos?.length || 0}</td>
                   <td>
                     <div className={styles.tableActions}>
-                      <button type="button" className={styles.iconBtn} onClick={() => openEdit(l)} title="Modifier">
+                      <button
+                        type="button"
+                        className={styles.iconBtn}
+                        onClick={() => setDetailsTarget(l)}
+                        title={t("bo.common.seeDetails")}
+                      >
+                        <i className="bi bi-eye" />
+                      </button>
+                      <button type="button" className={styles.iconBtn} onClick={() => openEdit(l)} title={t("bo.common.edit")}>
                         <i className="bi bi-pencil" />
                       </button>
                       <button
@@ -376,21 +499,22 @@ export default function ProprietaireLotsPage() {
                           setDeleteTarget(l);
                           setDeleteError(null);
                         }}
-                        title="Supprimer"
+                        title={t("bo.common.delete")}
                       >
                         <i className="bi bi-trash" />
                       </button>
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
 
           {filteredLots.length > 0 && (
             <div className={styles.paginationRow}>
               <span>
-                Page {safePage} / {totalPages} · {filteredLots.length} lot(s)
+                {t("bo.proprietaireLots.pageOf", { page: safePage, total: totalPages, count: filteredLots.length })}
               </span>
               <div className={styles.paginationButtons}>
                 <button
@@ -400,7 +524,7 @@ export default function ProprietaireLotsPage() {
                   disabled={safePage <= 1}
                 >
                   <i className="bi bi-chevron-left" />
-                  Précédent
+                  {t("bo.common.previous")}
                 </button>
                 <button
                   type="button"
@@ -408,7 +532,7 @@ export default function ProprietaireLotsPage() {
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={safePage >= totalPages}
                 >
-                  Suivant
+                  {t("bo.common.next")}
                   <i className="bi bi-chevron-right" />
                 </button>
               </div>
@@ -418,11 +542,11 @@ export default function ProprietaireLotsPage() {
       </div>
 
       {/* ---- Créer / modifier un lot ---- */}
-      <Modal isOpen={formOpen} onClose={closeForm} title={formMode === "create" ? "Nouveau lot" : "Modifier le lot"}>
+      <Modal isOpen={formOpen} onClose={closeForm} title={formMode === "create" ? t("bo.proprietaireLots.createTitle") : t("bo.proprietaireLots.editTitle")}>
         <form onSubmit={handleSubmitForm}>
           <Banner banner={formBanner} />
           <SelectField
-            label="Bien"
+            label={t("bo.proprietaireLots.bienLabel")}
             name="bien_id"
             options={biens.map((b) => ({ value: b.id, label: b.designation || `Bien #${b.id}` }))}
             value={formDraft.bien_id}
@@ -430,35 +554,35 @@ export default function ProprietaireLotsPage() {
             required
           />
           <SelectField
-            label="Sous-catégorie"
+            label={t("bo.proprietaireLots.subcategoryLabel")}
             name="categorie_id"
             options={[
-              { value: "", label: "Aucune" },
+              { value: "", label: t("bo.proprietaireLots.none") },
               ...availableCategories.map((c) => ({ value: c.id, label: c.libelle })),
             ]}
             value={formDraft.categorie_id}
             onChange={(e) => setFormDraft((d) => ({ ...d, categorie_id: e.target.value }))}
-            hint={availableCategories.length === 0 ? "Aucune sous-catégorie pour ce type de bien" : undefined}
+            hint={availableCategories.length === 0 ? t("bo.proprietaireLots.noSubcategoryHint") : undefined}
           />
           <TextField
-            label="Référence"
+            label={t("bo.proprietaireLots.referenceLabel")}
             name="reference"
             value={formDraft.reference}
             onChange={(e) => setFormDraft((d) => ({ ...d, reference: e.target.value }))}
-            placeholder="Ex : Apt 3B, Lot 12..."
+            placeholder={t("bo.proprietaireLots.referencePlaceholder")}
           />
           <TextField
-            label="Description"
+            label={t("bo.proprietaireLots.descriptionLabel")}
             name="description"
             as="textarea"
             rows={3}
             value={formDraft.description}
             onChange={(e) => setFormDraft((d) => ({ ...d, description: e.target.value }))}
-            placeholder="Détails, particularités, informations utiles..."
-            hint="Optionnel"
+            placeholder={t("bo.proprietaireLots.descriptionPlaceholder")}
+            hint={t("bo.proprietaireLots.optionalHint")}
           />
           <TextField
-            label="Loyer de référence (MAD)"
+            label={t("bo.proprietaireLots.referenceRentLabel")}
             name="loyer_reference"
             type="number"
             step="0.01"
@@ -467,21 +591,80 @@ export default function ProprietaireLotsPage() {
             onChange={(e) => setFormDraft((d) => ({ ...d, loyer_reference: e.target.value }))}
           />
           <SelectField
-            label="Statut"
+            label={t("bo.proprietaireLots.statusLabel")}
             name="statut"
             options={STATUS_OPTIONS}
             value={formDraft.statut}
             onChange={(e) => setFormDraft((d) => ({ ...d, statut: e.target.value }))}
           />
+          <TextField
+            label={t("bo.proprietaireLots.valorisationLabel")}
+            name="valorisation"
+            type="number"
+            step="0.01"
+            min="0"
+            value={formDraft.valorisation}
+            onChange={(e) => setFormDraft((d) => ({ ...d, valorisation: e.target.value }))}
+            placeholder={t("bo.proprietaireLots.valorisationPlaceholder")}
+            hint={t("bo.proprietaireLots.optionalHint")}
+          />
+
+          <label className={styles.field} style={{ display: "block", marginTop: "0.9rem" }}>
+            {t("bo.proprietaireLots.photosLabel")}
+            <div className={styles.photoGrid}>
+              {formMode === "edit" &&
+                editingPhotos.map((photo) => (
+                  <div className={styles.photoThumb} key={photo.id}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={photoUrl(photo.url)} alt="" />
+                    <button
+                      type="button"
+                      className={styles.photoRemoveBtn}
+                      onClick={() => handleRemoveExistingPhoto(photo)}
+                      disabled={photoBusy}
+                      title={t("bo.proprietaireLots.removePhotoTitle")}
+                    >
+                      <i className="bi bi-x" />
+                    </button>
+                  </div>
+                ))}
+              {formMode === "create" &&
+                stagedFiles.map((staged, index) => (
+                  <div className={styles.photoThumb} key={staged.preview}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={staged.preview} alt="" />
+                    <button
+                      type="button"
+                      className={styles.photoRemoveBtn}
+                      onClick={() => removeStagedFile(index)}
+                      title={t("bo.proprietaireLots.removeStagedTitle")}
+                    >
+                      <i className="bi bi-x" />
+                    </button>
+                  </div>
+                ))}
+            </div>
+            <label className={styles.photoUpload}>
+              <i className="bi bi-camera-fill" />
+              {photoBusy ? t("bo.proprietaireLots.uploading") : t("bo.proprietaireLots.addPhotos")}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                disabled={photoBusy}
+                onChange={formMode === "edit" ? handleAddPhotosToExisting : handleStageFiles}
+              />
+            </label>
+          </label>
 
           <div className={styles.editActions} style={{ marginTop: "1.2rem" }}>
             <button type="submit" className={styles.btn} disabled={formBusy}>
               <i className="bi bi-check-lg" />
-              {formBusy ? "Enregistrement..." : "Enregistrer"}
+              {formBusy ? t("bo.common.saving") : t("bo.common.save")}
             </button>
             <button type="button" className={styles.btnOutline} onClick={closeForm} disabled={formBusy}>
               <i className="bi bi-x-lg" />
-              Annuler
+              {t("bo.common.cancel")}
             </button>
           </div>
         </form>
@@ -495,16 +678,25 @@ export default function ProprietaireLotsPage() {
           setDeleteError(null);
         }}
         onConfirm={handleConfirmDelete}
-        title="Masquer le lot"
+        title={t("bo.proprietaireLots.deleteConfirmTitle")}
         message={
           deleteTarget
-            ? `Masquer "${deleteTarget.reference || `Lot #${deleteTarget.id}`}" ? Il ne sera plus visible dans vos listes (ses baux restent conservés).`
+            ? t("bo.proprietaireLots.deleteConfirmMessage", { name: deleteTarget.reference || `Lot #${deleteTarget.id}` })
             : ""
         }
-        confirmLabel="Masquer"
+        confirmLabel={t("bo.proprietaireLots.deleteConfirmLabel")}
         danger
         isBusy={deleteBusy}
         error={deleteError}
+      />
+
+      <LotDetailsModal
+        lot={detailsTarget}
+        onClose={() => setDetailsTarget(null)}
+        bien={detailsTarget ? biens.find((b) => b.id === detailsTarget.bien_id) : null}
+        categorieName={detailsTarget?.categorie_id ? categoryName(detailsTarget.categorie_id) : null}
+        bail={detailsTarget ? currentBailForLot(detailsTarget.id) : null}
+        canManageCharges
       />
     </div>
   );

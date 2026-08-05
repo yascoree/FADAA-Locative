@@ -8,8 +8,7 @@ import { fetchProfile, createProfile, updateProfile, uploadProfilePhoto, deleteP
 import TextField from "@/components/TextField";
 import PasswordChangeCard from "@/components/PasswordChangeCard";
 import ThemeToggle from "@/components/ThemeToggle";
-import LanguagePicker from "@/components/LanguagePicker";
-import PlanLimitPopup from "@/components/PlanLimitPopup";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -24,6 +23,7 @@ function Banner({ banner }) {
 const EMPTY_PROFILE = { telephone: "", adresse: "", date_naissance: "", piece_identite: "" };
 
 export default function ProprietaireParametresPage() {
+  const { t } = useLanguage();
   const { user, refreshUser } = useAuth();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -41,11 +41,6 @@ export default function ProprietaireParametresPage() {
   const [accountBanner, setAccountBanner] = useState(null);
 
   const [passwordSuccessBanner, setPasswordSuccessBanner] = useState(null);
-
-  // Ouvre exactement la même popup que lorsqu'une action est bloquée faute
-  // d'abonnement (voir components/PlanLimitPopup) — ici sans blocage réel,
-  // juste pour permettre de changer de plan à tout moment depuis les Paramètres.
-  const [planPopupMessage, setPlanPopupMessage] = useState(null);
 
   useEffect(() => {
     if (!user) return;
@@ -91,7 +86,7 @@ export default function ProprietaireParametresPage() {
         await createProfile(user.id, payload);
         setProfileExists(true);
       }
-      setProfileBanner({ type: "success", message: "Profil mis à jour." });
+      setProfileBanner({ type: "success", message: t("bo.proprietaireParametres.profileUpdated") });
     } catch (err) {
       setProfileBanner({ type: "error", message: extractErrorMessage(err) });
     } finally {
@@ -142,7 +137,7 @@ export default function ProprietaireParametresPage() {
         email: accountDraft.email,
       });
       await refreshUser();
-      setAccountBanner({ type: "success", message: "Informations du compte mises à jour." });
+      setAccountBanner({ type: "success", message: t("bo.proprietaireParametres.accountUpdated") });
     } catch (err) {
       setAccountBanner({ type: "error", message: extractErrorMessage(err) });
     } finally {
@@ -151,7 +146,7 @@ export default function ProprietaireParametresPage() {
   }
 
   if (isLoading || !user) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.common.loading")}</p>;
   }
 
   return (
@@ -159,56 +154,31 @@ export default function ProprietaireParametresPage() {
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>
           <i className="bi bi-gear" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-          Paramètres
+          {t("bo.proprietaireParametres.title")}
         </h2>
-        <p className={styles.sectionSubtitle}>Gérez vos informations personnelles et la sécurité de votre compte.</p>
+        <p className={styles.sectionSubtitle}>{t("bo.proprietaireParametres.subtitle")}</p>
       </div>
-
-      {/* ---- Abonnement ---- */}
-      <div className={styles.section}>
-        <button
-          type="button"
-          className={styles.subscriptionCtaButton}
-          onClick={() => setPlanPopupMessage("Consultez les plans disponibles et changez d'abonnement à tout moment.")}
-        >
-          <span className={styles.subscriptionCtaIcon}>
-            <i className="bi bi-credit-card-2-front-fill" />
-          </span>
-          <span className={styles.subscriptionCtaBody}>
-            <span className={styles.subscriptionCtaTitle}>Abonnement</span>
-            <span className={styles.subscriptionCtaSubtitle}>Consulter ou changer de plan</span>
-          </span>
-          <span className={styles.subscriptionCtaArrow}>
-            <i className="bi bi-arrow-right" />
-          </span>
-        </button>
-      </div>
-
-      <PlanLimitPopup message={planPopupMessage} onClose={() => setPlanPopupMessage(null)} />
 
       {/* ---- Apparence ---- */}
       <div className={styles.section}>
         <div className={styles.card}>
           <h3 className={styles.cardTitle}>
             <i className="bi bi-palette-fill" style={{ color: "var(--primary)" }} />
-            Apparence
+            {t("bo.proprietaireParametres.appearanceTitle")}
           </h3>
           <p className={styles.sectionSubtitle} style={{ margin: "-0.4rem 0 1rem" }}>
-            Choisissez le thème de votre interface — le choix est mémorisé sur cet appareil.
+            {t("bo.proprietaireParametres.appearanceSub")}
           </p>
           <ThemeToggle />
         </div>
       </div>
-
-      {/* ---- Langue ---- */}
-      <LanguagePicker styles={styles} />
 
       {/* ---- Compte ---- */}
       <div className={styles.section}>
         <div className={styles.card}>
           <h3 className={styles.cardTitle}>
             <i className="bi bi-person-fill" style={{ color: "var(--primary)" }} />
-            Compte
+            {t("bo.proprietaireParametres.accountTitle")}
           </h3>
 
           <Banner banner={photoBanner} />
@@ -228,7 +198,7 @@ export default function ProprietaireParametresPage() {
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <label className={styles.btnOutline} style={{ cursor: photoBusy ? "not-allowed" : "pointer" }}>
                 <i className="bi bi-camera-fill" />
-                {photoBusy ? "..." : "Changer la photo"}
+                {photoBusy ? "..." : t("bo.proprietaireParametres.changePhoto")}
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
@@ -243,7 +213,7 @@ export default function ProprietaireParametresPage() {
                   className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
                   onClick={handlePhotoRemove}
                   disabled={photoBusy}
-                  title="Retirer la photo"
+                  title={t("bo.proprietaireParametres.removePhotoTitle")}
                 >
                   <i className="bi bi-trash" />
                 </button>
@@ -254,21 +224,21 @@ export default function ProprietaireParametresPage() {
           <form onSubmit={handleSubmitAccount}>
             <Banner banner={accountBanner} />
             <TextField
-              label="Prénom"
+              label={t("bo.proprietaireParametres.firstNameLabel")}
               name="prenom"
               value={accountDraft.prenom}
               onChange={(e) => setAccountDraft((d) => ({ ...d, prenom: e.target.value }))}
               required
             />
             <TextField
-              label="Nom"
+              label={t("bo.proprietaireParametres.lastNameLabel")}
               name="nom"
               value={accountDraft.nom}
               onChange={(e) => setAccountDraft((d) => ({ ...d, nom: e.target.value }))}
               required
             />
             <TextField
-              label="Email"
+              label={t("bo.proprietaireParametres.emailLabel")}
               name="email"
               type="email"
               value={accountDraft.email}
@@ -278,7 +248,7 @@ export default function ProprietaireParametresPage() {
             <div className={styles.editActions} style={{ marginTop: "1rem" }}>
               <button type="submit" className={styles.btn} disabled={accountBusy}>
                 <i className="bi bi-check-lg" />
-                {accountBusy ? "Enregistrement..." : "Enregistrer"}
+                {accountBusy ? t("bo.common.saving") : t("bo.common.save")}
               </button>
             </div>
           </form>
@@ -290,12 +260,12 @@ export default function ProprietaireParametresPage() {
         <div className={styles.card}>
           <h3 className={styles.cardTitle}>
             <i className="bi bi-card-heading" style={{ color: "var(--primary)" }} />
-            Profil
+            {t("bo.proprietaireParametres.profileTitle")}
           </h3>
           <form onSubmit={handleSubmitProfile}>
             <Banner banner={profileBanner} />
             <TextField
-              label="Téléphone"
+              label={t("bo.proprietaireParametres.phoneLabel")}
               name="telephone"
               type="tel"
               value={profileDraft.telephone}
@@ -303,29 +273,29 @@ export default function ProprietaireParametresPage() {
               placeholder="+212 6 00 00 00 00"
             />
             <TextField
-              label="Adresse"
+              label={t("bo.proprietaireParametres.addressLabel")}
               name="adresse"
               value={profileDraft.adresse}
               onChange={(e) => setProfileDraft((d) => ({ ...d, adresse: e.target.value }))}
             />
             <TextField
-              label="Date de naissance"
+              label={t("bo.proprietaireParametres.birthDateLabel")}
               name="date_naissance"
               type="date"
               value={profileDraft.date_naissance}
               onChange={(e) => setProfileDraft((d) => ({ ...d, date_naissance: e.target.value }))}
             />
             <TextField
-              label="Pièce d'identité (référence)"
+              label={t("bo.proprietaireParametres.idDocLabel")}
               name="piece_identite"
               value={profileDraft.piece_identite}
               onChange={(e) => setProfileDraft((d) => ({ ...d, piece_identite: e.target.value }))}
-              placeholder="N° CIN, passeport..."
+              placeholder={t("bo.proprietaireParametres.idDocPlaceholder")}
             />
             <div className={styles.editActions} style={{ marginTop: "1rem" }}>
               <button type="submit" className={styles.btn} disabled={profileBusy}>
                 <i className="bi bi-check-lg" />
-                {profileBusy ? "Enregistrement..." : "Enregistrer"}
+                {profileBusy ? t("bo.common.saving") : t("bo.common.save")}
               </button>
             </div>
           </form>
@@ -337,7 +307,7 @@ export default function ProprietaireParametresPage() {
       <PasswordChangeCard
         styles={styles}
         userId={user.id}
-        onSuccess={() => setPasswordSuccessBanner({ type: "success", message: "Mot de passe mis à jour." })}
+        onSuccess={() => setPasswordSuccessBanner({ type: "success", message: t("bo.proprietaireParametres.passwordUpdated") })}
       />
     </div>
   );

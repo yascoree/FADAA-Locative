@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { ROLES } from "@/lib/roles";
 import NotificationBell from "@/components/NotificationBell";
+import TopbarLanguageMenu from "@/components/TopbarLanguageMenu";
 import PageTransition from "@/components/PageTransition";
 import RouteProgressBar from "@/components/RouteProgressBar";
 import LocataireSidebar from "./LocataireSidebar";
@@ -22,6 +23,7 @@ export default function LocataireLayout({ children }) {
   const PAGE_TITLES = {
     "/backoffice/locataire": t("bo.locataireLayout.titles.dashboard"),
     "/backoffice/locataire/bail": t("bo.locataireLayout.titles.bail"),
+    "/backoffice/locataire/maintenance": t("bo.locataireLayout.titles.maintenance"),
     "/backoffice/locataire/echeances": t("bo.locataireLayout.titles.echeances"),
     "/backoffice/locataire/paiements": t("bo.locataireLayout.titles.paiements"),
     "/backoffice/locataire/discussions": t("bo.locataireLayout.titles.discussions"),
@@ -59,7 +61,10 @@ export default function LocataireLayout({ children }) {
       <div className={styles.main}>
         <header className={`${styles.topbar} ${isScrolled ? styles.topbarScrolled : ""}`}>
           <h1 className={styles.pageTitle}>{PAGE_TITLES[pathname] || t("bo.common.brand")}</h1>
-          <NotificationBell href="/backoffice/locataire/notifications" />
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+            <TopbarLanguageMenu />
+            <NotificationBell href="/backoffice/locataire/notifications" />
+          </div>
         </header>
         <main className={styles.content} onScroll={handleContentScroll}>
           <PageTransition>{children}</PageTransition>

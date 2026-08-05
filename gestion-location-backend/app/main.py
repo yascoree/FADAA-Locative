@@ -10,6 +10,7 @@ from app.api import (
     baux,
     biens,
     categories,
+    charges,
     contact_messages,
     demandes_demo,
     discussions,
@@ -18,6 +19,7 @@ from app.api import (
     historique,
     locataires,
     lots,
+    maintenance,
     mandats,
     notifications,
     paiements,
@@ -67,11 +69,13 @@ app.include_router(locataires.router)
 app.include_router(categories.router)
 app.include_router(biens.router)
 app.include_router(lots.router)
+app.include_router(charges.router)
 app.include_router(baux.router)
 app.include_router(echeances.router)
 app.include_router(paiements.router)
 app.include_router(quittances.router)
 app.include_router(mandats.router)
+app.include_router(maintenance.router)
 app.include_router(permissions.router)
 app.include_router(notifications.router)
 app.include_router(fcm_tokens.router)

@@ -9,16 +9,20 @@ import {
   createPaiement,
   annulerPaiement,
   downloadQuittance,
+  uploadPaiementJustificatif,
+  confirmerEncaissement,
   ECHEANCE_STATUS,
   MODE_PAIEMENT,
   MODE_PAIEMENT_LABELS,
   PAIEMENT_STATUS,
   PAIEMENT_STATUS_LABELS,
 } from "@/lib/properties";
+import { API_BASE_URL } from "@/lib/apiClient";
 import { fetchLocataires } from "@/lib/tenants";
 import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
+import Drawer from "@/components/Drawer";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
@@ -26,6 +30,8 @@ import FilterChip from "@/components/FilterChip";
 import FilterSelect from "@/components/FilterSelect";
 import PlanLimitPopup from "@/components/PlanLimitPopup";
 import { usePlanGate } from "@/hooks/usePlanGate";
+import { useLanguage } from "@/context/LanguageContext";
+import uiStyles from "@/components/ui.module.css";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -50,14 +56,24 @@ function formatCurrency(value) {
 const MODE_OPTIONS = Object.entries(MODE_PAIEMENT_LABELS).map(([value, label]) => ({ value, label }));
 const PAGE_SIZE = 10;
 
+// Chèque/virement : encaissement différé, voir explication sur le badge
+// "En attente d'encaissement" plus bas et confirmerEncaissement().
+const MODES_ENCAISSEMENT_DIFFERE = [MODE_PAIEMENT.CHEQUE, MODE_PAIEMENT.VIREMENT];
+function isModeDiffere(mode) {
+  return MODES_ENCAISSEMENT_DIFFERE.includes(Number(mode));
+}
+
 const EMPTY_CREATE_FORM = {
   locataire_id: "",
   echeance_id: "",
   montant: "",
   mode_paiement: String(MODE_PAIEMENT.VIREMENT),
+  agence_bancaire: "",
+  reference_paiement: "",
 };
 
 export default function ProprietairePaiementsPage() {
+  const { t } = useLanguage();
   const [paiements, setPaiements] = useState([]);
   const [echeances, setEcheances] = useState([]);
   const [biens, setBiens] = useState([]);
@@ -77,6 +93,8 @@ export default function ProprietairePaiementsPage() {
   const [createBanner, setCreateBanner] = useState(null);
   const [planLimitMessage, setPlanLimitMessage] = useState(null);
   const { checkBeforeOpen } = usePlanGate("quittances_mois");
+  const [createJustificatif, setCreateJustificatif] = useState(null);
+  const [createJustificatifBusy, setCreateJustificatifBusy] = useState(false);
 
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelMotif, setCancelMotif] = useState("");
@@ -85,6 +103,13 @@ export default function ProprietairePaiementsPage() {
   const [listBanner, setListBanner] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
   const [detailsTarget, setDetailsTarget] = useState(null);
+
+  const [encaissementTarget, setEncaissementTarget] = useState(null);
+  const [encaissementDraft, setEncaissementDraft] = useState({ agence_bancaire: "", reference_paiement: "", date_encaissement: "" });
+  const [encaissementJustificatif, setEncaissementJustificatif] = useState(null);
+  const [encaissementJustificatifBusy, setEncaissementJustificatifBusy] = useState(false);
+  const [encaissementBusy, setEncaissementBusy] = useState(false);
+  const [encaissementError, setEncaissementError] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -151,17 +176,21 @@ export default function ProprietairePaiementsPage() {
     const label = `${bienLotLabel(echeance)} · ${echeance.bail?.locataire?.prenom || ""} ${echeance.bail?.locataire?.nom || ""} · ${formatDate(echeance.date_echeance)}`;
     if (echeance.montant_du === null || echeance.montant_du === undefined) return label;
     const reste = Number(echeance.montant_du) - paidSoFar(echeance.id);
-    return `${label} · reste ${formatCurrency(Math.max(0, reste))}`;
+    return `${label} · ${t("bo.proprietairePaiements.remainingSuffix", { amount: formatCurrency(Math.max(0, reste)) })}`;
   }
 
   function echeancesForLocataire(locataireId) {
     if (!locataireId) return [];
     return echeances
       .filter((e) => e.bail?.locataire_id === Number(locataireId))
-      .sort((a, b) => {
-        if (a.statut !== b.statut) return a.statut === ECHEANCE_STATUS.PAYE ? 1 : -1;
-        return new Date(a.date_echeance || 0) - new Date(b.date_echeance || 0);
-      });
+      // Une échéance déjà entièrement réglée (reste = 0) n'a plus rien à
+      // encaisser : l'exclure du sélecteur plutôt que de simplement la trier
+      // en dernier, pour ne pas laisser un choix qui échouerait de toute façon.
+      .filter((e) => {
+        if (e.montant_du === null || e.montant_du === undefined) return true;
+        return Number(e.montant_du) - paidSoFar(e.id) > 0;
+      })
+      .sort((a, b) => new Date(a.date_echeance || 0) - new Date(b.date_echeance || 0));
   }
 
   const locatairesWithEcheances = useMemo(
@@ -251,6 +280,7 @@ export default function ProprietairePaiementsPage() {
       locataire_id: firstLocataire ? String(firstLocataire.id) : "",
       echeance_id: firstEcheance ? String(firstEcheance.id) : "",
     });
+    setCreateJustificatif(null);
     setCreateBanner(null);
     setCreateOpen(true);
   }
@@ -269,6 +299,22 @@ export default function ProprietairePaiementsPage() {
     setCreateOpen(false);
   }
 
+  async function handleCreateJustificatifChange(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setCreateJustificatifBusy(true);
+    setCreateBanner(null);
+    try {
+      const uploaded = await uploadPaiementJustificatif(file);
+      setCreateJustificatif(uploaded);
+    } catch (err) {
+      setCreateBanner({ type: "error", message: extractErrorMessage(err) });
+    } finally {
+      setCreateJustificatifBusy(false);
+    }
+  }
+
   async function handleSubmitCreate(e) {
     e.preventDefault();
     setCreateBusy(true);
@@ -280,6 +326,10 @@ export default function ProprietairePaiementsPage() {
         echeanceId,
         montant: createDraft.montant,
         modePaiement: Number(createDraft.mode_paiement),
+        agenceBancaire: createDraft.agence_bancaire,
+        referencePaiement: createDraft.reference_paiement,
+        justificatif: createJustificatif?.justificatif,
+        justificatifNom: createJustificatif?.justificatif_nom,
       });
       setPaiements((prev) => [...prev, { ...created, echeance }]);
       reconcileEcheance(echeanceId, null, createDraft.montant);
@@ -293,6 +343,55 @@ export default function ProprietairePaiementsPage() {
       }
     } finally {
       setCreateBusy(false);
+    }
+  }
+
+  function openEncaissement(paiement) {
+    setEncaissementTarget(paiement);
+    setEncaissementDraft({
+      agence_bancaire: paiement.agence_bancaire || "",
+      reference_paiement: paiement.reference_paiement || "",
+      date_encaissement: "",
+    });
+    setEncaissementJustificatif(null);
+    setEncaissementError(null);
+  }
+
+  async function handleEncaissementJustificatifChange(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setEncaissementJustificatifBusy(true);
+    setEncaissementError(null);
+    try {
+      const uploaded = await uploadPaiementJustificatif(file);
+      setEncaissementJustificatif(uploaded);
+    } catch (err) {
+      setEncaissementError(extractErrorMessage(err));
+    } finally {
+      setEncaissementJustificatifBusy(false);
+    }
+  }
+
+  async function handleConfirmEncaissement(e) {
+    e.preventDefault();
+    if (!encaissementTarget) return;
+    setEncaissementBusy(true);
+    setEncaissementError(null);
+    try {
+      const updated = await confirmerEncaissement(encaissementTarget.id, {
+        agenceBancaire: encaissementDraft.agence_bancaire,
+        referencePaiement: encaissementDraft.reference_paiement,
+        dateEncaissement: encaissementDraft.date_encaissement || undefined,
+        justificatif: encaissementJustificatif?.justificatif,
+        justificatifNom: encaissementJustificatif?.justificatif_nom,
+      });
+      setPaiements((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
+      setEncaissementTarget(null);
+    } catch (err) {
+      setEncaissementError(extractErrorMessage(err));
+    } finally {
+      setEncaissementBusy(false);
     }
   }
 
@@ -328,7 +427,7 @@ export default function ProprietairePaiementsPage() {
   }
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.common.loading")}</p>;
   }
 
   return (
@@ -340,10 +439,10 @@ export default function ProprietairePaiementsPage() {
       {/* ---- Stats ---- */}
       <div className={styles.section}>
         <div className={styles.statsGrid}>
-          <StatCard icon="bi-receipt" tone="primary" label="Paiements" value={stats.count} />
-          <StatCard icon="bi-cash-stack" tone="accent" label="Total encaissé" value={formatCurrency(stats.total)} />
-          <StatCard icon="bi-calendar-check-fill" tone="primary" label="Encaissé ce mois" value={formatCurrency(stats.moisCourant)} />
-          <StatCard icon="bi-graph-up-arrow" tone="accent" label="Moyenne / paiement" value={formatCurrency(stats.moyenne)} />
+          <StatCard icon="bi-receipt" tone="primary" label={t("bo.proprietairePaiements.statCount")} value={stats.count} />
+          <StatCard icon="bi-cash-stack" tone="accent" label={t("bo.proprietairePaiements.statTotal")} value={formatCurrency(stats.total)} />
+          <StatCard icon="bi-calendar-check-fill" tone="primary" label={t("bo.proprietairePaiements.statMonth")} value={formatCurrency(stats.moisCourant)} />
+          <StatCard icon="bi-graph-up-arrow" tone="accent" label={t("bo.proprietairePaiements.statAverage")} value={formatCurrency(stats.moyenne)} />
         </div>
       </div>
 
@@ -353,10 +452,10 @@ export default function ProprietairePaiementsPage() {
           <div>
             <h2 className={styles.sectionTitle}>
               <i className="bi bi-table" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-              Paiements
+              {t("bo.proprietairePaiements.title")}
             </h2>
             <p className={styles.sectionSubtitle}>
-              {filteredPaiements.length} paiement(s) affiché(s) sur {paiements.length}.
+              {t("bo.proprietairePaiements.subtitle", { shown: filteredPaiements.length, total: paiements.length })}
             </p>
           </div>
           <button
@@ -364,17 +463,17 @@ export default function ProprietairePaiementsPage() {
             className={styles.btn}
             onClick={openCreate}
             disabled={locatairesWithEcheances.length === 0}
-            title={locatairesWithEcheances.length === 0 ? "Aucun locataire avec une échéance à régler" : undefined}
+            title={locatairesWithEcheances.length === 0 ? t("bo.proprietairePaiements.noEligibleTenant") : undefined}
           >
             <i className="bi bi-plus-lg" />
-            Enregistrer un paiement
+            {t("bo.proprietairePaiements.recordPayment")}
           </button>
         </div>
 
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher (locataire, bien, montant, date...)"
+            placeholder={t("bo.proprietairePaiements.searchPlaceholder")}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -387,7 +486,7 @@ export default function ProprietairePaiementsPage() {
               setModeFilter(v);
               setCurrentPage(1);
             }}
-            options={[{ value: "", label: "Tous les modes" }, ...MODE_OPTIONS]}
+            options={[{ value: "", label: t("bo.proprietairePaiements.allModes") }, ...MODE_OPTIONS]}
           />
           <FilterChip
             checked={monthOnly}
@@ -396,7 +495,7 @@ export default function ProprietairePaiementsPage() {
               setCurrentPage(1);
             }}
           >
-            Ce mois uniquement
+            {t("bo.proprietairePaiements.thisMonthOnly")}
           </FilterChip>
           <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
@@ -405,22 +504,22 @@ export default function ProprietairePaiementsPage() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Locataire</th>
-                <th>Bien / Lot</th>
-                <th>Échéance</th>
-                <th>Montant</th>
-                <th>Mode</th>
-                <th>Date de paiement</th>
-                <th>Statut</th>
-                <th>PDF</th>
-                <th>Actions</th>
+                <th>{t("bo.proprietairePaiements.colTenant")}</th>
+                <th>{t("bo.proprietairePaiements.colBienLot")}</th>
+                <th>{t("bo.proprietairePaiements.colDueDate")}</th>
+                <th>{t("bo.proprietairePaiements.colAmount")}</th>
+                <th>{t("bo.proprietairePaiements.colMode")}</th>
+                <th>{t("bo.proprietairePaiements.colPaymentDate")}</th>
+                <th>{t("bo.proprietairePaiements.colStatus")}</th>
+                <th>{t("bo.proprietairePaiements.colPdf")}</th>
+                <th>{t("bo.proprietairePaiements.colActions")}</th>
               </tr>
             </thead>
             <tbody>
               {filteredPaiements.length === 0 && (
                 <tr>
                   <td colSpan={9} className={styles.empty}>
-                    Aucun paiement ne correspond à ces critères.
+                    {t("bo.common.noMatch")}
                   </td>
                 </tr>
               )}
@@ -443,7 +542,7 @@ export default function ProprietairePaiementsPage() {
                   <td>
                     {formatCurrency(p.montant)}
                     {p.echeance?.montant_du !== null && p.echeance?.montant_du !== undefined && (
-                      <span className={styles.recentEmail}> / {formatCurrency(p.echeance.montant_du)} dû</span>
+                      <span className={styles.recentEmail}> / {formatCurrency(p.echeance.montant_du)} {t("bo.proprietairePaiements.due")}</span>
                     )}
                   </td>
                   <td>{MODE_PAIEMENT_LABELS[p.mode_paiement] || "—"}</td>
@@ -452,6 +551,13 @@ export default function ProprietairePaiementsPage() {
                     <span className={`${styles.badge} ${p.statut === PAIEMENT_STATUS.ANNULE ? styles.badgeDanger : styles.badgeActive}`}>
                       {PAIEMENT_STATUS_LABELS[p.statut] || "—"}
                     </span>
+                    {p.statut !== PAIEMENT_STATUS.ANNULE && !p.encaisse && (
+                      <div>
+                        <span className={`${styles.badge} ${styles.badgeSuspended}`} style={{ marginTop: "0.3rem" }}>
+                          <i className="bi bi-hourglass-split" /> {t("bo.proprietairePaiements.pendingEncaissement")}
+                        </span>
+                      </div>
+                    )}
                   </td>
                   <td>
                     {p.quittance ? (
@@ -462,7 +568,7 @@ export default function ProprietairePaiementsPage() {
                         disabled={downloadingId === p.quittance.id}
                       >
                         <i className="bi bi-download" />
-                        {downloadingId === p.quittance.id ? "..." : "PDF"}
+                        {downloadingId === p.quittance.id ? "..." : t("bo.proprietairePaiements.colPdf")}
                       </button>
                     ) : (
                       <span className={styles.empty}>—</span>
@@ -474,10 +580,20 @@ export default function ProprietairePaiementsPage() {
                         type="button"
                         className={styles.iconBtn}
                         onClick={() => setDetailsTarget(p)}
-                        title="Voir les détails"
+                        title={t("bo.common.seeDetails")}
                       >
                         <i className="bi bi-info-circle" />
                       </button>
+                      {p.statut !== PAIEMENT_STATUS.ANNULE && !p.encaisse && (
+                        <button
+                          type="button"
+                          className={styles.iconBtn}
+                          onClick={() => openEncaissement(p)}
+                          title={t("bo.proprietairePaiements.confirmEncaissement")}
+                        >
+                          <i className="bi bi-check2-circle" />
+                        </button>
+                      )}
                       {p.statut !== PAIEMENT_STATUS.ANNULE && (
                         <button
                           type="button"
@@ -486,7 +602,7 @@ export default function ProprietairePaiementsPage() {
                             setCancelTarget(p);
                             setCancelError(null);
                           }}
-                          title="Annuler ce paiement"
+                          title={t("bo.proprietairePaiements.cancelThisPayment")}
                         >
                           <i className="bi bi-x-circle" />
                         </button>
@@ -501,7 +617,7 @@ export default function ProprietairePaiementsPage() {
           {filteredPaiements.length > 0 && (
             <div className={styles.paginationRow}>
               <span>
-                Page {safePage} / {totalPages} · {filteredPaiements.length} paiement(s)
+                {t("bo.proprietairePaiements.pageOf", { page: safePage, total: totalPages, count: filteredPaiements.length })}
               </span>
               <div className={styles.paginationButtons}>
                 <button
@@ -511,7 +627,7 @@ export default function ProprietairePaiementsPage() {
                   disabled={safePage <= 1}
                 >
                   <i className="bi bi-chevron-left" />
-                  Précédent
+                  {t("bo.common.previous")}
                 </button>
                 <button
                   type="button"
@@ -519,7 +635,7 @@ export default function ProprietairePaiementsPage() {
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={safePage >= totalPages}
                 >
-                  Suivant
+                  {t("bo.common.next")}
                   <i className="bi bi-chevron-right" />
                 </button>
               </div>
@@ -529,23 +645,23 @@ export default function ProprietairePaiementsPage() {
       </div>
 
       {/* ---- Enregistrer un paiement ---- */}
-      <Modal isOpen={createOpen} onClose={closeCreate} title="Enregistrer un paiement">
+      <Modal isOpen={createOpen} onClose={closeCreate} title={t("bo.proprietairePaiements.createTitle")}>
         <form onSubmit={handleSubmitCreate}>
           <Banner banner={createBanner} />
           <SelectField
-            label="Locataire"
+            label={t("bo.proprietairePaiements.tenantLabel")}
             name="locataire_id"
             options={locatairesWithEcheances.map((l) => ({ value: l.id, label: `${l.prenom} ${l.nom} (${l.email})` }))}
             value={createDraft.locataire_id}
             onChange={(e) => handleLocataireChange(e.target.value)}
-            hint="Le propriétaire peut enregistrer un paiement pour le compte de son locataire."
+            hint={t("bo.proprietairePaiements.tenantHint")}
             required
           />
           {createEcheanceOptions.length === 0 ? (
-            <p className={styles.empty}>Ce locataire n&apos;a aucune échéance à régler.</p>
+            <p className={styles.empty}>{t("bo.proprietairePaiements.noEcheanceForTenant")}</p>
           ) : (
             <SelectField
-              label="Échéance"
+              label={t("bo.proprietairePaiements.dueDateLabel")}
               name="echeance_id"
               options={createEcheanceOptions.map((e) => ({ value: e.id, label: echeanceOptionLabel(e) }))}
               value={createDraft.echeance_id}
@@ -554,7 +670,7 @@ export default function ProprietairePaiementsPage() {
             />
           )}
           <TextField
-            label="Montant (MAD)"
+            label={t("bo.proprietairePaiements.amountLabel")}
             name="montant"
             type="number"
             step="0.01"
@@ -564,108 +680,203 @@ export default function ProprietairePaiementsPage() {
             required
           />
           <SelectField
-            label="Mode de paiement"
+            label={t("bo.proprietairePaiements.modeLabel")}
             name="mode_paiement"
             options={MODE_OPTIONS}
             value={createDraft.mode_paiement}
             onChange={(e) => setCreateDraft((d) => ({ ...d, mode_paiement: e.target.value }))}
           />
+
+          {isModeDiffere(createDraft.mode_paiement) && (
+            <div className={styles.card} style={{ marginTop: "0.5rem", marginBottom: "0.5rem" }}>
+              <p className={styles.sectionSubtitle} style={{ marginTop: 0 }}>
+                <i className="bi bi-hourglass-split" /> {t("bo.proprietairePaiements.deferredNotice")}
+              </p>
+              <TextField
+                label={t("bo.proprietairePaiements.bankAgencyLabel")}
+                name="agence_bancaire"
+                value={createDraft.agence_bancaire}
+                onChange={(e) => setCreateDraft((d) => ({ ...d, agence_bancaire: e.target.value }))}
+              />
+              <TextField
+                label={t("bo.proprietairePaiements.referenceLabel")}
+                name="reference_paiement"
+                value={createDraft.reference_paiement}
+                onChange={(e) => setCreateDraft((d) => ({ ...d, reference_paiement: e.target.value }))}
+              />
+              <label className={uiStyles.field} style={{ marginTop: "0.5rem" }}>
+                {t("bo.proprietairePaiements.justificatifLabel")}
+                <input type="file" onChange={handleCreateJustificatifChange} disabled={createJustificatifBusy} style={{ display: "block", marginTop: "0.3rem" }} />
+              </label>
+              {createJustificatifBusy && <p className={styles.sectionSubtitle}>{t("bo.common.uploading")}</p>}
+              {createJustificatif && (
+                <p className={styles.sectionSubtitle}>
+                  <i className="bi bi-paperclip" /> {createJustificatif.justificatif_nom}
+                </p>
+              )}
+            </div>
+          )}
+
           <p className={styles.sectionSubtitle} style={{ marginTop: "0.5rem" }}>
-            <i className="bi bi-info-circle" />  Le statut de l&apos;échéance sera mis à jour automatiquement
-            (payée/partielle) selon le montant total encaissé.
+            <i className="bi bi-info-circle" /> {t("bo.proprietairePaiements.autoStatusHint")}
           </p>
 
           <div className={styles.editActions} style={{ marginTop: "1.2rem" }}>
             <button type="submit" className={styles.btn} disabled={createBusy}>
               <i className="bi bi-check-lg" />
-              {createBusy ? "Enregistrement..." : "Enregistrer"}
+              {createBusy ? t("bo.common.saving") : t("bo.common.save")}
             </button>
             <button type="button" className={styles.btnOutline} onClick={closeCreate} disabled={createBusy}>
               <i className="bi bi-x-lg" />
-              Annuler
+              {t("bo.common.cancel")}
             </button>
           </div>
         </form>
       </Modal>
 
       {/* ---- Détails d'un paiement ---- */}
-      <Modal isOpen={!!detailsTarget} onClose={() => setDetailsTarget(null)} title="Détails du paiement">
+      <Drawer
+        isOpen={!!detailsTarget}
+        onClose={() => setDetailsTarget(null)}
+        title={
+          detailsTarget && (
+            <div>
+              <h3 className={styles.detailTitle}>
+                <i className="bi bi-receipt" style={{ color: "var(--primary)" }} />
+                {t("bo.proprietairePaiements.detailsPaymentPrefix")} {formatDate(detailsTarget.date_paiement)}
+              </h3>
+              <span
+                className={`${styles.badge} ${detailsTarget.statut === PAIEMENT_STATUS.ANNULE ? styles.badgeDanger : styles.badgeActive}`}
+                style={{ marginTop: "0.5rem", display: "inline-flex" }}
+              >
+                {PAIEMENT_STATUS_LABELS[detailsTarget.statut] || "—"}
+              </span>
+            </div>
+          )
+        }
+      >
         {detailsTarget && (
           <div>
+            <div className={styles.statsGrid} style={{ marginBottom: "1.4rem" }}>
+              <StatCard
+                icon={detailsTarget.statut === PAIEMENT_STATUS.ANNULE ? "bi-x-circle" : "bi-cash-stack"}
+                tone={detailsTarget.statut === PAIEMENT_STATUS.ANNULE ? "danger" : "primary"}
+                label={t(
+                  detailsTarget.statut === PAIEMENT_STATUS.ANNULE
+                    ? "bo.proprietairePaiements.cancelledAmountLabel"
+                    : "bo.proprietairePaiements.amountPaidLabel"
+                )}
+                value={formatCurrency(detailsTarget.montant)}
+              />
+              <StatCard
+                icon="bi-hourglass-split"
+                tone="warning"
+                label={t("bo.proprietairePaiements.remainingLabel")}
+                value={formatCurrency(
+                  Math.max(0, Number(detailsTarget.echeance?.montant_du || 0) - paidSoFar(detailsTarget.echeance_id))
+                )}
+              />
+            </div>
+            {detailsTarget.statut === PAIEMENT_STATUS.ANNULE && (
+              <p className={styles.sectionSubtitle} style={{ marginTop: "-1rem", marginBottom: "1.4rem" }}>
+                <i className="bi bi-info-circle" /> {t("bo.proprietairePaiements.remainingCancelledNotice")}
+              </p>
+            )}
+
             <div className={styles.detailBlockTitle}>
               <i className="bi bi-person-fill" />
-              Locataire
+              {t("bo.proprietairePaiements.tenantSection")}
             </div>
             <div className={styles.detailLine}>
-              <strong>Nom :</strong>{" "}
+              <strong>{t("bo.proprietairePaiements.nameLabel")}</strong>{" "}
               {detailsTarget.echeance?.bail?.locataire
                 ? `${detailsTarget.echeance.bail.locataire.prenom} ${detailsTarget.echeance.bail.locataire.nom}`
                 : "—"}
             </div>
             <div className={styles.detailLine}>
-              <strong>Bien / Lot :</strong> {bienLotLabel(detailsTarget.echeance)}
+              <strong>{t("bo.proprietairePaiements.bienLotLabel")}</strong> {bienLotLabel(detailsTarget.echeance)}
             </div>
 
             <div className={styles.detailBlockTitle} style={{ marginTop: "1rem" }}>
-              <i className="bi bi-cash-stack" />
-              Paiement
+              <i className="bi bi-info-circle" />
+              {t("bo.proprietairePaiements.paymentSection")}
             </div>
             <div className={styles.detailLine}>
-              <strong>Montant payé (ce paiement) :</strong> {formatCurrency(detailsTarget.montant)}
+              <strong>{t("bo.proprietairePaiements.totalDueLabel")}</strong> {formatCurrency(detailsTarget.echeance?.montant_du)}
             </div>
             <div className={styles.detailLine}>
-              <strong>Reste à payer sur cette échéance :</strong>{" "}
-              {formatCurrency(
-                Math.max(0, Number(detailsTarget.echeance?.montant_du || 0) - paidSoFar(detailsTarget.echeance_id))
-              )}
+              <strong>{t("bo.proprietairePaiements.modeColonLabel")}</strong> {MODE_PAIEMENT_LABELS[detailsTarget.mode_paiement] || "—"}
             </div>
             <div className={styles.detailLine}>
-              <strong>Montant total dû :</strong> {formatCurrency(detailsTarget.echeance?.montant_du)}
-            </div>
-            <div className={styles.detailLine}>
-              <strong>Mode :</strong> {MODE_PAIEMENT_LABELS[detailsTarget.mode_paiement] || "—"}
-            </div>
-            <div className={styles.detailLine}>
-              <strong>Date de paiement :</strong> {formatDate(detailsTarget.date_paiement)}
-            </div>
-            <div className={styles.detailLine}>
-              <strong>Encaissé par :</strong>{" "}
+              <strong>{t("bo.proprietairePaiements.collectedByLabel")}</strong>{" "}
               {detailsTarget.encaisseur
                 ? `${detailsTarget.encaisseur.prenom} ${detailsTarget.encaisseur.nom} (${detailsTarget.encaisseur.email})`
                 : "—"}
             </div>
-            <div className={styles.detailLine}>
-              <strong>Statut :</strong>{" "}
-              <span
-                className={`${styles.badge} ${detailsTarget.statut === PAIEMENT_STATUS.ANNULE ? styles.badgeDanger : styles.badgeActive}`}
-              >
-                {PAIEMENT_STATUS_LABELS[detailsTarget.statut] || "—"}
-              </span>
-            </div>
+
+            {detailsTarget.statut !== PAIEMENT_STATUS.ANNULE &&
+              [MODE_PAIEMENT.CHEQUE, MODE_PAIEMENT.VIREMENT].includes(detailsTarget.mode_paiement) && (
+                <>
+                  <div className={styles.detailBlockTitle} style={{ marginTop: "1rem" }}>
+                    <i className="bi bi-bank" />
+                    {t("bo.proprietairePaiements.encaissementSection")}
+                  </div>
+                  <div className={styles.detailLine}>
+                    <strong>{t("bo.proprietairePaiements.encaissementStatusLabel")}</strong>{" "}
+                    {detailsTarget.encaisse
+                      ? t("bo.proprietairePaiements.encaissed")
+                      : t("bo.proprietairePaiements.pendingEncaissement")}
+                  </div>
+                  {detailsTarget.encaisse && (
+                    <div className={styles.detailLine}>
+                      <strong>{t("bo.proprietairePaiements.encaissementDateLabel")}</strong>{" "}
+                      {formatDate(detailsTarget.date_encaissement)}
+                    </div>
+                  )}
+                  {detailsTarget.agence_bancaire && (
+                    <div className={styles.detailLine}>
+                      <strong>{t("bo.proprietairePaiements.bankAgencyLabel")}</strong> {detailsTarget.agence_bancaire}
+                    </div>
+                  )}
+                  {detailsTarget.reference_paiement && (
+                    <div className={styles.detailLine}>
+                      <strong>{t("bo.proprietairePaiements.referenceLabel")}</strong> {detailsTarget.reference_paiement}
+                    </div>
+                  )}
+                  {detailsTarget.justificatif && (
+                    <div className={styles.detailLine}>
+                      <strong>{t("bo.proprietairePaiements.justificatifLabel")}</strong>{" "}
+                      <a href={`${API_BASE_URL}${detailsTarget.justificatif}`} target="_blank" rel="noreferrer">
+                        {detailsTarget.justificatif_nom || t("bo.proprietairePaiements.justificatifLabel")}
+                      </a>
+                    </div>
+                  )}
+                </>
+              )}
 
             {detailsTarget.statut === PAIEMENT_STATUS.ANNULE && (
               <>
                 <div className={styles.detailBlockTitle} style={{ marginTop: "1rem" }}>
                   <i className="bi bi-x-circle" />
-                  Annulation
+                  {t("bo.proprietairePaiements.cancellationSection")}
                 </div>
                 <div className={styles.detailLine}>
-                  <strong>Annulé par :</strong>{" "}
+                  <strong>{t("bo.proprietairePaiements.cancelledByLabel")}</strong>{" "}
                   {detailsTarget.annulateur
                     ? `${detailsTarget.annulateur.prenom} ${detailsTarget.annulateur.nom}`
                     : "—"}
                 </div>
                 <div className={styles.detailLine}>
-                  <strong>Date d&apos;annulation :</strong> {formatDate(detailsTarget.date_annulation)}
+                  <strong>{t("bo.proprietairePaiements.cancelledDateLabel")}</strong> {formatDate(detailsTarget.date_annulation)}
                 </div>
                 <div className={styles.detailLine}>
-                  <strong>Motif :</strong> {detailsTarget.motif_annulation || "—"}
+                  <strong>{t("bo.proprietairePaiements.cancelMotifResultLabel")}</strong> {detailsTarget.motif_annulation || "—"}
                 </div>
               </>
             )}
           </div>
         )}
-      </Modal>
+      </Drawer>
 
       <ConfirmationDialog
         isOpen={!!cancelTarget}
@@ -675,27 +886,100 @@ export default function ProprietairePaiementsPage() {
           setCancelError(null);
         }}
         onConfirm={handleConfirmCancel}
-        title="Annuler le paiement"
+        title={t("bo.proprietairePaiements.cancelTitle")}
         message={
           cancelTarget
-            ? `Annuler ce paiement de ${formatCurrency(cancelTarget.montant)} du ${formatDate(cancelTarget.echeance?.date_echeance)} ? La quittance associée sera annulée et l'échéance redeviendra impayée.`
+            ? t("bo.proprietairePaiements.cancelMessage", {
+                amount: formatCurrency(cancelTarget.montant),
+                date: formatDate(cancelTarget.echeance?.date_echeance),
+              })
             : ""
         }
-        confirmLabel="Annuler le paiement"
+        confirmLabel={t("bo.proprietairePaiements.cancelConfirmLabel")}
         danger
         isBusy={cancelBusy}
         error={cancelError}
       >
         <TextField
           as="textarea"
-          label="Motif (optionnel)"
+          label={t("bo.proprietairePaiements.cancelMotifLabel")}
           name="cancel_motif"
           rows={2}
           value={cancelMotif}
           onChange={(e) => setCancelMotif(e.target.value)}
-          placeholder="Ex : erreur de saisie, chèque impayé..."
+          placeholder={t("bo.proprietairePaiements.cancelMotifPlaceholder")}
         />
       </ConfirmationDialog>
+
+      {/* ---- Confirmer l'encaissement (chèque/virement) ---- */}
+      <Modal
+        isOpen={!!encaissementTarget}
+        onClose={() => (encaissementBusy ? null : setEncaissementTarget(null))}
+        title={t("bo.proprietairePaiements.confirmEncaissement")}
+      >
+        {encaissementTarget && (
+          <form onSubmit={handleConfirmEncaissement}>
+            {encaissementError && (
+              <div className={`${styles.banner} ${styles.bannerError}`}>{encaissementError}</div>
+            )}
+            <p className={styles.sectionSubtitle} style={{ marginTop: 0 }}>
+              {t("bo.proprietairePaiements.encaissementModalHint", {
+                amount: formatCurrency(encaissementTarget.montant),
+              })}
+            </p>
+            <TextField
+              label={t("bo.proprietairePaiements.bankAgencyLabel")}
+              name="encaissement_agence_bancaire"
+              value={encaissementDraft.agence_bancaire}
+              onChange={(e) => setEncaissementDraft((d) => ({ ...d, agence_bancaire: e.target.value }))}
+            />
+            <TextField
+              label={t("bo.proprietairePaiements.referenceLabel")}
+              name="encaissement_reference"
+              value={encaissementDraft.reference_paiement}
+              onChange={(e) => setEncaissementDraft((d) => ({ ...d, reference_paiement: e.target.value }))}
+            />
+            <TextField
+              label={t("bo.proprietairePaiements.encaissementDateLabel")}
+              name="encaissement_date"
+              type="date"
+              value={encaissementDraft.date_encaissement}
+              onChange={(e) => setEncaissementDraft((d) => ({ ...d, date_encaissement: e.target.value }))}
+            />
+            <label className={uiStyles.field} style={{ marginTop: "0.5rem" }}>
+              {t("bo.proprietairePaiements.justificatifLabel")}
+              <input
+                type="file"
+                onChange={handleEncaissementJustificatifChange}
+                disabled={encaissementJustificatifBusy}
+                style={{ display: "block", marginTop: "0.3rem" }}
+              />
+            </label>
+            {encaissementJustificatifBusy && <p className={styles.sectionSubtitle}>{t("bo.common.uploading")}</p>}
+            {encaissementJustificatif && (
+              <p className={styles.sectionSubtitle}>
+                <i className="bi bi-paperclip" /> {encaissementJustificatif.justificatif_nom}
+              </p>
+            )}
+
+            <div className={styles.editActions} style={{ marginTop: "1.2rem" }}>
+              <button type="submit" className={styles.btn} disabled={encaissementBusy}>
+                <i className="bi bi-check-lg" />
+                {encaissementBusy ? t("bo.common.saving") : t("bo.proprietairePaiements.confirmEncaissement")}
+              </button>
+              <button
+                type="button"
+                className={styles.btnOutline}
+                onClick={() => setEncaissementTarget(null)}
+                disabled={encaissementBusy}
+              >
+                <i className="bi bi-x-lg" />
+                {t("bo.common.cancel")}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   );
 }

@@ -6,12 +6,14 @@ export const ROLES = {
   LOCATAIRE: 4,
 };
 
-export const ROLE_LABELS = {
-  1: "Administrateur",
-  2: "Propriétaire",
-  3: "Gestionnaire",
-  4: "Locataire",
-};
+export function roleLabels(t) {
+  return {
+    1: t("bo.roles.administrateur"),
+    2: t("bo.roles.proprietaire"),
+    3: t("bo.roles.gestionnaire"),
+    4: t("bo.roles.locataire"),
+  };
+}
 
 export const ROLE_DASHBOARD_PATH = {
   1: "/backoffice/admin",

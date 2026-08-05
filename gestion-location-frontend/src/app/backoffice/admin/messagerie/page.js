@@ -12,7 +12,17 @@ import {
   RECLAMATION_STATUS,
   RECLAMATION_STATUS_LABELS,
 } from "@/lib/reclamations";
+import {
+  fetchContactMessages,
+  updateContactMessageStatut,
+  CONTACT_MESSAGE_STATUS,
+  CONTACT_MESSAGE_STATUS_LABELS,
+} from "@/lib/contactMessages";
 import { ROLES } from "@/lib/roles";
+import StatCard from "@/components/StatCard";
+import CountUp from "@/components/CountUp";
+import Drawer from "@/components/Drawer";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../admin.module.css";
 
 function Banner({ banner }) {
@@ -32,20 +42,23 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-function previewText(message) {
+function previewText(message, t) {
   if (message.message) return message.message;
-  if (message.piece_jointe) return message.piece_jointe_type?.startsWith("image/") ? "📷 Photo" : "📎 Fichier";
+  if (message.piece_jointe)
+    return message.piece_jointe_type?.startsWith("image/")
+      ? t("bo.adminMessagerie.photoPreview")
+      : t("bo.adminMessagerie.filePreview");
   return "";
 }
 
-function formatDayLabel(value) {
+function formatDayLabel(value, t) {
   const date = new Date(value);
   const today = new Date();
   const isToday = date.toDateString() === today.toDateString();
-  if (isToday) return "Aujourd'hui";
+  if (isToday) return t("bo.adminMessagerie.today");
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
-  if (date.toDateString() === yesterday.toDateString()) return "Hier";
+  if (date.toDateString() === yesterday.toDateString()) return t("bo.adminMessagerie.yesterday");
   return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
@@ -59,14 +72,39 @@ function reclamationStatutLabel(r) {
   return RECLAMATION_STATUS_LABELS[r.statut];
 }
 
-const TABS = [
-  { key: "reclamations", label: "Réclamations", icon: "bi-inbox" },
-  { key: "conversations", label: "Conversations", icon: "bi-chat-dots" },
+function contactMessageBadgeClass(statut) {
+  if (statut === CONTACT_MESSAGE_STATUS.TRAITE) return styles.badgeActive;
+  return styles.badgeSuspended;
+}
+
+function contactInitialsOf(m) {
+  return `${m.prenom?.[0] || ""}${m.nom?.[0] || ""}`.toUpperCase() || "?";
+}
+
+function buildTabs(t) {
+  return [
+    { key: "reclamations", label: t("bo.adminMessagerie.tabReclamations"), icon: "bi-inbox" },
+    { key: "conversations", label: t("bo.adminMessagerie.tabConversations"), icon: "bi-chat-dots" },
+    { key: "contact", label: t("bo.adminMessagerie.tabContact"), icon: "bi-envelope-paper" },
+  ];
+}
+
+const buildContactFilters = (t) => [
+  { value: "all", label: t("bo.adminMessagesContact.filterAll") },
+  { value: CONTACT_MESSAGE_STATUS.NOUVEAU, label: t("bo.adminMessagesContact.filterNew") },
+  { value: CONTACT_MESSAGE_STATUS.TRAITE, label: t("bo.adminMessagesContact.filterTreated") },
 ];
 
 export default function AdminMessageriePage() {
+  const { t } = useLanguage();
+  const TABS = useMemo(() => buildTabs(t), [t]);
+  const CONTACT_FILTERS = useMemo(() => buildContactFilters(t), [t]);
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("reclamations");
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === "undefined") return "reclamations";
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    return tab === "conversations" || tab === "contact" ? tab : "reclamations";
+  });
   const tabRefs = useRef({});
   const [tabIndicator, setTabIndicator] = useState(null);
 
@@ -86,19 +124,30 @@ export default function AdminMessageriePage() {
   const [attachBusy, setAttachBusy] = useState(false);
   const [stagedAttachment, setStagedAttachment] = useState(null);
 
+  const [contactMessages, setContactMessages] = useState([]);
+  const [contactBanner, setContactBanner] = useState(null);
+  const [contactBusyId, setContactBusyId] = useState(null);
+  const [contactSearch, setContactSearch] = useState("");
+  const [contactStatusFilter, setContactStatusFilter] = useState(CONTACT_MESSAGE_STATUS.NOUVEAU);
+  const [contactSelectedId, setContactSelectedId] = useState(null);
+  const contactTabRefs = useRef([]);
+  const [contactIndicator, setContactIndicator] = useState({ left: 0, width: 0 });
+
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
     async function init() {
       setIsLoading(true);
       try {
-        const [users, reclamationsList, discussions] = await Promise.all([
+        const [users, reclamationsList, discussions, contactList] = await Promise.all([
           fetchUsers(),
           fetchReclamations(),
           fetchDiscussions(),
+          fetchContactMessages(),
         ]);
         setAllProprietaires(users.filter((u) => u.role === ROLES.PROPRIETAIRE));
         setReclamations(reclamationsList);
+        setContactMessages(contactList);
         setMessages(discussions);
       } catch (err) {
         setLoadError(extractErrorMessage(err));
@@ -152,6 +201,53 @@ export default function AdminMessageriePage() {
     [reclamations]
   );
 
+  const contactStats = useMemo(
+    () => ({
+      total: contactMessages.length,
+      nouveaux: contactMessages.filter((m) => m.statut === CONTACT_MESSAGE_STATUS.NOUVEAU).length,
+      traites: contactMessages.filter((m) => m.statut === CONTACT_MESSAGE_STATUS.TRAITE).length,
+    }),
+    [contactMessages]
+  );
+
+  const filteredContactMessages = useMemo(() => {
+    const term = contactSearch.trim().toLowerCase();
+    return contactMessages.filter((m) => {
+      if (term) {
+        const haystack = [m.prenom, m.nom, m.email, m.telephone, m.sujet, m.message]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(term)) return false;
+      }
+      if (contactStatusFilter !== "all" && m.statut !== contactStatusFilter) return false;
+      return true;
+    });
+  }, [contactMessages, contactSearch, contactStatusFilter]);
+
+  useEffect(() => {
+    const activeIndex = CONTACT_FILTERS.findIndex((f) => f.value === contactStatusFilter);
+    const el = contactTabRefs.current[activeIndex];
+    if (el) {
+      setContactIndicator({ left: el.offsetLeft, width: el.offsetWidth });
+    }
+  }, [contactStatusFilter, contactStats.nouveaux, CONTACT_FILTERS, isLoading, activeTab]);
+
+  const contactSelected = contactMessages.find((m) => m.id === contactSelectedId) || null;
+
+  async function handleMarkContactTraite(message) {
+    setContactBanner(null);
+    setContactBusyId(message.id);
+    try {
+      const updated = await updateContactMessageStatut(message.id, CONTACT_MESSAGE_STATUS.TRAITE);
+      setContactMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+    } catch (err) {
+      setContactBanner({ type: "error", message: extractErrorMessage(err) });
+    } finally {
+      setContactBusyId(null);
+    }
+  }
+
   // Un propriétaire n'apparaît comme contact chattable qu'après acceptation
   // d'au moins une de ses réclamations (voir _is_legitimate_contact côté backend).
   const contacts = useMemo(() => {
@@ -160,8 +256,15 @@ export default function AdminMessageriePage() {
     );
     return allProprietaires
       .filter((u) => acceptedIds.has(u.id))
-      .map((u) => ({ id: u.id, nom: u.nom, prenom: u.prenom, email: u.email, photo: u.photo, role: "Propriétaire" }));
-  }, [allProprietaires, reclamations]);
+      .map((u) => ({
+        id: u.id,
+        nom: u.nom,
+        prenom: u.prenom,
+        email: u.email,
+        photo: u.photo,
+        role: t("bo.adminMessagerie.roleProprietaire"),
+      }));
+  }, [allProprietaires, reclamations, t]);
 
   function otherPartyId(msg) {
     return msg.user_id === user?.id ? msg.destinataire_id : msg.user_id;
@@ -196,9 +299,19 @@ export default function AdminMessageriePage() {
       const updated = await updateReclamationStatut(reclamation.id, statut);
       setReclamations((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
       if (statut === RECLAMATION_STATUS.ACCEPTEE) {
+        // Une réclamation acceptée débloque la messagerie avec ce propriétaire
+        // (voir _is_legitimate_contact côté backend) : on y bascule directement
+        // plutôt que de laisser l'admin retrouver seul l'onglet et le contact,
+        // avec le message d'origine pré-rempli pour qu'il n'ait pas à le
+        // retaper pour donner suite à sa demande.
+        setActiveTab("conversations");
+        setSelectedId(reclamation.proprietaire_id);
+        setDraft(`${t("bo.adminMessagerie.regardingSubject", { subject: reclamation.sujet })}\n\n${reclamation.message}`);
         setReclamationBanner({
           type: "success",
-          message: `Réclamation acceptée. Vous pouvez maintenant discuter avec ${reclamation.proprietaire?.prenom || "ce propriétaire"}.`,
+          message: t("bo.adminMessagerie.acceptedMessage", {
+            name: reclamation.proprietaire?.prenom || t("bo.adminMessagerie.thisOwner"),
+          }),
         });
       }
     } catch (err) {
@@ -258,7 +371,7 @@ export default function AdminMessageriePage() {
   }
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.adminMessagerie.loading")}</p>;
   }
 
   return (
@@ -268,11 +381,10 @@ export default function AdminMessageriePage() {
       <div className={styles.section} style={{ marginBottom: 0 }}>
         <h2 className={styles.sectionTitle}>
           <i className="bi bi-chat-dots-fill" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-          Messagerie
+          {t("bo.adminMessagerie.title")}
         </h2>
         <p className={styles.sectionSubtitle}>
-          Un propriétaire contacte d&apos;abord l&apos;administration via une réclamation. Une fois acceptée, la
-          conversation s&apos;ouvre dans les deux sens.
+          {t("bo.adminMessagerie.subtitle")}
         </p>
 
         <div className={styles.archTabs}>
@@ -297,6 +409,9 @@ export default function AdminMessageriePage() {
               {tab.key === "reclamations" && pendingReclamationsCount > 0 && (
                 <span className={styles.archTabBadge}>{pendingReclamationsCount}</span>
               )}
+              {tab.key === "contact" && contactStats.nouveaux > 0 && (
+                <span className={styles.archTabBadge}>{contactStats.nouveaux}</span>
+              )}
             </button>
           ))}
         </div>
@@ -306,7 +421,7 @@ export default function AdminMessageriePage() {
           <div>
             <Banner banner={reclamationBanner} />
             {reclamations.length === 0 && (
-              <p className={styles.empty}>Aucune réclamation pour le moment.</p>
+              <p className={styles.empty}>{t("bo.adminMessagerie.noReclamations")}</p>
             )}
             <div className={styles.reclamationList}>
               {reclamations.map((r) => {
@@ -316,7 +431,9 @@ export default function AdminMessageriePage() {
                     <div className={styles.reclamationHeader}>
                       <div>
                         <span className={styles.userName}>
-                          {r.proprietaire ? `${r.proprietaire.prenom} ${r.proprietaire.nom}` : `Propriétaire #${r.proprietaire_id}`}
+                          {r.proprietaire
+                            ? `${r.proprietaire.prenom} ${r.proprietaire.nom}`
+                            : t("bo.adminMessagerie.unknownProprietaire", { id: r.proprietaire_id })}
                         </span>
                         {r.proprietaire?.email && <div className={styles.tableSubtext}>{r.proprietaire.email}</div>}
                       </div>
@@ -337,7 +454,7 @@ export default function AdminMessageriePage() {
                           onClick={() => handleReclamationStatut(r, RECLAMATION_STATUS.ACCEPTEE)}
                         >
                           <i className="bi bi-check-lg" />
-                          Accepter
+                          {t("bo.adminMessagerie.accept")}
                         </button>
                         <button
                           type="button"
@@ -346,7 +463,7 @@ export default function AdminMessageriePage() {
                           onClick={() => handleReclamationStatut(r, RECLAMATION_STATUS.REJETEE)}
                         >
                           <i className="bi bi-x-lg" />
-                          Rejeter
+                          {t("bo.adminMessagerie.reject")}
                         </button>
                       </div>
                     )}
@@ -363,12 +480,14 @@ export default function AdminMessageriePage() {
             {/* ---- Liste des contacts ---- */}
             <div className={styles.msgContacts}>
               <div className={styles.msgContactsHeader}>
-                <span className={styles.msgContactsTitle}>Propriétaires ({contacts.length})</span>
+                <span className={styles.msgContactsTitle}>
+                  {t("bo.adminMessagerie.contactsTitle", { count: contacts.length })}
+                </span>
               </div>
               {contacts.length === 0 && (
                 <div className={styles.msgEmptyState}>
                   <i className="bi bi-people" />
-                  Aucune conversation ouverte. Acceptez une réclamation pour commencer à discuter.
+                  {t("bo.adminMessagerie.noConversations")}
                 </div>
               )}
               {conversations.map(({ contact, last }) => {
@@ -402,7 +521,9 @@ export default function AdminMessageriePage() {
                       </div>
                       <div className={styles.msgContactPreviewRow}>
                         <span className={styles.msgContactPreview}>
-                          {last ? `${last.user_id === user?.id ? "Vous : " : ""}${previewText(last)}` : "Aucun message"}
+                          {last
+                            ? `${last.user_id === user?.id ? t("bo.adminMessagerie.youPrefix") : ""}${previewText(last, t)}`
+                            : t("bo.adminMessagerie.noMessageYet")}
                         </span>
                         <span className={styles.msgContactRole}>{contact.role}</span>
                       </div>
@@ -417,7 +538,7 @@ export default function AdminMessageriePage() {
               {!selectedConversation ? (
                 <div className={styles.msgEmptyState}>
                   <i className="bi bi-chat-square-text" />
-                  Sélectionnez un propriétaire pour démarrer une conversation.
+                  {t("bo.adminMessagerie.selectContact")}
                 </div>
               ) : (
                 <>
@@ -447,18 +568,19 @@ export default function AdminMessageriePage() {
                     {selectedConversation.thread.length === 0 && (
                       <div className={styles.msgEmptyState}>
                         <i className="bi bi-chat-dots" />
-                        Aucun message pour l&apos;instant. Dites bonjour !
+                        {t("bo.adminMessagerie.noMessagesYet")}
                       </div>
                     )}
                     {selectedConversation.thread.map((m, i) => {
                       const mine = m.user_id === user?.id;
                       const prev = selectedConversation.thread[i - 1];
-                      const showDaySeparator = !prev || formatDayLabel(prev.date_sent) !== formatDayLabel(m.date_sent);
+                      const showDaySeparator =
+                        !prev || formatDayLabel(prev.date_sent, t) !== formatDayLabel(m.date_sent, t);
                       return (
                         <div key={m.id}>
                           {showDaySeparator && (
                             <div style={{ textAlign: "center", margin: "0.8rem 0" }}>
-                              <span className={styles.msgContactMeta}>{formatDayLabel(m.date_sent)}</span>
+                              <span className={styles.msgContactMeta}>{formatDayLabel(m.date_sent, t)}</span>
                             </div>
                           )}
                           <div className={`${styles.msgBubbleRow} ${mine ? styles.msgBubbleRowMine : ""}`}>
@@ -466,7 +588,7 @@ export default function AdminMessageriePage() {
                               <div
                                 className={`${styles.msgBubble} ${mine ? styles.msgBubbleMine : styles.msgBubbleTheirs}`}
                                 onDoubleClick={() => mine && handleDeleteMessage(m.id)}
-                                title={mine ? "Double-clic pour supprimer" : undefined}
+                                title={mine ? t("bo.adminMessagerie.deleteHint") : undefined}
                               >
                                 {m.piece_jointe &&
                                   (m.piece_jointe_type?.startsWith("image/") ? (
@@ -493,7 +615,7 @@ export default function AdminMessageriePage() {
                                       className={styles.msgAttachmentFile}
                                     >
                                       <i className="bi bi-file-earmark-arrow-down" />
-                                      <span>{m.piece_jointe_nom || "Fichier"}</span>
+                                      <span>{m.piece_jointe_nom || t("bo.adminMessagerie.file")}</span>
                                     </a>
                                   ))}
                                 {m.message && (
@@ -535,14 +657,14 @@ export default function AdminMessageriePage() {
                           type="button"
                           className={styles.msgStagedRemove}
                           onClick={() => setStagedAttachment(null)}
-                          title="Retirer"
+                          title={t("bo.adminMessagerie.remove")}
                         >
                           <i className="bi bi-x-lg" />
                         </button>
                       </div>
                     )}
                     <div className={styles.msgComposerRow}>
-                      <label className={styles.msgAttachBtn} title="Joindre un fichier">
+                      <label className={styles.msgAttachBtn} title={t("bo.adminMessagerie.attachFile")}>
                         <i className={`bi ${attachBusy ? "bi-hourglass-split" : "bi-paperclip"}`} />
                         <input
                           type="file"
@@ -553,7 +675,7 @@ export default function AdminMessageriePage() {
                       </label>
                       <textarea
                         rows={1}
-                        placeholder="Écrivez un message... (Entrée pour envoyer, Maj+Entrée pour un saut de ligne)"
+                        placeholder={t("bo.adminMessagerie.composerPlaceholder")}
                         value={draft}
                         onChange={(e) => setDraft(e.target.value)}
                         onKeyDown={handleKeyDown}
@@ -563,7 +685,7 @@ export default function AdminMessageriePage() {
                         type="submit"
                         className={styles.msgSendBtn}
                         disabled={sendBusy || (!draft.trim() && !stagedAttachment)}
-                        title="Envoyer"
+                        title={t("bo.adminMessagerie.send")}
                       >
                         <i className="bi bi-send-fill" />
                       </button>
@@ -574,7 +696,211 @@ export default function AdminMessageriePage() {
             </div>
           </div>
         )}
+
+        {/* ==================== Messages de contact ==================== */}
+        {activeTab === "contact" && (
+          <div>
+            <Banner banner={contactBanner} />
+
+            <div className={styles.statsGrid} style={{ marginTop: "0.25rem", marginBottom: "1.5rem" }}>
+              <StatCard
+                icon="bi-inbox-fill"
+                tone="primary"
+                label={t("bo.adminMessagesContact.statReceived")}
+                value={<CountUp value={contactStats.total} />}
+              />
+              <StatCard
+                icon="bi-envelope-exclamation-fill"
+                tone="warning"
+                label={t("bo.adminMessagesContact.statNew")}
+                value={<CountUp value={contactStats.nouveaux} />}
+              />
+              <StatCard
+                icon="bi-check-circle-fill"
+                tone="accent"
+                label={t("bo.adminMessagesContact.statTreated")}
+                value={<CountUp value={contactStats.traites} />}
+              />
+            </div>
+
+            <div className={styles.filtersRow}>
+              <div className={styles.searchInputWrap}>
+                <i className={`bi bi-search ${styles.searchIcon}`} />
+                <input
+                  type="text"
+                  className={styles.searchInput}
+                  placeholder={t("bo.adminMessagesContact.searchPlaceholder")}
+                  value={contactSearch}
+                  onChange={(e) => setContactSearch(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div
+              className={styles.requestFilterTabs}
+              role="tablist"
+              aria-label={t("bo.adminMessagesContact.filterAriaLabel")}
+            >
+              <span
+                className={styles.requestFilterIndicator}
+                style={{ transform: `translateX(${contactIndicator.left}px)`, width: contactIndicator.width }}
+                aria-hidden="true"
+              />
+              {CONTACT_FILTERS.map((f, i) => (
+                <button
+                  key={f.value}
+                  ref={(el) => {
+                    contactTabRefs.current[i] = el;
+                  }}
+                  type="button"
+                  role="tab"
+                  aria-selected={contactStatusFilter === f.value}
+                  className={`${styles.requestFilterTab} ${contactStatusFilter === f.value ? styles.requestFilterTabActive : ""}`}
+                  onClick={() => setContactStatusFilter(f.value)}
+                >
+                  {f.label}
+                  {f.value === CONTACT_MESSAGE_STATUS.NOUVEAU && contactStats.nouveaux > 0 && (
+                    <span className={styles.requestFilterTabBadge}>{contactStats.nouveaux}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {filteredContactMessages.length === 0 && (
+              <p className={styles.empty}>
+                <i className="bi bi-inbox" style={{ display: "block", fontSize: "1.6rem", marginBottom: "0.5rem" }} />
+                {t("bo.adminMessagesContact.noMatch")}
+              </p>
+            )}
+
+            <div className={styles.messageInboxList}>
+              {filteredContactMessages.map((m, index) => {
+                const isNew = m.statut === CONTACT_MESSAGE_STATUS.NOUVEAU;
+                return (
+                  <button
+                    type="button"
+                    key={m.id}
+                    style={{ "--i": index }}
+                    className={`${styles.messageCard} ${isNew ? styles.messageCardNew : ""} ${
+                      contactSelectedId === m.id ? styles.messageCardSelected : ""
+                    }`}
+                    onClick={() => setContactSelectedId(m.id)}
+                  >
+                    <span className={styles.messageCardAvatar}>{contactInitialsOf(m)}</span>
+                    <div className={styles.messageCardBody}>
+                      <div className={styles.messageCardTopRow}>
+                        <span className={styles.messageCardName}>
+                          {m.prenom} {m.nom}
+                        </span>
+                        <span className={styles.messageCardDate}>{formatDate(m.date_creation)}</span>
+                      </div>
+                      <div className={styles.tableSubtext}>
+                        <i className="bi bi-envelope" style={{ marginRight: "0.3rem" }} />
+                        {m.email}
+                      </div>
+                      <div className={styles.messageCardSubject}>
+                        {isNew && <span className={styles.messageCardDot} />}
+                        {m.sujet}
+                      </div>
+                      <p className={styles.messageCardSnippet}>{m.message}</p>
+                    </div>
+                    <span className={`${styles.badge} ${contactMessageBadgeClass(m.statut)}`}>
+                      {CONTACT_MESSAGE_STATUS_LABELS[m.statut]}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
+
+      {contactSelected && (
+        <Drawer
+          isOpen={!!contactSelected}
+          onClose={() => setContactSelectedId(null)}
+          title={
+            <div className={styles.detailHeaderRow}>
+              <div className={styles.detailHeaderIdentity}>
+                <span className={styles.detailAvatar}>{contactInitialsOf(contactSelected)}</span>
+                <div>
+                  <h3 className={styles.detailTitle}>
+                    {contactSelected.prenom} {contactSelected.nom}
+                  </h3>
+                  <div className={styles.detailHeaderTags}>
+                    <span className={`${styles.badge} ${contactMessageBadgeClass(contactSelected.statut)}`}>
+                      {CONTACT_MESSAGE_STATUS_LABELS[contactSelected.statut]}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className={styles.detailHeaderActions}>
+                {contactSelected.statut !== CONTACT_MESSAGE_STATUS.TRAITE && (
+                  <button
+                    type="button"
+                    className={styles.detailHeaderActionBtn}
+                    onClick={() => handleMarkContactTraite(contactSelected)}
+                    disabled={contactBusyId === contactSelected.id}
+                  >
+                    <i className="bi bi-check-lg" />
+                    {contactBusyId === contactSelected.id
+                      ? t("bo.adminMessagesContact.markingTreated")
+                      : t("bo.adminMessagesContact.markTreated")}
+                  </button>
+                )}
+              </div>
+            </div>
+          }
+        >
+          <div className={styles.detailBlockTitle}>
+            <i className="bi bi-person-fill" />
+            {t("bo.adminMessagesContact.contactSection")}
+          </div>
+          <div className={styles.detailInfoList}>
+            <div className={styles.detailInfoRow}>
+              <span className={styles.detailInfoIcon}>
+                <i className="bi bi-envelope" />
+              </span>
+              <span className={styles.detailInfoBody}>
+                <span className={styles.detailInfoLabel}>{t("bo.adminMessagesContact.emailLabel")}</span>
+                <a className={styles.detailInfoValue} href={`mailto:${contactSelected.email}`}>
+                  {contactSelected.email}
+                </a>
+              </span>
+            </div>
+            {contactSelected.telephone && (
+              <div className={styles.detailInfoRow}>
+                <span className={styles.detailInfoIcon}>
+                  <i className="bi bi-telephone" />
+                </span>
+                <span className={styles.detailInfoBody}>
+                  <span className={styles.detailInfoLabel}>{t("bo.adminMessagesContact.phoneLabel")}</span>
+                  <a className={styles.detailInfoValue} href={`tel:${contactSelected.telephone}`}>
+                    {contactSelected.telephone}
+                  </a>
+                </span>
+              </div>
+            )}
+            <div className={styles.detailInfoRow}>
+              <span className={styles.detailInfoIcon}>
+                <i className="bi bi-calendar-event" />
+              </span>
+              <span className={styles.detailInfoBody}>
+                <span className={styles.detailInfoLabel}>{t("bo.adminMessagesContact.receivedOnLabel")}</span>
+                <span className={styles.detailInfoValue}>{formatDate(contactSelected.date_creation)}</span>
+              </span>
+            </div>
+          </div>
+
+          <div className={styles.detailBlockTitle} style={{ marginTop: "1.4rem" }}>
+            <i className="bi bi-chat-square-text-fill" />
+            {contactSelected.sujet}
+          </div>
+          <div className={styles.messageQuoteCard}>
+            <p className={styles.messageQuoteText}>{contactSelected.message}</p>
+          </div>
+        </Drawer>
+      )}
     </div>
   );
 }

@@ -7,30 +7,36 @@ import { fetchLocataires } from "@/lib/tenants";
 import { fetchMandates, MANDAT_STATUS } from "@/lib/mandates";
 import { fetchDiscussions, sendMessage, deleteDiscussion, uploadDiscussionAttachment } from "@/lib/discussions";
 import { fetchNotifications, markNotificationRead, NOTIFICATION_STATUS, NOTIFICATION_TYPE } from "@/lib/notifications";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../agence.module.css";
 
 function formatTime(value) {
   return new Date(value).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 }
 
-function previewText(message) {
+function previewText(message, t) {
   if (message.message) return message.message;
-  if (message.piece_jointe) return message.piece_jointe_type?.startsWith("image/") ? "📷 Photo" : "📎 Fichier";
+  if (message.piece_jointe) {
+    return message.piece_jointe_type?.startsWith("image/")
+      ? t("bo.proprietaireMessagerie.photoPreview")
+      : t("bo.proprietaireMessagerie.filePreview");
+  }
   return "";
 }
 
-function formatDayLabel(value) {
+function formatDayLabel(value, t) {
   const date = new Date(value);
   const today = new Date();
   const isToday = date.toDateString() === today.toDateString();
-  if (isToday) return "Aujourd'hui";
+  if (isToday) return t("bo.proprietaireMessagerie.today");
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
-  if (date.toDateString() === yesterday.toDateString()) return "Hier";
+  if (date.toDateString() === yesterday.toDateString()) return t("bo.proprietaireMessagerie.yesterday");
   return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export default function AgenceDiscussionsPage() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const [contacts, setContacts] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -61,7 +67,7 @@ export default function AgenceDiscussionsPage() {
           prenom: l.prenom,
           email: l.email,
           photo: l.photo,
-          role: "Locataire",
+          role: t("bo.agenceDiscussions.roleTenant"),
         }));
         const proprietaireContacts = mandates
           .filter((m) => m.statut === MANDAT_STATUS.ACTIF && m.proprietaire)
@@ -71,7 +77,7 @@ export default function AgenceDiscussionsPage() {
             prenom: m.proprietaire.prenom,
             email: m.proprietaire.email,
             photo: m.proprietaire.photo,
-            role: "Propriétaire",
+            role: t("bo.agenceDiscussions.roleProprietaire"),
           }));
         const merged = [...proprietaireContacts, ...tenantContacts].filter(
           (c, i, arr) => arr.findIndex((o) => o.id === c.id) === i
@@ -85,6 +91,7 @@ export default function AgenceDiscussionsPage() {
       }
     }
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -195,7 +202,7 @@ export default function AgenceDiscussionsPage() {
   }
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.common.loading")}</p>;
   }
 
   return (
@@ -205,22 +212,22 @@ export default function AgenceDiscussionsPage() {
       <div className={styles.section} style={{ marginBottom: 0 }}>
         <h2 className={styles.sectionTitle}>
           <i className="bi bi-chat-dots-fill" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-          Discussions
+          {t("bo.agenceDiscussions.title")}
         </h2>
-        <p className={styles.sectionSubtitle}>
-          Échangez avec les propriétaires qui vous ont mandaté et leurs locataires.
-        </p>
+        <p className={styles.sectionSubtitle}>{t("bo.agenceDiscussions.subtitle")}</p>
 
         <div className={styles.msgShell}>
           {/* ---- Liste des contacts ---- */}
           <div className={styles.msgContacts}>
             <div className={styles.msgContactsHeader}>
-              <span className={styles.msgContactsTitle}>Contacts ({contacts.length})</span>
+              <span className={styles.msgContactsTitle}>
+                {t("bo.proprietaireMessagerie.contactsCount", { count: contacts.length })}
+              </span>
             </div>
             {contacts.length === 0 && (
               <div className={styles.msgEmptyState}>
                 <i className="bi bi-people" />
-                Aucun contact. Vos propriétaires et locataires apparaîtront ici.
+                {t("bo.agenceDiscussions.noContacts")}
               </div>
             )}
             {conversations.map(({ contact, last }) => {
@@ -254,7 +261,9 @@ export default function AgenceDiscussionsPage() {
                     </div>
                     <div className={styles.msgContactPreviewRow}>
                       <span className={styles.msgContactPreview}>
-                        {last ? `${last.user_id === user?.id ? "Vous : " : ""}${previewText(last)}` : "Aucun message"}
+                        {last
+                          ? `${last.user_id === user?.id ? t("bo.proprietaireMessagerie.you") : ""}${previewText(last, t)}`
+                          : t("bo.proprietaireMessagerie.noMessage")}
                       </span>
                       <span className={styles.msgContactRole}>{contact.role}</span>
                     </div>
@@ -269,7 +278,7 @@ export default function AgenceDiscussionsPage() {
             {!selectedConversation ? (
               <div className={styles.msgEmptyState}>
                 <i className="bi bi-chat-square-text" />
-                Sélectionnez un contact pour démarrer une conversation.
+                {t("bo.proprietaireMessagerie.selectContact")}
               </div>
             ) : (
               <>
@@ -299,18 +308,19 @@ export default function AgenceDiscussionsPage() {
                   {selectedConversation.thread.length === 0 && (
                     <div className={styles.msgEmptyState}>
                       <i className="bi bi-chat-dots" />
-                      Aucun message pour l&apos;instant. Dites bonjour !
+                      {t("bo.proprietaireMessagerie.noMessagesYet")}
                     </div>
                   )}
                   {selectedConversation.thread.map((m, i) => {
                     const mine = m.user_id === user?.id;
                     const prev = selectedConversation.thread[i - 1];
-                    const showDaySeparator = !prev || formatDayLabel(prev.date_sent) !== formatDayLabel(m.date_sent);
+                    const showDaySeparator =
+                      !prev || formatDayLabel(prev.date_sent, t) !== formatDayLabel(m.date_sent, t);
                     return (
                       <div key={m.id}>
                         {showDaySeparator && (
                           <div style={{ textAlign: "center", margin: "0.8rem 0" }}>
-                            <span className={styles.msgContactMeta}>{formatDayLabel(m.date_sent)}</span>
+                            <span className={styles.msgContactMeta}>{formatDayLabel(m.date_sent, t)}</span>
                           </div>
                         )}
                         <div className={`${styles.msgBubbleRow} ${mine ? styles.msgBubbleRowMine : ""}`}>
@@ -318,7 +328,7 @@ export default function AgenceDiscussionsPage() {
                             <div
                               className={`${styles.msgBubble} ${mine ? styles.msgBubbleMine : styles.msgBubbleTheirs}`}
                               onDoubleClick={() => mine && handleDeleteMessage(m.id)}
-                              title={mine ? "Double-clic pour supprimer" : undefined}
+                              title={mine ? t("bo.proprietaireMessagerie.deleteHint") : undefined}
                             >
                               {m.piece_jointe &&
                                 (m.piece_jointe_type?.startsWith("image/") ? (
@@ -345,7 +355,7 @@ export default function AgenceDiscussionsPage() {
                                     className={styles.msgAttachmentFile}
                                   >
                                     <i className="bi bi-file-earmark-arrow-down" />
-                                    <span>{m.piece_jointe_nom || "Fichier"}</span>
+                                    <span>{m.piece_jointe_nom || t("bo.proprietaireMessagerie.fileFallbackName")}</span>
                                   </a>
                                 ))}
                               {m.message && (
@@ -387,14 +397,14 @@ export default function AgenceDiscussionsPage() {
                         type="button"
                         className={styles.msgStagedRemove}
                         onClick={() => setStagedAttachment(null)}
-                        title="Retirer"
+                        title={t("bo.proprietaireMessagerie.removeAttachment")}
                       >
                         <i className="bi bi-x-lg" />
                       </button>
                     </div>
                   )}
                   <div className={styles.msgComposerRow}>
-                    <label className={styles.msgAttachBtn} title="Joindre un fichier">
+                    <label className={styles.msgAttachBtn} title={t("bo.proprietaireMessagerie.attachFile")}>
                       <i className={`bi ${attachBusy ? "bi-hourglass-split" : "bi-paperclip"}`} />
                       <input
                         type="file"
@@ -405,7 +415,7 @@ export default function AgenceDiscussionsPage() {
                     </label>
                     <textarea
                       rows={1}
-                      placeholder="Écrivez un message... (Entrée pour envoyer, Maj+Entrée pour un saut de ligne)"
+                      placeholder={t("bo.proprietaireMessagerie.messagePlaceholder")}
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
                       onKeyDown={handleKeyDown}
@@ -415,7 +425,7 @@ export default function AgenceDiscussionsPage() {
                       type="submit"
                       className={styles.msgSendBtn}
                       disabled={sendBusy || (!draft.trim() && !stagedAttachment)}
-                      title="Envoyer"
+                      title={t("bo.proprietaireMessagerie.send")}
                     >
                       <i className="bi bi-send-fill" />
                     </button>

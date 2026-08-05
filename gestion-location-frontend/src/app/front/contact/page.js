@@ -192,13 +192,40 @@ export default function ContactPage() {
           ))}
 
           <div className={styles.socialRow}>
-            <a href="#" aria-label="Facebook" className={styles.socialLink}>
+            <a
+              href="https://web.whatsapp.com/send?phone=212662123684&text="
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="WhatsApp"
+              className={styles.socialLink}
+            >
+              <i className="bi bi-whatsapp" />
+            </a>
+            <a
+              href="https://web.facebook.com/fadaascol/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Facebook"
+              className={styles.socialLink}
+            >
               <i className="bi bi-facebook" />
             </a>
-            <a href="#" aria-label="LinkedIn" className={styles.socialLink}>
+            <a
+              href="https://www.linkedin.com/company/fadaa-solutions/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="LinkedIn"
+              className={styles.socialLink}
+            >
               <i className="bi bi-linkedin" />
             </a>
-            <a href="#" aria-label="Instagram" className={styles.socialLink}>
+            <a
+              href="https://www.instagram.com/fadaa_ma/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Instagram"
+              className={styles.socialLink}
+            >
               <i className="bi bi-instagram" />
             </a>
           </div>

@@ -17,6 +17,9 @@ export const NOTIFICATION_TYPE = {
   RECLAMATION: 9,
   DEMANDE_DEMO: 10,
   CONTACT_MESSAGE: 11,
+  PLAN_CHANGE_REQUEST: 12,
+  ABONNEMENT: 13,
+  MAINTENANCE: 14,
 };
 
 export const NOTIFICATION_TYPE_LABELS = {
@@ -31,6 +34,9 @@ export const NOTIFICATION_TYPE_LABELS = {
   9: "Réclamation",
   10: "Demande de démo",
   11: "Message de contact",
+  12: "Changement de plan",
+  13: "Abonnement",
+  14: "Maintenance",
 };
 
 export async function fetchNotifications({ masquees = false } = {}) {

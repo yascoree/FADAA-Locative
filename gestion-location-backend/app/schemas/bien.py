@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -25,6 +26,7 @@ class BienBase(BaseModel):
     longitude: Optional[float] = Field(default=None, ge=-180, le=180)
     statut: Optional[BienStatus] = None
     attachement: Optional[str] = Field(default=None, max_length=255)
+    valorisation: Optional[Decimal] = Field(default=None, ge=0, max_digits=12, decimal_places=2)
 
 class BienCreate(BienBase):
     pass
@@ -38,6 +40,7 @@ class BienUpdate(BaseModel):
     longitude: Optional[float] = Field(default=None, ge=-180, le=180)
     statut: Optional[BienStatus] = None
     attachement: Optional[str] = Field(default=None, max_length=255)
+    valorisation: Optional[Decimal] = Field(default=None, ge=0, max_digits=12, decimal_places=2)
 
 class BienRead(BienBase):
     model_config = ConfigDict(from_attributes=True)

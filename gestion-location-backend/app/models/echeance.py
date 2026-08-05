@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DECIMAL, Column, DateTime, Date, Enum, ForeignKey, Integer
+from sqlalchemy import DECIMAL, Boolean, Column, DateTime, Date, Enum, ForeignKey, Integer
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -20,6 +20,12 @@ class Echeance(Base):
     bail_id = Column(Integer, ForeignKey("baux.id"), nullable=False)
     date_echeance = Column(Date, nullable=True)
     montant_du = Column(DECIMAL(10, 2), nullable=True)
+    # Snapshot des charges de ce mois précis (peuvent varier d'un mois à l'autre,
+    # contrairement à Bail.charges qui n'est qu'un montant de référence à la
+    # signature) — charges_incluses indique si ce montant est déjà comptabilisé
+    # dans montant_du (loyer + charges facturés ensemble) ou facturé à part.
+    charges = Column(DECIMAL(10, 2), nullable=True)
+    charges_incluses = Column(Boolean, nullable=False, default=True, server_default="true")
     statut = Column(Enum(EcheanceStatus, name="echeance_status"), nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)

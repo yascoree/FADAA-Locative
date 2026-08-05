@@ -96,7 +96,22 @@ def reject_request(db: Session, request_id: int) -> PlanChangeRequest:
     request = db.get(PlanChangeRequest, request_id)
     if not request:
         raise NotFound("Request not found")
+    plan = subscription_plan_crud.get(db, request.plan_id)
+
     request.statut = PlanChangeRequestStatus.REJETEE
     db.commit()
     db.refresh(request)
+
+    send_push_to_user(
+        db,
+        user_id=request.owner_id,
+        title="Demande de changement de plan refusée",
+        body=(
+            f"Votre demande de passage au plan « {plan.name} » a été refusée. Contactez-nous pour en savoir plus."
+            if plan
+            else "Votre demande de changement de plan a été refusée. Contactez-nous pour en savoir plus."
+        ),
+        notif_type=NotificationType.PLAN_CHANGE_REQUEST,
+        reference_id=request.id,
+    )
     return request

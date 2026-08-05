@@ -116,18 +116,45 @@ def _advance(d: date, frequence: FrequencePaiement) -> date:
 
 def _generate_echeances(bail: Bail) -> list[Echeance]:
     """Generate a due-date schedule between date_debut and date_fin, stepped
-    according to the lease's payment frequency, when both dates are known."""
+    according to the lease's payment frequency, when both dates are known.
+
+    date_fin is the last day *covered* by the lease, not the start of a new
+    period: a bail from July 31 to August 31 spans exactly one month, not two.
+    The loop is therefore exclusive of date_fin — a period starting exactly on
+    date_fin would double-count the boundary whenever the step lands precisely
+    on it (which happens often, since leases are commonly month-aligned). The
+    single-day case (date_debut == date_fin) is handled separately since an
+    exclusive loop would otherwise generate zero échéances for it."""
     if not bail.date_debut or not bail.date_fin or bail.loyer is None:
         return []
-    montant = bail.loyer + (bail.charges or 0)
+    charges = bail.charges or 0
+    montant = bail.loyer + charges
     frequence = bail.frequence_paiement or FrequencePaiement.MOIS
+    if bail.date_debut == bail.date_fin:
+        return [
+            Echeance(
+                bail_id=bail.id,
+                date_echeance=bail.date_debut,
+                montant_du=montant,
+                charges=charges,
+                charges_incluses=True,
+                statut=EcheanceStatus.IMPAYE,
+            )
+        ]
     echeances: list[Echeance] = []
     current = bail.date_debut
     # Beyond MAX_ECHEANCES_AUTO we stop and keep what's already built rather than
     # discarding the whole batch — the rest is completed manually via POST /due-dates.
-    while current <= bail.date_fin and len(echeances) < MAX_ECHEANCES_AUTO:
+    while current < bail.date_fin and len(echeances) < MAX_ECHEANCES_AUTO:
         echeances.append(
-            Echeance(bail_id=bail.id, date_echeance=current, montant_du=montant, statut=EcheanceStatus.IMPAYE)
+            Echeance(
+                bail_id=bail.id,
+                date_echeance=current,
+                montant_du=montant,
+                charges=charges,
+                charges_incluses=True,
+                statut=EcheanceStatus.IMPAYE,
+            )
         )
         current = _advance(current, frequence)
     return echeances

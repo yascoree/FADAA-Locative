@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { extractErrorMessage } from "@/lib/apiClient";
+import { extractErrorMessage, isPlanLimitError } from "@/lib/apiClient";
 import {
   fetchBiens,
   fetchLots,
@@ -25,6 +25,8 @@ import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import FilterSelect from "@/components/FilterSelect";
 import RadioGroupField from "@/components/RadioGroupField";
+import PlanLimitPopup from "@/components/PlanLimitPopup";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -72,6 +74,7 @@ const EMPTY_CREATE_FORM = {
 };
 
 export default function AgenceBauxPage() {
+  const { t } = useLanguage();
   const [baux, setBaux] = useState([]);
   const [lots, setLots] = useState([]);
   const [biens, setBiens] = useState([]);
@@ -90,6 +93,7 @@ export default function AgenceBauxPage() {
   const [createDraft, setCreateDraft] = useState(EMPTY_CREATE_FORM);
   const [createBusy, setCreateBusy] = useState(false);
   const [createBanner, setCreateBanner] = useState(null);
+  const [planLimitMessage, setPlanLimitMessage] = useState(null);
   const createModalBodyRef = useRef(null);
 
   const [editTarget, setEditTarget] = useState(null);
@@ -165,7 +169,7 @@ export default function AgenceBauxPage() {
 
   const lotOptions = useMemo(
     () => [
-      { value: "", label: "Sélectionner un lot..." },
+      { value: "", label: t("bo.proprietaireBaux.selectLot") },
       // Volontairement toujours sélectionnable, même indisponible : un <option
       // disabled> bloque l'interaction du <select> dans certains navigateurs
       // tant que la sélection pointe dessus. On laisse l'utilisateur choisir
@@ -175,7 +179,7 @@ export default function AgenceBauxPage() {
         const available = isLotAvailable(l.id, createDraft.date_debut, createDraft.date_fin);
         return {
           value: l.id,
-          label: available ? lotLabel(l) : `${lotLabel(l)} — indisponible sur cette période`,
+          label: available ? lotLabel(l) : `${lotLabel(l)} ${t("bo.proprietaireBaux.unavailableSuffix")}`,
         };
       }),
     ],
@@ -190,7 +194,7 @@ export default function AgenceBauxPage() {
     createDraft.lot_id &&
     (createDraft.date_debut || createDraft.date_fin) &&
     !isLotAvailable(Number(createDraft.lot_id), createDraft.date_debut, createDraft.date_fin)
-      ? { type: "error", message: "Ce lot est déjà occupé sur cette période. Choisissez un autre lot ou d'autres dates." }
+      ? { type: "error", message: t("bo.proprietaireBaux.lotUnavailable") }
       : null;
 
   function updateCreateDraftDate(field, value) {
@@ -274,7 +278,11 @@ export default function AgenceBauxPage() {
       setBaux((prev) => [...prev, { ...created, locataire, lot }]);
       setCreateOpen(false);
     } catch (err) {
-      setCreateBanner({ type: "error", message: extractErrorMessage(err) });
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setCreateBanner({ type: "error", message: extractErrorMessage(err) });
+      }
     } finally {
       setCreateBusy(false);
     }
@@ -337,7 +345,7 @@ export default function AgenceBauxPage() {
   }
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.common.loading")}</p>;
   }
 
   return (
@@ -347,10 +355,10 @@ export default function AgenceBauxPage() {
       {/* ---- Stats ---- */}
       <div className={styles.section}>
         <div className={styles.statsGrid}>
-          <StatCard icon="bi-file-earmark-text-fill" tone="primary" label="Baux gérés" value={stats.total} />
-          <StatCard icon="bi-check-circle-fill" tone="accent" label="Actifs" value={stats.actifs} />
-          <StatCard icon="bi-hourglass-split" tone="warning" label="En attente" value={stats.enAttente} />
-          <StatCard icon="bi-x-circle-fill" tone="danger" label="Terminés" value={stats.termines} />
+          <StatCard icon="bi-file-earmark-text-fill" tone="primary" label={t("bo.agenceBaux.title")} value={stats.total} />
+          <StatCard icon="bi-check-circle-fill" tone="accent" label={t("bo.proprietaireBaux.statActive")} value={stats.actifs} />
+          <StatCard icon="bi-hourglass-split" tone="warning" label={t("bo.proprietaireBaux.statPending")} value={stats.enAttente} />
+          <StatCard icon="bi-x-circle-fill" tone="danger" label={t("bo.proprietaireBaux.statFinished")} value={stats.termines} />
         </div>
       </div>
 
@@ -360,10 +368,10 @@ export default function AgenceBauxPage() {
           <div>
             <h2 className={styles.sectionTitle}>
               <i className="bi bi-table" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-              Baux gérés
+              {t("bo.agenceBaux.title")}
             </h2>
             <p className={styles.sectionSubtitle}>
-              {filteredBaux.length} bail(aux) affiché(s) sur {baux.length}, tous propriétaires confondus.
+              {t("bo.agenceBaux.subtitle", { shown: filteredBaux.length, total: baux.length })}
             </p>
           </div>
           <button
@@ -373,14 +381,14 @@ export default function AgenceBauxPage() {
             disabled={creatableLots.length === 0 || locataires.length === 0}
             title={
               creatableLots.length === 0
-                ? "Aucun lot disponible (mandat manquant ou aucun lot enregistré)"
+                ? t("bo.agenceBaux.noLotAvailable")
                 : locataires.length === 0
-                  ? "Ajoutez d'abord un locataire"
+                  ? t("bo.proprietaireBaux.addTenantFirst")
                   : undefined
             }
           >
             <i className="bi bi-plus-lg" />
-            Nouveau bail
+            {t("bo.proprietaireBaux.newBail")}
           </button>
         </div>
 
@@ -389,9 +397,7 @@ export default function AgenceBauxPage() {
             <span className={styles.prereqNoticeIcon}>
               <i className="bi bi-exclamation-lg" />
             </span>
-            <span className={styles.prereqNoticeText}>
-              Aucun lot disponible pour l&apos;instant (mandat manquant ou aucun lot enregistré).
-            </span>
+            <span className={styles.prereqNoticeText}>{t("bo.agenceBaux.noLotAvailableText")}</span>
           </div>
         )}
         {lots.length > 0 && locataires.length === 0 && (
@@ -399,11 +405,9 @@ export default function AgenceBauxPage() {
             <span className={styles.prereqNoticeIcon}>
               <i className="bi bi-exclamation-lg" />
             </span>
-            <span className={styles.prereqNoticeText}>
-              Aucun locataire disponible pour le moment. Créez-en un pour pouvoir ajouter un bail.
-            </span>
+            <span className={styles.prereqNoticeText}>{t("bo.proprietaireBaux.prereqTenantText")}</span>
             <Link href="/backoffice/agence/locataires?create=1" className={styles.prereqNoticeAction}>
-              Créer un locataire
+              {t("bo.proprietaireBaux.prereqTenantAction")}
               <i className="bi bi-arrow-right" />
             </Link>
           </div>
@@ -412,7 +416,7 @@ export default function AgenceBauxPage() {
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher (locataire, bien, lot, loyer, date...)"
+            placeholder={t("bo.proprietaireBaux.searchPlaceholder")}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -425,7 +429,7 @@ export default function AgenceBauxPage() {
               setLotFilter(v);
               setCurrentPage(1);
             }}
-            options={[{ value: "", label: "Tous les lots" }, ...lots.map((l) => ({ value: l.id, label: lotLabel(l) }))]}
+            options={[{ value: "", label: t("bo.proprietaireBaux.allLots") }, ...lots.map((l) => ({ value: l.id, label: lotLabel(l) }))]}
           />
           <FilterSelect
             value={statusFilter}
@@ -433,7 +437,7 @@ export default function AgenceBauxPage() {
               setStatusFilter(v);
               setCurrentPage(1);
             }}
-            options={[{ value: "", label: "Tous les statuts" }, ...STATUS_OPTIONS]}
+            options={[{ value: "", label: t("bo.common.allStatuses") }, ...STATUS_OPTIONS]}
           />
           <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
@@ -442,19 +446,19 @@ export default function AgenceBauxPage() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Lot</th>
-                <th>Locataire</th>
-                <th>Loyer</th>
-                <th>Période</th>
-                <th>Statut</th>
-                <th>Actions</th>
+                <th>{t("bo.proprietaireBaux.colLot")}</th>
+                <th>{t("bo.proprietaireBaux.colTenant")}</th>
+                <th>{t("bo.proprietaireBaux.colRent")}</th>
+                <th>{t("bo.proprietaireBaux.colPeriod")}</th>
+                <th>{t("bo.proprietaireBaux.colStatus")}</th>
+                <th>{t("bo.proprietaireBaux.colActions")}</th>
               </tr>
             </thead>
             <tbody>
               {filteredBaux.length === 0 && (
                 <tr>
                   <td colSpan={6} className={styles.empty}>
-                    Aucun bail ne correspond à ces critères.
+                    {t("bo.common.noMatch")}
                   </td>
                 </tr>
               )}
@@ -480,7 +484,7 @@ export default function AgenceBauxPage() {
                   </td>
                   <td>
                     {formatCurrency(b.loyer)}
-                    {b.charges ? ` + ${formatCurrency(b.charges)} charges` : ""}
+                    {b.charges ? ` ${t("bo.proprietaireBaux.chargesIncluded", { amount: formatCurrency(b.charges) })}` : ""}
                     <div className={styles.recentEmail}>/ {FREQUENCE_PAIEMENT_LABELS[b.frequence_paiement] || "—"}</div>
                   </td>
                   <td>
@@ -501,7 +505,7 @@ export default function AgenceBauxPage() {
                       return (
                         <div className={styles.tableActions}>
                           {canUpdate && (
-                            <button type="button" className={styles.iconBtn} onClick={() => openEdit(b)} title="Modifier">
+                            <button type="button" className={styles.iconBtn} onClick={() => openEdit(b)} title={t("bo.common.edit")}>
                               <i className="bi bi-pencil" />
                             </button>
                           )}
@@ -513,7 +517,7 @@ export default function AgenceBauxPage() {
                                 setDeleteTarget(b);
                                 setDeleteError(null);
                               }}
-                              title="Supprimer"
+                              title={t("bo.common.delete")}
                             >
                               <i className="bi bi-trash" />
                             </button>
@@ -530,7 +534,7 @@ export default function AgenceBauxPage() {
           {filteredBaux.length > 0 && (
             <div className={styles.paginationRow}>
               <span>
-                Page {safePage} / {totalPages} · {filteredBaux.length} bail(aux)
+                {t("bo.proprietaireBaux.pageOf", { page: safePage, total: totalPages, count: filteredBaux.length })}
               </span>
               <div className={styles.paginationButtons}>
                 <button
@@ -540,7 +544,7 @@ export default function AgenceBauxPage() {
                   disabled={safePage <= 1}
                 >
                   <i className="bi bi-chevron-left" />
-                  Précédent
+                  {t("bo.common.previous")}
                 </button>
                 <button
                   type="button"
@@ -548,7 +552,7 @@ export default function AgenceBauxPage() {
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={safePage >= totalPages}
                 >
-                  Suivant
+                  {t("bo.common.next")}
                   <i className="bi bi-chevron-right" />
                 </button>
               </div>
@@ -558,22 +562,22 @@ export default function AgenceBauxPage() {
       </div>
 
       {/* ---- Créer un bail ---- */}
-      <Modal isOpen={createOpen} onClose={closeCreate} title="Nouveau bail" bodyRef={createModalBodyRef}>
+      <Modal isOpen={createOpen} onClose={closeCreate} title={t("bo.proprietaireBaux.createTitle")} bodyRef={createModalBodyRef}>
         <form onSubmit={handleSubmitCreate}>
           <div style={{ position: "sticky", top: 0, zIndex: 2, background: "var(--brand-surface)" }}>
             <Banner banner={createBanner || lotUnavailableBanner} />
           </div>
           <SelectField
-            label="Lot"
+            label={t("bo.proprietaireBaux.lotLabel")}
             name="lot_id"
             options={lotOptions}
             value={createDraft.lot_id}
             onChange={(e) => setCreateDraft((d) => ({ ...d, lot_id: e.target.value }))}
-            hint="Les lots déjà occupés sur les dates choisies restent visibles, marqués « indisponible »."
+            hint={t("bo.proprietaireBaux.lotHint")}
             required
           />
           <SelectField
-            label="Locataire"
+            label={t("bo.proprietaireBaux.tenantLabel")}
             name="locataire_id"
             options={locataires.map((l) => ({ value: l.id, label: `${l.prenom} ${l.nom} (${l.email})` }))}
             value={createDraft.locataire_id}
@@ -581,21 +585,21 @@ export default function AgenceBauxPage() {
             required
           />
           <TextField
-            label="Date de début"
+            label={t("bo.proprietaireBaux.startDateLabel")}
             name="date_debut"
             type="date"
             value={createDraft.date_debut}
             onChange={(e) => updateCreateDraftDate("date_debut", e.target.value)}
           />
           <TextField
-            label="Date de fin"
+            label={t("bo.proprietaireBaux.endDateLabel")}
             name="date_fin"
             type="date"
             value={createDraft.date_fin}
             onChange={(e) => updateCreateDraftDate("date_fin", e.target.value)}
           />
           <TextField
-            label="Loyer (MAD)"
+            label={t("bo.proprietaireBaux.rentLabel")}
             name="loyer"
             type="number"
             step="0.01"
@@ -604,7 +608,7 @@ export default function AgenceBauxPage() {
             onChange={(e) => setCreateDraft((d) => ({ ...d, loyer: e.target.value }))}
           />
           <TextField
-            label="Charges (MAD)"
+            label={t("bo.proprietaireBaux.chargesLabel")}
             name="charges"
             type="number"
             step="0.01"
@@ -613,7 +617,7 @@ export default function AgenceBauxPage() {
             onChange={(e) => setCreateDraft((d) => ({ ...d, charges: e.target.value }))}
           />
           <TextField
-            label="Dépôt de garantie (MAD)"
+            label={t("bo.proprietaireBaux.depositLabel")}
             name="depot"
             type="number"
             step="0.01"
@@ -622,15 +626,15 @@ export default function AgenceBauxPage() {
             onChange={(e) => setCreateDraft((d) => ({ ...d, depot: e.target.value }))}
           />
           <RadioGroupField
-            label="Fréquence de paiement"
+            label={t("bo.proprietaireBaux.frequencyLabel")}
             name="frequence_paiement"
             options={FREQUENCE_OPTIONS}
             value={createDraft.frequence_paiement}
             onChange={(e) => setCreateDraft((d) => ({ ...d, frequence_paiement: e.target.value }))}
-            hint="Détermine l'espacement des échéances générées automatiquement."
+            hint={t("bo.proprietaireBaux.frequencyHint")}
           />
           <SelectField
-            label="Statut"
+            label={t("bo.proprietaireBaux.statusLabel")}
             name="statut"
             options={STATUS_OPTIONS}
             value={createDraft.statut}
@@ -640,18 +644,18 @@ export default function AgenceBauxPage() {
           <div className={styles.editActions} style={{ marginTop: "1.2rem" }}>
             <button type="submit" className={styles.btn} disabled={createBusy}>
               <i className="bi bi-check-lg" />
-              {createBusy ? "Création..." : "Créer le bail"}
+              {createBusy ? t("bo.proprietaireBaux.creating") : t("bo.proprietaireBaux.createBail")}
             </button>
             <button type="button" className={styles.btnOutline} onClick={closeCreate} disabled={createBusy}>
               <i className="bi bi-x-lg" />
-              Annuler
+              {t("bo.common.cancel")}
             </button>
           </div>
         </form>
       </Modal>
 
       {/* ---- Modifier un bail ---- */}
-      <Modal isOpen={!!editTarget} onClose={closeEdit} title="Modifier le bail">
+      <Modal isOpen={!!editTarget} onClose={closeEdit} title={t("bo.proprietaireBaux.editTitle")}>
         {editTarget && editDraft && (
           <form onSubmit={handleSubmitEdit}>
             <Banner banner={editBanner} />
@@ -659,14 +663,14 @@ export default function AgenceBauxPage() {
               {lotLabel(editTarget.lot)} · {editTarget.locataire?.prenom} {editTarget.locataire?.nom}
             </p>
             <TextField
-              label="Date de fin"
+              label={t("bo.proprietaireBaux.endDateLabel")}
               name="date_fin"
               type="date"
               value={editDraft.date_fin}
               onChange={(e) => setEditDraft((d) => ({ ...d, date_fin: e.target.value }))}
             />
             <TextField
-              label="Loyer (MAD)"
+              label={t("bo.proprietaireBaux.rentLabel")}
               name="loyer"
               type="number"
               step="0.01"
@@ -675,7 +679,7 @@ export default function AgenceBauxPage() {
               onChange={(e) => setEditDraft((d) => ({ ...d, loyer: e.target.value }))}
             />
             <TextField
-              label="Charges (MAD)"
+              label={t("bo.proprietaireBaux.chargesLabel")}
               name="charges"
               type="number"
               step="0.01"
@@ -684,7 +688,7 @@ export default function AgenceBauxPage() {
               onChange={(e) => setEditDraft((d) => ({ ...d, charges: e.target.value }))}
             />
             <TextField
-              label="Dépôt de garantie (MAD)"
+              label={t("bo.proprietaireBaux.depositLabel")}
               name="depot"
               type="number"
               step="0.01"
@@ -693,7 +697,7 @@ export default function AgenceBauxPage() {
               onChange={(e) => setEditDraft((d) => ({ ...d, depot: e.target.value }))}
             />
             <SelectField
-              label="Statut"
+              label={t("bo.proprietaireBaux.statusLabel")}
               name="statut"
               options={STATUS_OPTIONS}
               value={editDraft.statut}
@@ -703,11 +707,11 @@ export default function AgenceBauxPage() {
             <div className={styles.editActions} style={{ marginTop: "1.2rem" }}>
               <button type="submit" className={styles.btn} disabled={editBusy}>
                 <i className="bi bi-check-lg" />
-                {editBusy ? "Enregistrement..." : "Enregistrer"}
+                {editBusy ? t("bo.common.saving") : t("bo.common.save")}
               </button>
               <button type="button" className={styles.btnOutline} onClick={closeEdit} disabled={editBusy}>
                 <i className="bi bi-x-lg" />
-                Annuler
+                {t("bo.common.cancel")}
               </button>
             </div>
           </form>
@@ -722,17 +726,21 @@ export default function AgenceBauxPage() {
           setDeleteError(null);
         }}
         onConfirm={handleConfirmDelete}
-        title="Masquer le bail"
+        title={t("bo.proprietaireBaux.deleteConfirmTitle")}
         message={
           deleteTarget
-            ? `Masquer le bail de ${deleteTarget.locataire?.prenom || ""} ${deleteTarget.locataire?.nom || ""} ? Il ne sera plus visible dans vos listes (échéances, paiements et quittances restent conservés).`
+            ? t("bo.proprietaireBaux.deleteConfirmMessage", {
+                name: `${deleteTarget.locataire?.prenom || ""} ${deleteTarget.locataire?.nom || ""}`,
+              })
             : ""
         }
-        confirmLabel="Masquer"
+        confirmLabel={t("bo.proprietaireBaux.deleteConfirmLabel")}
         danger
         isBusy={deleteBusy}
         error={deleteError}
       />
+
+      <PlanLimitPopup message={planLimitMessage} onClose={() => setPlanLimitMessage(null)} />
     </div>
   );
 }

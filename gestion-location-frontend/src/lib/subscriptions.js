@@ -99,11 +99,19 @@ function parseUtcDate(value) {
 // à partir de trial_end, le badge de statut ("Expiré") et la pastille ("X j
 // restants") pourraient se contredire alors même que les deux décrivent le
 // même abonnement.
+// Jours restants avant end_date (négatif si déjà dépassée), utilisable pour un
+// essai ou un plan payant — voir trialInfo (essai) et SubscriptionStatusBanner
+// (bannière globale, essai ou payant) qui s'appuient dessus.
+export function subscriptionDaysRemaining(subscription) {
+  const referenceDate = subscription?.end_date || subscription?.trial_end;
+  if (!referenceDate) return null;
+  return Math.ceil((parseUtcDate(referenceDate) - new Date()) / 86400000);
+}
+
 export function trialInfo(subscription) {
   if (!subscription?.plan?.is_trial) return null;
-  const referenceDate = subscription.end_date || subscription.trial_end;
-  if (!referenceDate) return null;
-  const daysRemaining = Math.ceil((parseUtcDate(referenceDate) - new Date()) / 86400000);
+  const daysRemaining = subscriptionDaysRemaining(subscription);
+  if (daysRemaining === null) return null;
   if (daysRemaining < 0) return { state: "expired", daysRemaining: 0 };
   if (daysRemaining <= 3) return { state: "warning", daysRemaining };
   return { state: "active", daysRemaining };

@@ -18,6 +18,7 @@ import {
   subscriptionStatusLabel,
 } from "@/lib/subscriptions";
 import CountUp from "@/components/CountUp";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "./proprietaire.module.css";
 
 function formatCurrency(value, compact = false) {
@@ -116,6 +117,7 @@ function RadialMeter({ percent, label, sublabel, tone }) {
 }
 
 export default function ProprietaireDashboardPage() {
+  const { t } = useLanguage();
   const { user } = useAuth();
 
   const [stats, setStats] = useState(null);
@@ -186,11 +188,15 @@ export default function ProprietaireDashboardPage() {
   const subscriptionBlocked = subscription ? !isSubscriptionUsable(subscription) : false;
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.common.loading")}</p>;
   }
 
   if (loadError || !stats || !revenue) {
-    return <div className={`${styles.banner} ${styles.bannerError}`}>{loadError || "Impossible de charger les statistiques."}</div>;
+    return (
+      <div className={`${styles.banner} ${styles.bannerError}`}>
+        {loadError || t("bo.proprietaireDashboard.unableToLoadStats")}
+      </div>
+    );
   }
 
   const lotsMax = Math.max(1, ...stats.lots_by_status.map((s) => s.count));
@@ -205,8 +211,8 @@ export default function ProprietaireDashboardPage() {
       {/* ---- Header ---- */}
       <div className={styles.dashboardHeader}>
         <div>
-          <h2 className={styles.dashboardGreeting}>Bonjour, {user?.prenom || ""}</h2>
-          <p className={styles.dashboardSubtitle}>Voici l&apos;aperçu de votre patrimoine locatif.</p>
+          <h2 className={styles.dashboardGreeting}>{t("bo.proprietaireDashboard.greeting", { name: user?.prenom || "" })}</h2>
+          <p className={styles.dashboardSubtitle}>{t("bo.proprietaireDashboard.subtitle")}</p>
         </div>
         <span className={styles.dashboardDate}>
           <i className="bi bi-calendar3" />
@@ -219,10 +225,14 @@ export default function ProprietaireDashboardPage() {
           <i className="bi bi-exclamation-triangle-fill" />
           <span>
             {subscription.plan?.is_trial
-              ? "Votre période d'essai est terminée."
-              : `Votre abonnement « ${subscription.plan?.name} » est ${subscriptionStatusLabel(subscription, subscriptionBlocked).toLowerCase()}.`}{" "}
-            Vous pouvez toujours consulter vos données, mais la création de nouveaux biens, lots, baux, gestionnaires
-            ou quittances est bloquée. <Link href="/front/contact">Contactez-nous</Link> pour le renouveler.
+              ? t("bo.proprietaireAbonnement.trialEnded")
+              : t("bo.proprietaireAbonnement.subscriptionStatus", {
+                  plan: subscription.plan?.name,
+                  status: subscriptionStatusLabel(subscription, subscriptionBlocked).toLowerCase(),
+                })}{" "}
+            {t("bo.proprietaireAbonnement.blockedInfo")}{" "}
+            <Link href="/front/contact">{t("bo.proprietaireAbonnement.contactLink")}</Link>{" "}
+            {t("bo.proprietaireAbonnement.renewSuffix")}
           </span>
         </div>
       )}
@@ -236,7 +246,7 @@ export default function ProprietaireDashboardPage() {
             </span>
           </div>
           <div>
-            <div className={styles.heroTileLabel}>Revenu ce mois</div>
+            <div className={styles.heroTileLabel}>{t("bo.proprietaireDashboard.tileRevenueMonth")}</div>
             <div className={styles.heroTileValue}>
               <CountUp value={stats.revenu_mois} formatter={formatCurrency} />
             </div>
@@ -250,7 +260,7 @@ export default function ProprietaireDashboardPage() {
             </span>
           </div>
           <div>
-            <div className={styles.heroTileLabel}>Loyers en retard</div>
+            <div className={styles.heroTileLabel}>{t("bo.proprietaireDashboard.tileOverdueRent")}</div>
             <div className={styles.heroTileValue}>
               <CountUp value={stats.montant_en_retard} formatter={formatCurrency} />
             </div>
@@ -264,7 +274,7 @@ export default function ProprietaireDashboardPage() {
             </span>
           </div>
           <div>
-            <div className={styles.heroTileLabel}>Biens gérés</div>
+            <div className={styles.heroTileLabel}>{t("bo.proprietaireDashboard.tileProperties")}</div>
             <div className={styles.heroTileValue}>
               <CountUp value={stats.total_biens} />
             </div>
@@ -278,7 +288,7 @@ export default function ProprietaireDashboardPage() {
             </span>
           </div>
           <div>
-            <div className={styles.heroTileLabel}>Baux actifs</div>
+            <div className={styles.heroTileLabel}>{t("bo.proprietaireDashboard.tileActiveLeases")}</div>
             <div className={styles.heroTileValue}>
               <CountUp value={stats.baux_actifs} />
             </div>
@@ -293,7 +303,7 @@ export default function ProprietaireDashboardPage() {
             <div className={styles.chartHeader}>
               <h2 className={styles.cardTitle} style={{ marginBottom: 0 }}>
                 <i className="bi bi-graph-up" style={{ color: "var(--primary)" }} />
-                Revenus — 12 derniers mois
+                {t("bo.proprietaireDashboard.revenueChartTitle")}
               </h2>
               <div className={styles.chartEndValue}>
                 <div className={styles.chartEndLabel}>{lastPoint?.label}</div>
@@ -310,7 +320,7 @@ export default function ProprietaireDashboardPage() {
                 onMouseMove={handlePointerMove}
                 onMouseLeave={() => setHoverIndex(null)}
                 role="img"
-                aria-label="Courbe des revenus mensuels sur les 12 derniers mois"
+                aria-label={t("bo.proprietaireDashboard.revenueChartAriaLabel")}
               >
                 {gridLines.map((frac) => {
                   const y = PAD_TOP + INNER_HEIGHT * (1 - frac);
@@ -368,14 +378,14 @@ export default function ProprietaireDashboardPage() {
             <RadialMeter
               percent={occupationRate}
               tone="Navy"
-              label="Taux d'occupation"
-              sublabel={`${stats.lots_occupes}/${stats.total_lots} lot(s)`}
+              label={t("bo.proprietaireDashboard.occupationRate")}
+              sublabel={t("bo.proprietaireDashboard.occupationSub", { occupied: stats.lots_occupes, total: stats.total_lots })}
             />
             <RadialMeter
               percent={revenue.taux_recouvrement}
               tone={revenue.taux_recouvrement === null || revenue.taux_recouvrement >= 90 ? "Olive" : "Terracotta"}
-              label="Taux de recouvrement"
-              sublabel="Sur l'année en cours"
+              label={t("bo.proprietaireDashboard.collectionRate")}
+              sublabel={t("bo.proprietaireDashboard.collectionSub")}
             />
           </div>
         </div>
@@ -388,10 +398,10 @@ export default function ProprietaireDashboardPage() {
             <div className={styles.card}>
               <h2 className={styles.cardTitle}>
                 <i className="bi bi-grid-3x3-gap-fill" style={{ color: "var(--primary)" }} />
-                Statut des lots
+                {t("bo.proprietaireDashboard.lotsStatusTitle")}
               </h2>
               <div className={styles.distribution}>
-                {stats.lots_by_status.length === 0 && <p className={styles.empty}>Aucun lot enregistré.</p>}
+                {stats.lots_by_status.length === 0 && <p className={styles.empty}>{t("bo.proprietaireDashboard.noLots")}</p>}
                 {stats.lots_by_status.map((s) => (
                   <div className={styles.distributionRow} key={s.status}>
                     <span className={styles.distributionName}>{LOT_STATUS_LABELS[s.status] || s.status}</span>
@@ -409,10 +419,10 @@ export default function ProprietaireDashboardPage() {
             <div className={styles.card}>
               <h2 className={styles.cardTitle}>
                 <i className="bi bi-file-earmark-text-fill" style={{ color: "var(--primary)" }} />
-                Statut des baux
+                {t("bo.proprietaireDashboard.leasesStatusTitle")}
               </h2>
               <div className={styles.distribution}>
-                {stats.baux_by_status.length === 0 && <p className={styles.empty}>Aucun bail enregistré.</p>}
+                {stats.baux_by_status.length === 0 && <p className={styles.empty}>{t("bo.proprietaireDashboard.noLeases")}</p>}
                 {stats.baux_by_status.map((s) => (
                   <div className={styles.distributionRow} key={s.status}>
                     <span className={styles.distributionName}>{BAIL_STATUS_LABELS[s.status] || s.status}</span>
@@ -453,7 +463,9 @@ export default function ProprietaireDashboardPage() {
               {trial && (
                 <span className={`${styles.trialPill} ${trialPillClass(trial.state)}`} style={{ marginBottom: "1rem", display: "inline-flex" }}>
                   <i className="bi bi-hourglass-split" />
-                  {trial.state === "expired" ? "Essai expiré" : `Essai — ${trial.daysRemaining} j restants`}
+                  {trial.state === "expired"
+                    ? t("bo.proprietaireAbonnement.trialExpired")
+                    : t("bo.proprietaireAbonnement.trialDaysRemaining", { count: trial.daysRemaining })}
                 </span>
               )}
 

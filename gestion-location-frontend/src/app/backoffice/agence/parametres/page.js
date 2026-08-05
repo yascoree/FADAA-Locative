@@ -8,7 +8,7 @@ import { fetchProfile, createProfile, updateProfile, uploadProfilePhoto, deleteP
 import TextField from "@/components/TextField";
 import PasswordChangeCard from "@/components/PasswordChangeCard";
 import ThemeToggle from "@/components/ThemeToggle";
-import LanguagePicker from "@/components/LanguagePicker";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -23,6 +23,7 @@ function Banner({ banner }) {
 const EMPTY_PROFILE = { telephone: "", adresse: "", date_naissance: "", piece_identite: "" };
 
 export default function AgenceParametresPage() {
+  const { t } = useLanguage();
   const { user, refreshUser } = useAuth();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -85,7 +86,7 @@ export default function AgenceParametresPage() {
         await createProfile(user.id, payload);
         setProfileExists(true);
       }
-      setProfileBanner({ type: "success", message: "Profil mis à jour." });
+      setProfileBanner({ type: "success", message: t("bo.agenceParametres.profileUpdated") });
     } catch (err) {
       setProfileBanner({ type: "error", message: extractErrorMessage(err) });
     } finally {
@@ -136,7 +137,7 @@ export default function AgenceParametresPage() {
         email: accountDraft.email,
       });
       await refreshUser();
-      setAccountBanner({ type: "success", message: "Informations du compte mises à jour." });
+      setAccountBanner({ type: "success", message: t("bo.agenceParametres.accountUpdated") });
     } catch (err) {
       setAccountBanner({ type: "error", message: extractErrorMessage(err) });
     } finally {
@@ -145,7 +146,7 @@ export default function AgenceParametresPage() {
   }
 
   if (isLoading || !user) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.common.loading")}</p>;
   }
 
   return (
@@ -153,9 +154,9 @@ export default function AgenceParametresPage() {
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>
           <i className="bi bi-gear" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-          Paramètres
+          {t("bo.agenceParametres.title")}
         </h2>
-        <p className={styles.sectionSubtitle}>Gérez vos informations personnelles et la sécurité de votre compte.</p>
+        <p className={styles.sectionSubtitle}>{t("bo.agenceParametres.subtitle")}</p>
       </div>
 
       {/* ---- Apparence ---- */}
@@ -163,24 +164,21 @@ export default function AgenceParametresPage() {
         <div className={styles.card}>
           <h3 className={styles.cardTitle}>
             <i className="bi bi-palette-fill" style={{ color: "var(--primary)" }} />
-            Apparence
+            {t("bo.proprietaireParametres.appearanceTitle")}
           </h3>
           <p className={styles.sectionSubtitle} style={{ margin: "-0.4rem 0 1rem" }}>
-            Choisissez le thème de votre interface — le choix est mémorisé sur cet appareil.
+            {t("bo.proprietaireParametres.appearanceSub")}
           </p>
           <ThemeToggle />
         </div>
       </div>
-
-      {/* ---- Langue ---- */}
-      <LanguagePicker styles={styles} />
 
       {/* ---- Compte ---- */}
       <div className={styles.section}>
         <div className={styles.card}>
           <h3 className={styles.cardTitle}>
             <i className="bi bi-person-fill" style={{ color: "var(--primary)" }} />
-            Compte
+            {t("bo.proprietaireParametres.accountTitle")}
           </h3>
 
           <Banner banner={photoBanner} />
@@ -200,7 +198,7 @@ export default function AgenceParametresPage() {
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <label className={styles.btnOutline} style={{ cursor: photoBusy ? "not-allowed" : "pointer" }}>
                 <i className="bi bi-camera-fill" />
-                {photoBusy ? "..." : "Changer la photo"}
+                {photoBusy ? "..." : t("bo.proprietaireParametres.changePhoto")}
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
@@ -215,7 +213,7 @@ export default function AgenceParametresPage() {
                   className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
                   onClick={handlePhotoRemove}
                   disabled={photoBusy}
-                  title="Retirer la photo"
+                  title={t("bo.proprietaireParametres.removePhotoTitle")}
                 >
                   <i className="bi bi-trash" />
                 </button>
@@ -226,21 +224,21 @@ export default function AgenceParametresPage() {
           <form onSubmit={handleSubmitAccount}>
             <Banner banner={accountBanner} />
             <TextField
-              label="Prénom"
+              label={t("bo.proprietaireParametres.firstNameLabel")}
               name="prenom"
               value={accountDraft.prenom}
               onChange={(e) => setAccountDraft((d) => ({ ...d, prenom: e.target.value }))}
               required
             />
             <TextField
-              label="Nom"
+              label={t("bo.proprietaireParametres.lastNameLabel")}
               name="nom"
               value={accountDraft.nom}
               onChange={(e) => setAccountDraft((d) => ({ ...d, nom: e.target.value }))}
               required
             />
             <TextField
-              label="Email"
+              label={t("bo.proprietaireParametres.emailLabel")}
               name="email"
               type="email"
               value={accountDraft.email}
@@ -250,7 +248,7 @@ export default function AgenceParametresPage() {
             <div className={styles.editActions} style={{ marginTop: "1rem" }}>
               <button type="submit" className={styles.btn} disabled={accountBusy}>
                 <i className="bi bi-check-lg" />
-                {accountBusy ? "Enregistrement..." : "Enregistrer"}
+                {accountBusy ? t("bo.common.saving") : t("bo.common.save")}
               </button>
             </div>
           </form>
@@ -262,12 +260,12 @@ export default function AgenceParametresPage() {
         <div className={styles.card}>
           <h3 className={styles.cardTitle}>
             <i className="bi bi-card-heading" style={{ color: "var(--primary)" }} />
-            Profil
+            {t("bo.proprietaireParametres.profileTitle")}
           </h3>
           <form onSubmit={handleSubmitProfile}>
             <Banner banner={profileBanner} />
             <TextField
-              label="Téléphone"
+              label={t("bo.proprietaireParametres.phoneLabel")}
               name="telephone"
               type="tel"
               value={profileDraft.telephone}
@@ -275,29 +273,29 @@ export default function AgenceParametresPage() {
               placeholder="+212 6 00 00 00 00"
             />
             <TextField
-              label="Adresse"
+              label={t("bo.proprietaireParametres.addressLabel")}
               name="adresse"
               value={profileDraft.adresse}
               onChange={(e) => setProfileDraft((d) => ({ ...d, adresse: e.target.value }))}
             />
             <TextField
-              label="Date de naissance"
+              label={t("bo.proprietaireParametres.birthDateLabel")}
               name="date_naissance"
               type="date"
               value={profileDraft.date_naissance}
               onChange={(e) => setProfileDraft((d) => ({ ...d, date_naissance: e.target.value }))}
             />
             <TextField
-              label="Pièce d'identité (référence)"
+              label={t("bo.proprietaireParametres.idDocLabel")}
               name="piece_identite"
               value={profileDraft.piece_identite}
               onChange={(e) => setProfileDraft((d) => ({ ...d, piece_identite: e.target.value }))}
-              placeholder="N° CIN, passeport..."
+              placeholder={t("bo.proprietaireParametres.idDocPlaceholder")}
             />
             <div className={styles.editActions} style={{ marginTop: "1rem" }}>
               <button type="submit" className={styles.btn} disabled={profileBusy}>
                 <i className="bi bi-check-lg" />
-                {profileBusy ? "Enregistrement..." : "Enregistrer"}
+                {profileBusy ? t("bo.common.saving") : t("bo.common.save")}
               </button>
             </div>
           </form>
@@ -309,7 +307,7 @@ export default function AgenceParametresPage() {
       <PasswordChangeCard
         styles={styles}
         userId={user.id}
-        onSuccess={() => setPasswordSuccessBanner({ type: "success", message: "Mot de passe mis à jour." })}
+        onSuccess={() => setPasswordSuccessBanner({ type: "success", message: t("bo.proprietaireParametres.passwordUpdated") })}
       />
     </div>
   );

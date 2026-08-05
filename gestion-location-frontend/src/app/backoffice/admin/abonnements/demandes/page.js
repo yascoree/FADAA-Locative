@@ -13,6 +13,7 @@ import {
 } from "@/lib/subscriptions";
 import StatCard from "@/components/StatCard";
 import CountUp from "@/components/CountUp";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../../admin.module.css";
 
 function Banner({ banner }) {
@@ -38,27 +39,31 @@ function cardStatusClass(statut) {
 
 // "il y a X min/h/j" — plus vivant qu'une date brute pour un flux de demandes
 // qu'un admin consulte au fil de l'eau.
-function timeAgo(value) {
+function timeAgo(value, t) {
   if (!value) return "—";
   const diffMs = Date.now() - new Date(value).getTime();
   const minutes = Math.floor(diffMs / 60000);
-  if (minutes < 1) return "à l'instant";
-  if (minutes < 60) return `il y a ${minutes} min`;
+  if (minutes < 1) return t("bo.adminAbonnementsDemandes.timeAgoNow");
+  if (minutes < 60) return t("bo.adminAbonnementsDemandes.timeAgoMinutes", { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `il y a ${hours} h`;
+  if (hours < 24) return t("bo.adminAbonnementsDemandes.timeAgoHours", { count: hours });
   const days = Math.floor(hours / 24);
-  if (days < 30) return `il y a ${days} j`;
+  if (days < 30) return t("bo.adminAbonnementsDemandes.timeAgoDays", { count: days });
   return new Date(value).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-const FILTERS = [
-  { value: "all", label: "Toutes" },
-  { value: PLAN_CHANGE_REQUEST_STATUS.EN_ATTENTE, label: "En attente" },
-  { value: PLAN_CHANGE_REQUEST_STATUS.APPROUVEE, label: "Approuvées" },
-  { value: PLAN_CHANGE_REQUEST_STATUS.REJETEE, label: "Rejetées" },
-];
+function buildFilters(t) {
+  return [
+    { value: "all", label: t("bo.adminAbonnementsDemandes.filterAll") },
+    { value: PLAN_CHANGE_REQUEST_STATUS.EN_ATTENTE, label: t("bo.adminAbonnementsDemandes.filterPending") },
+    { value: PLAN_CHANGE_REQUEST_STATUS.APPROUVEE, label: t("bo.adminAbonnementsDemandes.filterApproved") },
+    { value: PLAN_CHANGE_REQUEST_STATUS.REJETEE, label: t("bo.adminAbonnementsDemandes.filterRejected") },
+  ];
+}
 
 export default function AdminPlanRequestsPage() {
+  const { t } = useLanguage();
+  const FILTERS = useMemo(() => buildFilters(t), [t]);
   const [requests, setRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -104,7 +109,7 @@ export default function AdminPlanRequestsPage() {
     if (el) {
       setIndicator({ left: el.offsetLeft, width: el.offsetWidth });
     }
-  }, [filter, counts.pending]);
+  }, [filter, counts.pending, FILTERS]);
 
   async function handleApprove(request) {
     setBanner(null);
@@ -114,7 +119,11 @@ export default function AdminPlanRequestsPage() {
       setRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
       setBanner({
         type: "success",
-        message: `Plan « ${updated.plan.name} » activé pour ${updated.owner.prenom} ${updated.owner.nom}.`,
+        message: t("bo.adminAbonnementsDemandes.approveSuccess", {
+          plan: updated.plan.name,
+          prenom: updated.owner.prenom,
+          nom: updated.owner.nom,
+        }),
       });
     } catch (err) {
       setBanner({ type: "error", message: extractErrorMessage(err) });
@@ -129,7 +138,7 @@ export default function AdminPlanRequestsPage() {
     try {
       const updated = await rejectPlanChangeRequest(request.id);
       setRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
-      setBanner({ type: "success", message: "Demande rejetée." });
+      setBanner({ type: "success", message: t("bo.adminAbonnementsDemandes.rejectSuccess") });
     } catch (err) {
       setBanner({ type: "error", message: extractErrorMessage(err) });
     } finally {
@@ -138,7 +147,7 @@ export default function AdminPlanRequestsPage() {
   }
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.adminAbonnementsDemandes.loading")}</p>;
   }
 
   return (
@@ -148,14 +157,14 @@ export default function AdminPlanRequestsPage() {
           <span className={styles.backLinkIcon}>
             <i className="bi bi-arrow-left" />
           </span>
-          Abonnements
+          {t("bo.adminAbonnementsDemandes.backLink")}
         </Link>
         <h2 className={styles.requestsPageTitle}>
           <i className="bi bi-inbox-fill" />
-          Demandes de changement de plan
+          {t("bo.adminAbonnementsDemandes.pageTitle")}
         </h2>
         <p className={styles.requestsPageSubtitle}>
-          Choix envoyés par les propriétaires depuis la popup de blocage (abonnement expiré ou limite atteinte).
+          {t("bo.adminAbonnementsDemandes.pageSubtitle")}
         </p>
       </div>
 
@@ -164,15 +173,15 @@ export default function AdminPlanRequestsPage() {
 
       <div className={styles.section}>
         <div className={styles.statsGrid}>
-          <StatCard icon="bi-hourglass-split" tone="warning" label="En attente" value={<CountUp value={counts.pending} />} />
-          <StatCard icon="bi-check-circle-fill" tone="accent" label="Approuvées" value={<CountUp value={counts.approved} />} />
-          <StatCard icon="bi-x-circle-fill" tone="danger" label="Rejetées" value={<CountUp value={counts.rejected} />} />
-          <StatCard icon="bi-collection-fill" tone="primary" label="Total reçues" value={<CountUp value={counts.total} />} />
+          <StatCard icon="bi-hourglass-split" tone="warning" label={t("bo.adminAbonnementsDemandes.statPending")} value={<CountUp value={counts.pending} />} />
+          <StatCard icon="bi-check-circle-fill" tone="accent" label={t("bo.adminAbonnementsDemandes.statApproved")} value={<CountUp value={counts.approved} />} />
+          <StatCard icon="bi-x-circle-fill" tone="danger" label={t("bo.adminAbonnementsDemandes.statRejected")} value={<CountUp value={counts.rejected} />} />
+          <StatCard icon="bi-collection-fill" tone="primary" label={t("bo.adminAbonnementsDemandes.statTotal")} value={<CountUp value={counts.total} />} />
         </div>
       </div>
 
       <div className={styles.section}>
-        <div className={styles.requestFilterTabs} role="tablist" aria-label="Filtrer par statut">
+        <div className={styles.requestFilterTabs} role="tablist" aria-label={t("bo.adminAbonnementsDemandes.filterAriaLabel")}>
           <span
             className={styles.requestFilterIndicator}
             style={{ transform: `translateX(${indicator.left}px)`, width: indicator.width }}
@@ -201,7 +210,9 @@ export default function AdminPlanRequestsPage() {
         {filteredRequests.length === 0 && (
           <p className={styles.empty}>
             <i className="bi bi-inbox" style={{ display: "block", fontSize: "1.6rem", marginBottom: "0.5rem" }} />
-            {filter === "all" ? "Aucune demande reçue pour le moment." : "Aucune demande dans cette catégorie."}
+            {filter === "all"
+              ? t("bo.adminAbonnementsDemandes.emptyAll")
+              : t("bo.adminAbonnementsDemandes.emptyFiltered")}
           </p>
         )}
 
@@ -236,7 +247,7 @@ export default function AdminPlanRequestsPage() {
                     </span>
                     <span className={styles.requestDot}>•</span>
                     <span>
-                      <i className="bi bi-clock-history" /> {timeAgo(request.date_creation)}
+                      <i className="bi bi-clock-history" /> {timeAgo(request.date_creation, t)}
                     </span>
                   </div>
                   {request.message && <p className={styles.requestMessage}>&laquo; {request.message} &raquo;</p>}
@@ -250,17 +261,17 @@ export default function AdminPlanRequestsPage() {
                         className={styles.requestApproveBtn}
                         onClick={() => handleApprove(request)}
                         disabled={isBusy}
-                        title="Approuver et activer ce plan"
+                        title={t("bo.adminAbonnementsDemandes.approveTitle")}
                       >
                         <i className="bi bi-check-lg" />
-                        Approuver
+                        {t("bo.adminAbonnementsDemandes.approve")}
                       </button>
                       <button
                         type="button"
                         className={styles.requestRejectBtn}
                         onClick={() => handleReject(request)}
                         disabled={isBusy}
-                        title="Rejeter"
+                        title={t("bo.adminAbonnementsDemandes.rejectTitle")}
                       >
                         <i className="bi bi-x-lg" />
                       </button>
@@ -268,7 +279,7 @@ export default function AdminPlanRequestsPage() {
                   ) : (
                     <span className={styles.requestDoneTag}>
                       <i className={`bi ${request.statut === PLAN_CHANGE_REQUEST_STATUS.APPROUVEE ? "bi-check-circle" : "bi-x-circle"}`} />
-                      Traitée
+                      {t("bo.adminAbonnementsDemandes.done")}
                     </span>
                   )}
                 </div>

@@ -12,6 +12,8 @@ class EcheanceBase(BaseModel):
     bail_id: int = Field(gt=0)
     date_echeance: Optional[date] = None
     montant_du: Optional[Decimal] = Field(default=None, ge=0, max_digits=10, decimal_places=2)
+    charges: Optional[Decimal] = Field(default=None, ge=0, max_digits=10, decimal_places=2)
+    charges_incluses: bool = True
 
 
 class EcheanceCreate(EcheanceBase):
@@ -21,6 +23,8 @@ class EcheanceCreate(EcheanceBase):
 class EcheanceUpdate(BaseModel):
     date_echeance: Optional[date] = None
     montant_du: Optional[Decimal] = Field(default=None, ge=0, max_digits=10, decimal_places=2)
+    charges: Optional[Decimal] = Field(default=None, ge=0, max_digits=10, decimal_places=2)
+    charges_incluses: Optional[bool] = None
 
 
 class EcheanceRead(EcheanceBase):

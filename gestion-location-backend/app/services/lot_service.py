@@ -1,4 +1,6 @@
+import uuid
 from datetime import datetime
+from pathlib import Path
 
 from sqlalchemy.orm import Session
 
@@ -7,12 +9,17 @@ from app.models.bail import Bail, BailStatus
 from app.models.bien import Bien
 from app.models.categorie import Categorie
 from app.models.lot import Lot
+from app.models.lot_photo import LotPhoto
 from app.models.notification import NotificationType
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.lot import LotCreate, LotUpdate
 from app.services.exceptions import BadRequest, Forbidden, NotFound
 from app.services.push_service import send_push_to_user
 from app.services.usage_service import enforce_limit
+
+UPLOAD_ROOT = Path(__file__).resolve().parents[2] / "uploads" / "lots"
+ALLOWED_PHOTO_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+MAX_PHOTO_SIZE = 5 * 1024 * 1024  # 5 MB
 
 
 def _notify_proprietaire_of_activity(
@@ -146,7 +153,11 @@ def update_lot(db: Session, current_user: Utilisateur, lot_id: int, lot_in: LotU
     if not has_permission_for_bien(db, current_user, bien, "UPDATE_LOT"):
         raise Forbidden("Not allowed to modify this lot")
     update_data = lot_in.model_dump(exclude_unset=True)
-    if "statut" in update_data and _has_occupying_bail(db, lot.id):
+    if (
+        "statut" in update_data
+        and update_data["statut"] != lot.statut
+        and _has_occupying_bail(db, lot.id)
+    ):
         raise BadRequest(
             "Impossible de modifier le statut de ce lot : un bail actif ou en attente "
             "existe encore. Modifiez ou résiliez ce bail pour changer le statut du lot."
@@ -185,3 +196,54 @@ def delete_lot(db: Session, current_user: Utilisateur, lot_id: int) -> None:
     _notify_proprietaire_of_activity(
         db, current_user, bien.proprietaire_id, "Lot supprimé", "a supprimé le lot", f'"{lot.reference}"'
     )
+
+
+async def upload_lot_photo(
+    db: Session,
+    current_user: Utilisateur,
+    lot_id: int,
+    file_content: bytes,
+    content_type: str,
+) -> LotPhoto:
+    lot = db.get(Lot, lot_id)
+    if not lot:
+        raise NotFound("Lot not found")
+    bien = db.get(Bien, lot.bien_id)
+    if not has_permission_for_bien(db, current_user, bien, "UPDATE_LOT"):
+        raise Forbidden("Not allowed to modify this lot")
+
+    extension = ALLOWED_PHOTO_TYPES.get(content_type)
+    if not extension:
+        raise BadRequest("Only JPEG, PNG or WEBP images are allowed")
+    if len(file_content) > MAX_PHOTO_SIZE:
+        raise BadRequest("Image must be smaller than 5 MB")
+
+    lot_dir = UPLOAD_ROOT / str(lot_id)
+    lot_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}{extension}"
+    (lot_dir / filename).write_bytes(file_content)
+
+    photo = LotPhoto(lot_id=lot_id, url=f"/uploads/lots/{lot_id}/{filename}")
+    db.add(photo)
+    db.commit()
+    db.refresh(photo)
+    return photo
+
+
+def delete_lot_photo(db: Session, current_user: Utilisateur, lot_id: int, photo_id: int) -> None:
+    lot = db.get(Lot, lot_id)
+    if not lot:
+        raise NotFound("Lot not found")
+    bien = db.get(Bien, lot.bien_id)
+    if not has_permission_for_bien(db, current_user, bien, "UPDATE_LOT"):
+        raise Forbidden("Not allowed to modify this lot")
+
+    photo = db.get(LotPhoto, photo_id)
+    if not photo or photo.lot_id != lot_id:
+        raise NotFound("Photo not found")
+
+    file_path = Path(__file__).resolve().parents[2] / photo.url.lstrip("/")
+    db.delete(photo)
+    db.commit()
+    if file_path.exists():
+        file_path.unlink()

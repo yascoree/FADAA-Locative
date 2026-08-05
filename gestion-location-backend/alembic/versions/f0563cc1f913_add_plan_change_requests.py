@@ -46,5 +46,4 @@ def downgrade() -> None:
     """Downgrade schema."""
     op.drop_index(op.f('ix_plan_change_requests_id'), table_name='plan_change_requests')
     op.drop_table('plan_change_requests')
-    # PostgreSQL ne permet pas de retirer une valeur d'un enum sans recréer le
-    # type et migrer toutes les colonnes qui l'utilisent — hors scope ici.
+   

@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { extractErrorMessage, isPlanLimitError, API_BASE_URL } from "@/lib/apiClient";
 import { fetchLocataires, createLocataire } from "@/lib/tenants";
 import { fetchBiens, fetchBaux, fetchEcheances, fetchPaiements, BAIL_STATUS, BAIL_STATUS_LABELS, ECHEANCE_STATUS } from "@/lib/properties";
-import { ACCOUNT_STATUS, ACCOUNT_STATUS_LABELS } from "@/lib/users";
+import { ACCOUNT_STATUS, accountStatusLabels } from "@/lib/users";
 import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
@@ -16,6 +16,7 @@ import FilterChip from "@/components/FilterChip";
 import FilterSelect from "@/components/FilterSelect";
 import PlanLimitPopup from "@/components/PlanLimitPopup";
 import { usePlanGate } from "@/hooks/usePlanGate";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -68,12 +69,17 @@ function isOverdue(echeance) {
   return new Date(echeance.date_echeance) < new Date(new Date().toDateString());
 }
 
-const STATUS_OPTIONS = Object.entries(ACCOUNT_STATUS_LABELS).map(([value, label]) => ({ value, label }));
 const PAGE_SIZE = 10;
 
 const EMPTY_FORM = { prenom: "", nom: "", email: "", mot_de_passe: "", statut_compte: String(ACCOUNT_STATUS.ACTIF) };
 
 export default function ProprietaireLocatairesPage() {
+  const { t } = useLanguage();
+  const ACCOUNT_STATUS_LABELS = useMemo(() => accountStatusLabels(t), [t]);
+  const STATUS_OPTIONS = useMemo(
+    () => Object.entries(ACCOUNT_STATUS_LABELS).map(([value, label]) => ({ value, label })),
+    [ACCOUNT_STATUS_LABELS]
+  );
   const searchParams = useSearchParams();
   const [locataires, setLocataires] = useState([]);
   const [baux, setBaux] = useState([]);
@@ -235,7 +241,7 @@ export default function ProprietaireLocatairesPage() {
   }
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.common.loading")}</p>;
   }
 
   return (
@@ -246,10 +252,10 @@ export default function ProprietaireLocatairesPage() {
       {/* ---- Stats ---- */}
       <div className={styles.section}>
         <div className={styles.statsGrid}>
-          <StatCard icon="bi-people-fill" tone="primary" label="Locataires" value={stats.total} />
-          <StatCard icon="bi-file-earmark-check-fill" tone="accent" label="Avec bail actif" value={stats.avecBailActif} />
-          <StatCard icon="bi-exclamation-octagon-fill" tone="danger" label="En retard de paiement" value={stats.enRetard} />
-          <StatCard icon="bi-slash-circle-fill" tone="warning" label="Comptes désactivés" value={stats.desactives} />
+          <StatCard icon="bi-people-fill" tone="primary" label={t("bo.proprietaireLocataires.statTotal")} value={stats.total} />
+          <StatCard icon="bi-file-earmark-check-fill" tone="accent" label={t("bo.proprietaireLocataires.statActiveLease")} value={stats.avecBailActif} />
+          <StatCard icon="bi-exclamation-octagon-fill" tone="danger" label={t("bo.proprietaireLocataires.statOverdue")} value={stats.enRetard} />
+          <StatCard icon="bi-slash-circle-fill" tone="warning" label={t("bo.proprietaireLocataires.statDisabled")} value={stats.desactives} />
         </div>
       </div>
 
@@ -261,15 +267,15 @@ export default function ProprietaireLocatairesPage() {
               <span className={styles.sectionIconBadge}>
                 <i className="bi bi-people-fill" />
               </span>
-              Mes locataires
+              {t("bo.proprietaireLocataires.title")}
             </h2>
             <p className={styles.sectionSubtitle}>
-              {filteredLocataires.length} locataire(s) affiché(s) sur {locataires.length}.
+              {t("bo.proprietaireLocataires.subtitle", { shown: filteredLocataires.length, total: locataires.length })}
             </p>
           </div>
           <button type="button" className={styles.btn} onClick={openCreate}>
             <i className="bi bi-plus-lg" />
-            Nouveau locataire
+            {t("bo.proprietaireLocataires.newTenant")}
           </button>
         </div>
 
@@ -278,7 +284,7 @@ export default function ProprietaireLocatairesPage() {
             <i className={`bi bi-search ${styles.searchFieldIcon}`} />
             <input
               type="text"
-              placeholder="Rechercher par nom, e-mail, bien occupé..."
+              placeholder={t("bo.proprietaireLocataires.searchPlaceholder")}
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -293,7 +299,7 @@ export default function ProprietaireLocatairesPage() {
               setCurrentPage(1);
             }}
           >
-            En retard uniquement
+            {t("bo.proprietaireLocataires.overdueOnly")}
           </FilterChip>
           <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
@@ -302,18 +308,18 @@ export default function ProprietaireLocatairesPage() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Locataire</th>
-                <th>Email</th>
-                <th>Bien(s) occupé(s)</th>
-                <th>Statut du compte</th>
-                <th>Actions</th>
+                <th>{t("bo.proprietaireLocataires.colTenant")}</th>
+                <th>{t("bo.proprietaireLocataires.colEmail")}</th>
+                <th>{t("bo.proprietaireLocataires.colBiensOccupied")}</th>
+                <th>{t("bo.proprietaireLocataires.colAccountStatus")}</th>
+                <th>{t("bo.proprietaireLocataires.colActions")}</th>
               </tr>
             </thead>
             <tbody>
               {filteredLocataires.length === 0 && (
                 <tr>
                   <td colSpan={5} className={styles.empty}>
-                    Aucun locataire ne correspond à ces critères.
+                    {t("bo.common.noMatch")}
                   </td>
                 </tr>
               )}
@@ -350,7 +356,7 @@ export default function ProprietaireLocatairesPage() {
                           {overdue && (
                             <span className={styles.tenantOverdueTag}>
                               <i className="bi bi-exclamation-triangle-fill" />
-                              Retard
+                              {t("bo.proprietaireLocataires.overdueBadge")}
                             </span>
                           )}
                         </div>
@@ -368,7 +374,7 @@ export default function ProprietaireLocatairesPage() {
                           ))
                         ) : (
                           <span style={{ color: "var(--text-muted)" }}>
-                            {allBaux.length > 0 ? "Aucun bail actif" : "—"}
+                            {allBaux.length > 0 ? t("bo.proprietaireLocataires.noActiveLease") : "—"}
                           </span>
                         )}
                       </div>
@@ -385,7 +391,7 @@ export default function ProprietaireLocatairesPage() {
                           type="button"
                           className={styles.iconBtn}
                           onClick={() => setSelectedId(isActive ? null : l.id)}
-                          title="Voir le détail"
+                          title={t("bo.common.seeDetails")}
                         >
                           <i className={`bi ${isActive ? "bi-chevron-up" : "bi-eye"}`} />
                         </button>
@@ -400,7 +406,7 @@ export default function ProprietaireLocatairesPage() {
           {filteredLocataires.length > 0 && (
             <div className={styles.paginationRow}>
               <span>
-                Page {safePage} / {totalPages} · {filteredLocataires.length} locataire(s)
+                {t("bo.proprietaireLocataires.pageOf", { page: safePage, total: totalPages, count: filteredLocataires.length })}
               </span>
               <div className={styles.paginationButtons}>
                 <button
@@ -410,7 +416,7 @@ export default function ProprietaireLocatairesPage() {
                   disabled={safePage <= 1}
                 >
                   <i className="bi bi-chevron-left" />
-                  Précédent
+                  {t("bo.common.previous")}
                 </button>
                 <button
                   type="button"
@@ -418,7 +424,7 @@ export default function ProprietaireLocatairesPage() {
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={safePage >= totalPages}
                 >
-                  Suivant
+                  {t("bo.common.next")}
                   <i className="bi bi-chevron-right" />
                 </button>
               </div>
@@ -477,7 +483,7 @@ export default function ProprietaireLocatairesPage() {
                   <i className="bi bi-cash-stack" />
                 </span>
                 <div>
-                  <div className={styles.tenantStatTileLabel}>Total payé</div>
+                  <div className={styles.tenantStatTileLabel}>{t("bo.proprietaireLocataires.totalPaid")}</div>
                   <div className={styles.tenantStatTileValue}>
                     {formatCurrency(paiementsOf(selected.id).reduce((sum, p) => sum + Number(p.montant || 0), 0))}
                   </div>
@@ -488,7 +494,7 @@ export default function ProprietaireLocatairesPage() {
                   <i className="bi bi-exclamation-triangle-fill" />
                 </span>
                 <div>
-                  <div className={styles.tenantStatTileLabel}>Échéances en retard</div>
+                  <div className={styles.tenantStatTileLabel}>{t("bo.proprietaireLocataires.overdueDueDates")}</div>
                   <div className={styles.tenantStatTileValue}>{echeancesOf(selected.id).filter(isOverdue).length}</div>
                 </div>
               </div>
@@ -497,7 +503,7 @@ export default function ProprietaireLocatairesPage() {
                   <i className="bi bi-calendar-check" />
                 </span>
                 <div>
-                  <div className={styles.tenantStatTileLabel}>Membre depuis</div>
+                  <div className={styles.tenantStatTileLabel}>{t("bo.proprietaireLocataires.memberSince")}</div>
                   <div className={styles.tenantStatTileValue} style={{ fontSize: "0.92rem" }}>
                     {formatDate(selected.date_creation)}
                   </div>
@@ -507,23 +513,23 @@ export default function ProprietaireLocatairesPage() {
 
             <div className={styles.detailBlockTitle}>
               <i className="bi bi-file-earmark-text-fill" />
-              Historique des baux
+              {t("bo.proprietaireLocataires.leaseHistory")}
             </div>
             <div className={styles.tableWrap} style={{ marginTop: "0.5rem" }}>
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th>Bien / Lot</th>
-                    <th>Période</th>
-                    <th>Loyer</th>
-                    <th>Statut</th>
+                    <th>{t("bo.proprietaireLocataires.colBienLot")}</th>
+                    <th>{t("bo.proprietaireLocataires.colPeriod")}</th>
+                    <th>{t("bo.proprietaireLocataires.colRent")}</th>
+                    <th>{t("bo.proprietaireLocataires.colStatus")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {bauxOf(selected.id).length === 0 && (
                     <tr>
                       <td colSpan={4} className={styles.empty}>
-                        Aucun bail.
+                        {t("bo.proprietaireLocataires.noLease")}
                       </td>
                     </tr>
                   )}
@@ -549,28 +555,28 @@ export default function ProprietaireLocatairesPage() {
       </div>
 
       {/* ---- Nouveau locataire ---- */}
-      <Modal isOpen={formOpen} onClose={closeForm} title="Nouveau locataire">
+      <Modal isOpen={formOpen} onClose={closeForm} title={t("bo.proprietaireLocataires.createTitle")}>
         <form onSubmit={handleSubmitForm}>
           <Banner banner={formBanner} />
           <p className={styles.sectionSubtitle} style={{ marginBottom: "1rem" }}>
-            Créez un compte locataire, puis utilisez son e-mail lors de la création d&apos;un bail.
+            {t("bo.proprietaireLocataires.createHint")}
           </p>
           <TextField
-            label="Prénom"
+            label={t("bo.proprietaireLocataires.firstNameLabel")}
             name="prenom"
             value={formDraft.prenom}
             onChange={(e) => setFormDraft((d) => ({ ...d, prenom: e.target.value }))}
             required
           />
           <TextField
-            label="Nom"
+            label={t("bo.proprietaireLocataires.lastNameLabel")}
             name="nom"
             value={formDraft.nom}
             onChange={(e) => setFormDraft((d) => ({ ...d, nom: e.target.value }))}
             required
           />
           <TextField
-            label="Email"
+            label={t("bo.proprietaireLocataires.emailLabel")}
             name="email"
             type="email"
             value={formDraft.email}
@@ -578,17 +584,17 @@ export default function ProprietaireLocatairesPage() {
             required
           />
           <TextField
-            label="Mot de passe"
+            label={t("bo.proprietaireLocataires.passwordLabel")}
             name="mot_de_passe"
             type="password"
             value={formDraft.mot_de_passe}
             onChange={(e) => setFormDraft((d) => ({ ...d, mot_de_passe: e.target.value }))}
-            hint="8 caractères minimum"
+            hint={t("bo.proprietaireLocataires.passwordHint")}
             minLength={8}
             required
           />
           <SelectField
-            label="Statut du compte"
+            label={t("bo.proprietaireLocataires.accountStatusLabel")}
             name="statut_compte"
             options={STATUS_OPTIONS}
             value={formDraft.statut_compte}
@@ -598,11 +604,11 @@ export default function ProprietaireLocatairesPage() {
           <div className={styles.editActions} style={{ marginTop: "1.2rem" }}>
             <button type="submit" className={styles.btn} disabled={formBusy}>
               <i className="bi bi-check-lg" />
-              {formBusy ? "Création..." : "Créer"}
+              {formBusy ? t("bo.proprietaireLocataires.creating") : t("bo.proprietaireLocataires.create")}
             </button>
             <button type="button" className={styles.btnOutline} onClick={closeForm} disabled={formBusy}>
               <i className="bi bi-x-lg" />
-              Annuler
+              {t("bo.common.cancel")}
             </button>
           </div>
         </form>

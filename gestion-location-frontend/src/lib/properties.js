@@ -62,6 +62,7 @@ export async function createBien({
   latitude,
   longitude,
   statut,
+  valorisation,
 }) {
   const { data } = await apiClient.post("/properties/", {
     proprietaire_id: proprietaireId,
@@ -72,6 +73,7 @@ export async function createBien({
     latitude: latitude ?? null,
     longitude: longitude ?? null,
     statut: statut || null,
+    valorisation: valorisation === "" || valorisation === undefined ? null : Number(valorisation),
   });
   return data;
 }
@@ -103,7 +105,7 @@ export async function fetchLots() {
   return data;
 }
 
-export async function createLot({ bienId, categorieId, reference, description, loyerReference, statut }) {
+export async function createLot({ bienId, categorieId, reference, description, loyerReference, statut, valorisation }) {
   const { data } = await apiClient.post("/lots/", {
     bien_id: bienId,
     categorie_id: categorieId || null,
@@ -111,6 +113,7 @@ export async function createLot({ bienId, categorieId, reference, description, l
     description: description || null,
     loyer_reference: loyerReference || null,
     statut: statut || null,
+    valorisation: valorisation === "" || valorisation === undefined ? null : Number(valorisation),
   });
   return data;
 }
@@ -122,6 +125,19 @@ export async function updateLot(lotId, payload) {
 
 export async function deleteLot(lotId) {
   await apiClient.delete(`/lots/${lotId}`);
+}
+
+export async function uploadLotPhoto(lotId, file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const { data } = await apiClient.post(`/lots/${lotId}/photos`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+export async function deleteLotPhoto(lotId, photoId) {
+  await apiClient.delete(`/lots/${lotId}/photos/${photoId}`);
 }
 
 export async function fetchBaux() {
@@ -172,11 +188,43 @@ export const MODE_PAIEMENT_LABELS = {
   5: "Mobile Money",
 };
 
-export async function createPaiement({ echeanceId, montant, modePaiement }) {
+export async function createPaiement({
+  echeanceId,
+  montant,
+  modePaiement,
+  agenceBancaire,
+  referencePaiement,
+  justificatif,
+  justificatifNom,
+}) {
   const { data } = await apiClient.post("/payments/", {
     echeance_id: echeanceId,
     montant: montant === "" || montant === undefined ? null : Number(montant),
     mode_paiement: modePaiement || null,
+    agence_bancaire: agenceBancaire || null,
+    reference_paiement: referencePaiement || null,
+    justificatif: justificatif || null,
+    justificatif_nom: justificatifNom || null,
+  });
+  return data;
+}
+
+export async function uploadPaiementJustificatif(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const { data } = await apiClient.post("/payments/justificatifs", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+export async function confirmerEncaissement(paiementId, { dateEncaissement, agenceBancaire, referencePaiement, justificatif, justificatifNom } = {}) {
+  const { data } = await apiClient.post(`/payments/${paiementId}/encaisser`, {
+    date_encaissement: dateEncaissement || null,
+    agence_bancaire: agenceBancaire || null,
+    reference_paiement: referencePaiement || null,
+    justificatif: justificatif || null,
+    justificatif_nom: justificatifNom || null,
   });
   return data;
 }

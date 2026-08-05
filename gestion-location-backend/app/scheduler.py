@@ -5,7 +5,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from app.database import SessionLocal
 from app.services.bail_service import expire_overdue_baux
 from app.services.reminder_service import send_overdue_reminders, send_upcoming_echeance_alerts
-from app.services.subscription_service import expire_overdue_subscriptions
+from app.services.subscription_service import expire_overdue_subscriptions, send_subscription_expiry_warnings
 
 logger = logging.getLogger(__name__)
 
@@ -18,13 +18,15 @@ def _run_daily_reminders():
         alerts_sent = send_upcoming_echeance_alerts(db)
         reminders_sent = send_overdue_reminders(db)
         baux_expired = expire_overdue_baux(db)
+        subscription_warnings_sent = send_subscription_expiry_warnings(db)
         subscriptions_expired = expire_overdue_subscriptions(db)
         logger.info(
             "Rappels quotidiens : %s alerte(s) d'échéance, %s relance(s) d'impayé, %s bail(aux) expiré(s), "
-            "%s abonnement(s) expiré(s).",
+            "%s alerte(s) d'abonnement bientôt expiré, %s abonnement(s) expiré(s).",
             alerts_sent,
             reminders_sent,
             baux_expired,
+            subscription_warnings_sent,
             subscriptions_expired,
         )
     finally:

@@ -22,6 +22,7 @@ import StatCard from "@/components/StatCard";
 import SearchableSelect from "@/components/SearchableSelect";
 import FilterSelect from "@/components/FilterSelect";
 import PlanLimitPopup from "@/components/PlanLimitPopup";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "./permissions.module.css";
 
 const RESOURCE_ICONS = {
@@ -31,6 +32,25 @@ const RESOURCE_ICONS = {
   DUE_DATE: "bi-calendar-check",
   PAYMENT: "bi-cash-stack",
 };
+
+function resourceLabels(t) {
+  return {
+    PROPERTY: t("bo.permissionCatalog.resourceProperty"),
+    LOT: t("bo.permissionCatalog.resourceLot"),
+    LEASE: t("bo.permissionCatalog.resourceLease"),
+    DUE_DATE: t("bo.permissionCatalog.resourceDueDate"),
+    PAYMENT: t("bo.permissionCatalog.resourcePayment"),
+  };
+}
+
+function actionLabels(t) {
+  return {
+    VIEW: t("bo.permissionCatalog.actionView"),
+    CREATE: t("bo.permissionCatalog.actionCreate"),
+    UPDATE: t("bo.permissionCatalog.actionUpdate"),
+    DELETE: t("bo.permissionCatalog.actionDelete"),
+  };
+}
 
 // Reflète la hiérarchie réelle des données (un bien contient des lots, qui
 // contiennent des baux, qui ont des échéances, qui ont des paiements) : voir un
@@ -57,12 +77,15 @@ function Banner({ banner }) {
   );
 }
 
-function bienLabel(mandat) {
-  if (!mandat.bien_id) return "Tous mes biens";
+function bienLabel(mandat, t) {
+  if (!mandat.bien_id) return t("bo.proprietairePermissions.allMyBiens");
   return mandat.bien?.designation || `Bien #${mandat.bien_id}`;
 }
 
 export default function GestionPermissionPage() {
+  const { t } = useLanguage();
+  const RESOURCE_LABELS = useMemo(() => resourceLabels(t), [t]);
+  const ACTION_LABELS = useMemo(() => actionLabels(t), [t]);
   const { user } = useAuth();
   const [mandates, setMandates] = useState([]);
   const [biens, setBiens] = useState([]);
@@ -131,7 +154,7 @@ export default function GestionPermissionPage() {
     e.preventDefault();
     setBanner(null);
     if (!selectedGestionnaire) {
-      setBanner({ type: "error", message: "Sélectionnez un gestionnaire dans la liste." });
+      setBanner({ type: "error", message: t("bo.proprietairePermissions.selectGestionnaire") });
       return;
     }
     setInviteBusy(true);
@@ -139,10 +162,12 @@ export default function GestionPermissionPage() {
       const gestionnaire = selectedGestionnaire;
       const bienId = scopeBienId === "all" ? null : Number(scopeBienId);
       const mandat = await createMandate({ gestionnaireId: gestionnaire.id, proprietaireId: user.id, bienId });
-      const scopeLabel = bienId ? biens.find((b) => b.id === bienId)?.designation || `bien #${bienId}` : "tous vos biens";
+      const scopeLabel = bienId
+        ? biens.find((b) => b.id === bienId)?.designation || `bien #${bienId}`
+        : t("bo.proprietairePermissions.allMyBiens").toLowerCase();
       setBanner({
         type: "success",
-        message: `${gestionnaire.prenom} ${gestionnaire.nom} a été ajouté comme gestionnaire pour ${scopeLabel}.`,
+        message: t("bo.proprietairePermissions.addedAs", { name: `${gestionnaire.prenom} ${gestionnaire.nom}`, scope: scopeLabel }),
       });
       setSelectedGestionnaire(null);
       setScopeBienId("all");
@@ -177,10 +202,12 @@ export default function GestionPermissionPage() {
         email: newEmail,
         bienId,
       });
-      const scopeLabel = bienId ? biens.find((b) => b.id === bienId)?.designation || `bien #${bienId}` : "tous vos biens";
+      const scopeLabel = bienId
+        ? biens.find((b) => b.id === bienId)?.designation || `bien #${bienId}`
+        : t("bo.proprietairePermissions.allMyBiens").toLowerCase();
       setBanner({
         type: "success",
-        message: `Compte créé pour ${utilisateur.prenom} ${utilisateur.nom}, avec accès à ${scopeLabel}.`,
+        message: t("bo.proprietairePermissions.accountCreatedFor", { name: `${utilisateur.prenom} ${utilisateur.nom}`, scope: scopeLabel }),
       });
       setInviteLink(invite_link || null);
       setNewPrenom("");
@@ -294,23 +321,20 @@ export default function GestionPermissionPage() {
         <div>
           <h2 className={styles.pageTitle}>
             <i className="bi bi-people-fill" />
-            Gestionnaires
+            {t("bo.proprietairePermissions.title")}
           </h2>
-          <p className={styles.pageSubtitle}>
-            Donnez l&apos;accès à un gestionnaire et définissez précisément ce qu&apos;il a le droit de faire sur vos
-            biens.
-          </p>
+          <p className={styles.pageSubtitle}>{t("bo.proprietairePermissions.subtitle")}</p>
         </div>
       </div>
 
       <div className={styles.statsGrid}>
-        <StatCard icon="bi-person-badge-fill" tone="primary" label="Gestionnaires" value={gestionnaireGroups.length} />
-        <StatCard icon="bi-check-circle-fill" tone="accent" label="Mandats actifs" value={activeCount} />
-        <StatCard icon="bi-slash-circle-fill" tone="warning" label="Mandats révoqués" value={revokedCount} />
+        <StatCard icon="bi-person-badge-fill" tone="primary" label={t("bo.proprietairePermissions.statManagers")} value={gestionnaireGroups.length} />
+        <StatCard icon="bi-check-circle-fill" tone="accent" label={t("bo.proprietairePermissions.statActiveMandates")} value={activeCount} />
+        <StatCard icon="bi-slash-circle-fill" tone="warning" label={t("bo.proprietairePermissions.statRevokedMandates")} value={revokedCount} />
       </div>
 
       <div className={styles.card}>
-        <div className={styles.modeSwitch} role="tablist" aria-label="Ajouter un gestionnaire">
+        <div className={styles.modeSwitch} role="tablist" aria-label={t("bo.proprietairePermissions.addTabsLabel")}>
           <span
             className={styles.modeSwitchIndicator}
             style={{ transform: addMode === "existing" ? "translateX(100%)" : "translateX(0%)" }}
@@ -328,7 +352,7 @@ export default function GestionPermissionPage() {
             }}
           >
             <i className="bi bi-person-fill-add" />
-            Créer un gestionnaire
+            {t("bo.proprietairePermissions.createTab")}
           </button>
           <button
             type="button"
@@ -342,7 +366,7 @@ export default function GestionPermissionPage() {
             }}
           >
             <i className="bi bi-person-check-fill" />
-            Donner l&apos;accès
+            {t("bo.proprietairePermissions.grantAccessTab")}
           </button>
         </div>
 
@@ -351,39 +375,36 @@ export default function GestionPermissionPage() {
             <>
               <h3 className={styles.cardTitle}>
                 <i className="bi bi-person-fill-add" />
-                Créer un compte gestionnaire
+                {t("bo.proprietairePermissions.createTitle")}
               </h3>
-              <p className={styles.subtitle}>
-                Un gestionnaire ne peut pas s&apos;inscrire lui-même : créez son compte et il recevra un lien pour
-                choisir son mot de passe.
-              </p>
+              <p className={styles.subtitle}>{t("bo.proprietairePermissions.createSubtitle")}</p>
 
               <form onSubmit={handleCreateGestionnaire}>
                 <div className={styles.inviteRow}>
                   <div className={styles.inviteField} style={{ flex: 1, minWidth: 160 }}>
-                    <label htmlFor="new-gest-prenom">Prénom</label>
+                    <label htmlFor="new-gest-prenom">{t("bo.proprietairePermissions.firstNameLabel")}</label>
                     <input
                       id="new-gest-prenom"
                       type="text"
                       value={newPrenom}
                       onChange={(e) => setNewPrenom(e.target.value)}
-                      placeholder="Prénom"
+                      placeholder={t("bo.proprietairePermissions.firstNameLabel")}
                       required
                     />
                   </div>
                   <div className={styles.inviteField} style={{ flex: 1, minWidth: 160 }}>
-                    <label htmlFor="new-gest-nom">Nom</label>
+                    <label htmlFor="new-gest-nom">{t("bo.proprietairePermissions.lastNameLabel")}</label>
                     <input
                       id="new-gest-nom"
                       type="text"
                       value={newNom}
                       onChange={(e) => setNewNom(e.target.value)}
-                      placeholder="Nom"
+                      placeholder={t("bo.proprietairePermissions.lastNameLabel")}
                       required
                     />
                   </div>
                   <div className={styles.inviteField}>
-                    <label htmlFor="new-gest-email">Adresse e-mail</label>
+                    <label htmlFor="new-gest-email">{t("bo.proprietairePermissions.emailLabel")}</label>
                     <input
                       id="new-gest-email"
                       type="email"
@@ -394,45 +415,41 @@ export default function GestionPermissionPage() {
                     />
                   </div>
                   <div className={`${styles.inviteField} ${styles.scopeField}`}>
-                    <label htmlFor="new-gest-scope">Portée</label>
+                    <label htmlFor="new-gest-scope">{t("bo.proprietairePermissions.scopeLabel")}</label>
                     <FilterSelect
                       id="new-gest-scope"
                       value={newScopeBienId}
                       onChange={setNewScopeBienId}
                       options={[
-                        { value: "all", label: "Tous mes biens" },
+                        { value: "all", label: t("bo.proprietairePermissions.allMyBiens") },
                         ...biens.map((b) => ({ value: b.id, label: b.designation || `Bien #${b.id}` })),
                       ]}
                     />
                   </div>
                   <button type="submit" className={styles.inviteButton} disabled={createBusy}>
                     <i className="bi bi-plus-lg" />
-                    {createBusy ? "Création..." : "Créer le compte"}
+                    {createBusy ? t("bo.proprietairePermissions.creatingAccount") : t("bo.proprietairePermissions.createAccount")}
                   </button>
                 </div>
               </form>
 
               <p className={styles.note}>
                 <i className="bi bi-info-circle-fill" />
-                Le nouveau gestionnaire reçoit automatiquement le droit de voir le(s) bien(s) concerné(s) — affinez
-                ses droits ci-dessous une fois le compte créé.
+                {t("bo.proprietairePermissions.autoViewHint")}
               </p>
 
               {inviteLink && (
                 <div className={styles.inviteLinkBox}>
                   <i className="bi bi-link-45deg" />
                   <div>
-                    <div className={styles.inviteLinkLabel}>
-                      Aucun service d&apos;envoi d&apos;email n&apos;est configuré : transmettez ce lien au
-                      gestionnaire pour qu&apos;il choisisse son mot de passe.
-                    </div>
+                    <div className={styles.inviteLinkLabel}>{t("bo.proprietairePermissions.inviteLinkHint")}</div>
                     <div className={styles.inviteLinkRow}>
                       <input type="text" readOnly value={inviteLink} onFocus={(e) => e.target.select()} />
                       <button
                         type="button"
                         onClick={() => navigator.clipboard?.writeText(inviteLink)}
                       >
-                        <i className="bi bi-clipboard" /> Copier
+                        <i className="bi bi-clipboard" /> {t("bo.proprietairePermissions.copy")}
                       </button>
                     </div>
                   </div>
@@ -445,16 +462,14 @@ export default function GestionPermissionPage() {
             <>
               <h3 className={styles.cardTitle}>
                 <i className="bi bi-person-check-fill" />
-                Donner l&apos;accès à un gestionnaire existant
+                {t("bo.proprietairePermissions.existingTitle")}
               </h3>
-              <p className={styles.subtitle}>
-                Recherchez un gestionnaire déjà inscrit sur la plateforme pour lui donner accès.
-              </p>
+              <p className={styles.subtitle}>{t("bo.proprietairePermissions.existingSubtitle")}</p>
 
               <form onSubmit={handleInvite}>
                 <div className={styles.inviteRow}>
                   <div className={styles.inviteField}>
-                    <label htmlFor="gestionnaire-search">Gestionnaire</label>
+                    <label htmlFor="gestionnaire-search">{t("bo.proprietairePermissions.gestionnaireLabel")}</label>
                     <SearchableSelect
                       id="gestionnaire-search"
                       items={gestionnaires}
@@ -463,33 +478,31 @@ export default function GestionPermissionPage() {
                       getMeta={(g) => g.email}
                       value={selectedGestionnaire}
                       onSelect={setSelectedGestionnaire}
-                      placeholder="Rechercher un gestionnaire..."
+                      placeholder={t("bo.proprietairePermissions.searchGestionnaire")}
                     />
                   </div>
                   <div className={`${styles.inviteField} ${styles.scopeField}`}>
-                    <label htmlFor="gestionnaire-scope">Portée</label>
+                    <label htmlFor="gestionnaire-scope">{t("bo.proprietairePermissions.scopeLabel")}</label>
                     <FilterSelect
                       id="gestionnaire-scope"
                       value={scopeBienId}
                       onChange={setScopeBienId}
                       options={[
-                        { value: "all", label: "Tous mes biens" },
+                        { value: "all", label: t("bo.proprietairePermissions.allMyBiens") },
                         ...biens.map((b) => ({ value: b.id, label: b.designation || `Bien #${b.id}` })),
                       ]}
                     />
                   </div>
                   <button type="submit" className={styles.inviteButton} disabled={inviteBusy || !selectedGestionnaire}>
                     <i className="bi bi-plus-lg" />
-                    {inviteBusy ? "Ajout..." : "Donner l'accès"}
+                    {inviteBusy ? t("bo.proprietairePermissions.adding") : t("bo.proprietairePermissions.grantAccess")}
                   </button>
                 </div>
               </form>
 
               <p className={styles.note}>
                 <i className="bi bi-info-circle-fill" />
-                Un nouveau mandat reçoit automatiquement le droit de voir le(s) bien(s) concerné(s). Pour
-                ajouter un autre bien à un gestionnaire déjà présent, réinvitez-le ci-dessus avec une portée
-                différente, puis ouvrez ses permissions pour choisir le bien à configurer.
+                {t("bo.proprietairePermissions.existingHint")}
               </p>
 
               <Banner banner={banner} />
@@ -501,14 +514,14 @@ export default function GestionPermissionPage() {
       {!isLoading && gestionnaireGroups.length === 0 && (
         <p className={styles.empty}>
           <i className="bi bi-person-x" style={{ display: "block", fontSize: "1.6rem", marginBottom: "0.5rem" }} />
-          Vous n&apos;avez pas encore de gestionnaire. Ajoutez-en un ci-dessus.
+          {t("bo.proprietairePermissions.noManagerYet")}
         </p>
       )}
 
       {gestionnaireGroups.length > 0 && (
         <div className={styles.listToolbar}>
           <span className={styles.listCount}>
-            {gestionnaireGroups.length} gestionnaire{gestionnaireGroups.length > 1 ? "s" : ""}
+            {t("bo.proprietairePermissions.managersCount", { count: gestionnaireGroups.length })}
           </span>
           <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
@@ -549,8 +562,7 @@ export default function GestionPermissionPage() {
                       {gestionnaire.email}
                       <span className={styles.gestMetaDot}>·</span>
                       <i className="bi bi-house-door" />
-                      {mandats.length} bien{mandats.length > 1 ? "s" : ""} ({activeMandatsCount} actif
-                      {activeMandatsCount > 1 ? "s" : ""})
+                      {t("bo.proprietairePermissions.biensCount", { count: mandats.length, active: activeMandatsCount })}
                     </div>
                   </div>
                 </div>
@@ -561,7 +573,7 @@ export default function GestionPermissionPage() {
                     onClick={() => toggleExpand(gestionnaire.id, mandats[0].id)}
                   >
                     <i className={`bi ${isExpanded ? "bi-chevron-up" : "bi-shield-lock"}`} />
-                    Permissions
+                    {t("bo.proprietairePermissions.permissionsButton")}
                   </button>
                 </div>
               </div>
@@ -582,7 +594,7 @@ export default function GestionPermissionPage() {
                           }
                         >
                           <i className="bi bi-house-door" />
-                          {bienLabel(m)}
+                          {bienLabel(m, t)}
                           <span className={mActive ? styles.bienChipDotActive : styles.bienChipDotRevoked} />
                         </button>
                       );
@@ -591,17 +603,17 @@ export default function GestionPermissionPage() {
 
                   <div className={styles.permHeader}>
                     <span className={styles.permHeaderLabel}>
-                      Permissions pour « {bienLabel(selectedMandat)} »
+                      {t("bo.proprietairePermissions.permissionsFor", { bien: bienLabel(selectedMandat, t) })}
                     </span>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.7rem" }}>
                       {isSaving && (
                         <span className={styles.savingTag}>
                           <span className={styles.savingDot} />
-                          Enregistrement...
+                          {t("bo.proprietairePermissions.saving")}
                         </span>
                       )}
                       <span className={`${styles.badge} ${isActive ? styles.badgeActive : styles.badgeRevoked}`}>
-                        {isActive ? "Actif" : "Révoqué"}
+                        {isActive ? t("bo.proprietairePermissions.active") : t("bo.proprietairePermissions.revoked")}
                       </span>
                       <button
                         type="button"
@@ -609,7 +621,7 @@ export default function GestionPermissionPage() {
                         onClick={() => handleToggleStatus(selectedMandat)}
                       >
                         <i className={`bi ${isActive ? "bi-slash-circle" : "bi-arrow-counterclockwise"}`} />
-                        {isActive ? "Révoquer" : "Réactiver"}
+                        {isActive ? t("bo.proprietairePermissions.revoke") : t("bo.proprietairePermissions.reactivate")}
                       </button>
                     </div>
                   </div>
@@ -617,7 +629,7 @@ export default function GestionPermissionPage() {
                   {!isActive && (
                     <p className={styles.revokedNotice}>
                       <i className="bi bi-lock-fill" />
-                      Réactivez ce mandat pour modifier ses permissions.
+                      {t("bo.proprietairePermissions.revokedNotice")}
                     </p>
                   )}
 
@@ -632,18 +644,20 @@ export default function GestionPermissionPage() {
                       <div key={group.resource} className={styles.group}>
                         <div className={styles.groupLabel}>
                           <i className={`bi ${RESOURCE_ICONS[group.resource] || "bi-gear"}`} />
-                          {group.label}
+                          {RESOURCE_LABELS[group.resource] || group.resource}
                         </div>
                         {blockedByAncestor && (
                           <p className={styles.groupBlockedHint}>
-                            <i className="bi bi-arrow-up-circle" /> Nécessite « Voir » sur{" "}
-                            {ancestorsOf(group.resource)
-                              .map((r) => groups.find((g) => g.resource === r)?.label || r)
-                              .join(", ")}
+                            <i className="bi bi-arrow-up-circle" />{" "}
+                            {t("bo.proprietairePermissions.requiresView", {
+                              resources: ancestorsOf(group.resource)
+                                .map((r) => RESOURCE_LABELS[r] || r)
+                                .join(", "),
+                            })}
                           </p>
                         )}
                         {group.permissions.map((permission) => {
-                          const actionLabel = permission.libelle.split(" ")[0];
+                          const actionLabel = ACTION_LABELS[permission._action] || permission.libelle.split(" ")[0];
                           const isViewPermission = permission.code === viewCode;
                           const disabled =
                             !isActive ||

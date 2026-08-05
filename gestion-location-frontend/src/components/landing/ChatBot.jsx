@@ -62,7 +62,8 @@ export default function ChatBot() {
       >
         <div className={styles.chatHeader}>
           <span className={styles.chatHeaderAvatar}>
-            <i className="bi bi-stars" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/fadaa-icon-dark.png" alt="" className={styles.chatHeaderAvatarImg} />
           </span>
           <div>
             <div className={styles.chatHeaderTitle}>{t("chatbot.headerTitle")}</div>

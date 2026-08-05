@@ -6,57 +6,56 @@ import { usePathname } from "next/navigation";
 import { API_BASE_URL } from "@/lib/apiClient";
 import { fetchNotifications, NOTIFICATION_STATUS, NOTIFICATION_TYPE } from "@/lib/notifications";
 import { fetchDemandesDemo, DEMANDE_DEMO_STATUS } from "@/lib/demandesDemo";
-import { fetchContactMessages, CONTACT_MESSAGE_STATUS } from "@/lib/contactMessages";
 import { fetchPlanChangeRequests, PLAN_CHANGE_REQUEST_STATUS } from "@/lib/subscriptions";
 import LogoIcon from "@/components/LogoIcon";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "./admin.module.css";
 
-const NAV_SECTIONS = [
-  {
-    label: "Administration",
-    items: [
-      { href: "/backoffice/admin", label: "Dashboard", icon: "bi-grid", exact: true },
-      { href: "/backoffice/admin/utilisateurs", label: "Utilisateurs", icon: "bi-people" },
-      { href: "/backoffice/admin/messagerie", label: "Messagerie", icon: "bi-chat-dots", badgeKey: "discussions" },
-      {
-        href: "/backoffice/admin/demandes-demo",
-        label: "Demandes de démo",
-        icon: "bi-calendar2-check",
-        badgeKey: "demandesDemo",
-      },
-      {
-        href: "/backoffice/admin/messages-contact",
-        label: "Messages de contact",
-        icon: "bi-envelope-paper",
-        badgeKey: "messagesContact",
-      },
-      { href: "/backoffice/admin/notifications", label: "Notifications", icon: "bi-bell", badgeKey: "notifications" },
-    ],
-  },
-  {
-    label: "Plateforme",
-    items: [
-      {
-        href: "/backoffice/admin/abonnements",
-        label: "Abonnements",
-        icon: "bi-credit-card",
-        badgeKey: "planRequests",
-      },
-      { href: "/backoffice/admin/architecture", label: "Catégories", icon: "bi-diagram-3" },
-      { href: "/backoffice/admin/avis", label: "Avis", icon: "bi-chat-square-quote" },
-      { href: "/backoffice/admin/partenaires", label: "Partenaires", icon: "bi-buildings" },
-    ],
-  },
-  {
-    label: "Système",
-    items: [
-      { href: "/backoffice/admin/historique", label: "Journal d'activité", icon: "bi-clock-history" },
-      { href: "/backoffice/admin/parametres", label: "Paramètres", icon: "bi-gear" },
-    ],
-  },
-];
+function useNavSections() {
+  const { t } = useLanguage();
+  return [
+    {
+      label: t("bo.adminSidebar.administration"),
+      items: [
+        { href: "/backoffice/admin", label: t("bo.adminSidebar.dashboard"), icon: "bi-grid", exact: true },
+        { href: "/backoffice/admin/utilisateurs", label: t("bo.adminSidebar.users"), icon: "bi-people" },
+        { href: "/backoffice/admin/messagerie", label: t("bo.adminSidebar.messaging"), icon: "bi-chat-dots", badgeKey: "discussions" },
+        {
+          href: "/backoffice/admin/demandes-demo",
+          label: t("bo.adminSidebar.demoRequests"),
+          icon: "bi-calendar2-check",
+          badgeKey: "demandesDemo",
+        },
+        { href: "/backoffice/admin/notifications", label: t("bo.adminSidebar.notifications"), icon: "bi-bell", badgeKey: "notifications" },
+      ],
+    },
+    {
+      label: t("bo.adminSidebar.platform"),
+      items: [
+        {
+          href: "/backoffice/admin/abonnements",
+          label: t("bo.adminSidebar.subscriptions"),
+          icon: "bi-credit-card",
+          badgeKey: "planRequests",
+        },
+        { href: "/backoffice/admin/architecture", label: t("bo.adminSidebar.categories"), icon: "bi-diagram-3" },
+        { href: "/backoffice/admin/avis", label: t("bo.adminSidebar.reviews"), icon: "bi-chat-square-quote" },
+        { href: "/backoffice/admin/partenaires", label: t("bo.adminSidebar.partners"), icon: "bi-buildings" },
+      ],
+    },
+    {
+      label: t("bo.adminSidebar.system"),
+      items: [
+        { href: "/backoffice/admin/historique", label: t("bo.adminSidebar.activityLog"), icon: "bi-clock-history" },
+        { href: "/backoffice/admin/parametres", label: t("bo.adminSidebar.settings"), icon: "bi-gear" },
+      ],
+    },
+  ];
+}
 
 export default function AdminSidebar({ user, onLogout }) {
+  const { t } = useLanguage();
+  const NAV_SECTIONS = useNavSections();
   const pathname = usePathname();
   const initial = `${user?.prenom?.[0] || ""}${user?.nom?.[0] || ""}`.toUpperCase();
   const itemRefs = useRef({});
@@ -64,7 +63,6 @@ export default function AdminSidebar({ user, onLogout }) {
   const [badges, setBadges] = useState({
     discussions: 0,
     demandesDemo: 0,
-    messagesContact: 0,
     notifications: 0,
     planRequests: 0,
   });
@@ -73,10 +71,9 @@ export default function AdminSidebar({ user, onLogout }) {
     let cancelled = false;
     async function load() {
       try {
-        const [list, demandes, messages, planRequests] = await Promise.all([
+        const [list, demandes, planRequests] = await Promise.all([
           fetchNotifications(),
           fetchDemandesDemo(),
-          fetchContactMessages(),
           fetchPlanChangeRequests(),
         ]);
         if (cancelled) return;
@@ -84,7 +81,6 @@ export default function AdminSidebar({ user, onLogout }) {
         setBadges({
           discussions: unread.filter((n) => n.type === NOTIFICATION_TYPE.DISCUSSION).length,
           demandesDemo: demandes.filter((d) => d.statut === DEMANDE_DEMO_STATUS.NOUVELLE).length,
-          messagesContact: messages.filter((m) => m.statut === CONTACT_MESSAGE_STATUS.NOUVEAU).length,
           notifications: unread.filter((n) => n.type !== NOTIFICATION_TYPE.DISCUSSION).length,
           planRequests: planRequests.filter((r) => r.statut === PLAN_CHANGE_REQUEST_STATUS.EN_ATTENTE).length,
         });
@@ -109,7 +105,7 @@ export default function AdminSidebar({ user, onLogout }) {
       });
     });
     return found;
-  }, [pathname]);
+  }, [pathname, NAV_SECTIONS]);
 
   useEffect(() => {
     const el = activeHref ? itemRefs.current[activeHref] : null;
@@ -122,6 +118,11 @@ export default function AdminSidebar({ user, onLogout }) {
         <LogoIcon size={36} />
         <span>FADAA Locative</span>
       </div>
+
+      <Link href="/" target="_blank" rel="noopener noreferrer" className={styles.backToSiteLink}>
+        <i className="bi bi-box-arrow-up-right" />
+        {t("bo.adminSidebar.backToSite")}
+      </Link>
 
       <div className={styles.navSections}>
         {bubble && (
@@ -166,9 +167,9 @@ export default function AdminSidebar({ user, onLogout }) {
           <span className={styles.userName}>
             {user?.prenom} {user?.nom}
           </span>
-          <span className={styles.userRole}>Administrateur</span>
+          <span className={styles.userRole}>{t("bo.adminSidebar.role")}</span>
         </div>
-        <button type="button" className={styles.logoutButton} onClick={onLogout} title="Se déconnecter">
+        <button type="button" className={styles.logoutButton} onClick={onLogout} title={t("bo.common.logout")}>
           <i className="bi bi-box-arrow-right" />
         </button>
       </div>

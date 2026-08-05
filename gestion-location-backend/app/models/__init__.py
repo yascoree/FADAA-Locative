@@ -4,6 +4,7 @@ from app.models.categorie import Categorie
 from app.models.bien import Bien
 from app.models.bien_photo import BienPhoto
 from app.models.lot import Lot
+from app.models.lot_photo import LotPhoto
 from app.models.bail import Bail
 from app.models.echeance import Echeance
 from app.models.paiement import Paiement
@@ -24,6 +25,8 @@ from app.models.historique import Historique
 from app.models.demande_demo import DemandeDemo
 from app.models.contact_message import ContactMessage
 from app.models.plan_change_request import PlanChangeRequest
+from app.models.charge import Charge
+from app.models.demande_maintenance import DemandeMaintenance
 
 __all__ = [
     "Utilisateur",
@@ -32,6 +35,7 @@ __all__ = [
     "Bien",
     "BienPhoto",
     "Lot",
+    "LotPhoto",
     "Bail",
     "Echeance",
     "Paiement",
@@ -52,4 +56,6 @@ __all__ = [
     "DemandeDemo",
     "ContactMessage",
     "PlanChangeRequest",
+    "Charge",
+    "DemandeMaintenance",
 ]

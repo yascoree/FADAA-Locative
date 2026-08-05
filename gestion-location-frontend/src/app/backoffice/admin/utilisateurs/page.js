@@ -5,14 +5,14 @@ import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import { fetchUsers } from "@/lib/subscriptions";
 import {
   ACCOUNT_STATUS,
-  ACCOUNT_STATUS_LABELS,
+  accountStatusLabels,
   createUser,
   updateUser,
   deleteUser,
   activateUser,
   deactivateUser,
 } from "@/lib/users";
-import { ROLES, ROLE_LABELS } from "@/lib/roles";
+import { ROLES, roleLabels } from "@/lib/roles";
 import { useAuth } from "@/context/AuthContext";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
@@ -20,6 +20,7 @@ import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import FilterSelect from "@/components/FilterSelect";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../admin.module.css";
 
 function Banner({ banner }) {
@@ -42,9 +43,6 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-const ROLE_OPTIONS = Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label }));
-const STATUS_OPTIONS = Object.entries(ACCOUNT_STATUS_LABELS).map(([value, label]) => ({ value, label }));
-
 const EMPTY_FORM = {
   nom: "",
   prenom: "",
@@ -57,6 +55,17 @@ const EMPTY_FORM = {
 const PAGE_SIZE = 10;
 
 export default function AdminUtilisateursPage() {
+  const { t } = useLanguage();
+  const ROLE_LABELS = useMemo(() => roleLabels(t), [t]);
+  const ACCOUNT_STATUS_LABELS = useMemo(() => accountStatusLabels(t), [t]);
+  const ROLE_OPTIONS = useMemo(
+    () => Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label })),
+    [ROLE_LABELS]
+  );
+  const STATUS_OPTIONS = useMemo(
+    () => Object.entries(ACCOUNT_STATUS_LABELS).map(([value, label]) => ({ value, label })),
+    [ACCOUNT_STATUS_LABELS]
+  );
   const { user: currentUser } = useAuth();
 
   const [users, setUsers] = useState([]);
@@ -226,7 +235,7 @@ export default function AdminUtilisateursPage() {
   }
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.adminUtilisateurs.loading")}</p>;
   }
 
   return (
@@ -236,10 +245,10 @@ export default function AdminUtilisateursPage() {
       {/* ---- Stats ---- */}
       <div className={styles.section}>
         <div className={styles.statsGrid}>
-          <StatCard icon="bi-people-fill" tone="primary" label="Utilisateurs" value={stats.total} />
-          <StatCard icon="bi-check-circle-fill" tone="accent" label="Comptes actifs" value={stats.actifs} />
-          <StatCard icon="bi-hourglass-split" tone="warning" label="Invités en attente" value={stats.enAttente} />
-          <StatCard icon="bi-slash-circle-fill" tone="danger" label="Comptes désactivés" value={stats.desactives} />
+          <StatCard icon="bi-people-fill" tone="primary" label={t("bo.adminUtilisateurs.statTotal")} value={stats.total} />
+          <StatCard icon="bi-check-circle-fill" tone="accent" label={t("bo.adminUtilisateurs.statActive")} value={stats.actifs} />
+          <StatCard icon="bi-hourglass-split" tone="warning" label={t("bo.adminUtilisateurs.statPending")} value={stats.enAttente} />
+          <StatCard icon="bi-slash-circle-fill" tone="danger" label={t("bo.adminUtilisateurs.statDisabled")} value={stats.desactives} />
         </div>
       </div>
 
@@ -248,7 +257,7 @@ export default function AdminUtilisateursPage() {
         <div className={styles.card}>
           <h2 className={styles.cardTitle}>
             <i className="bi bi-pie-chart-fill" style={{ color: "var(--primary)" }} />
-            Répartition par rôle
+            {t("bo.adminUtilisateurs.distributionTitle")}
           </h2>
           <div className={styles.distribution}>
             {roleDistribution.dist.map(({ role, label, count }) => (
@@ -273,15 +282,15 @@ export default function AdminUtilisateursPage() {
           <div>
             <h2 className={styles.sectionTitle}>
               <i className="bi bi-table" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-              Utilisateurs
+              {t("bo.adminUtilisateurs.title")}
             </h2>
             <p className={styles.sectionSubtitle}>
-              {filteredUsers.length} utilisateur(s) affiché(s) sur {users.length}.
+              {t("bo.adminUtilisateurs.subtitle", { shown: filteredUsers.length, total: users.length })}
             </p>
           </div>
           <button type="button" className={styles.btn} onClick={openCreate}>
             <i className="bi bi-plus-lg" />
-            Nouvel utilisateur
+            {t("bo.adminUtilisateurs.newUser")}
           </button>
         </div>
 
@@ -290,7 +299,7 @@ export default function AdminUtilisateursPage() {
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher par nom, e-mail, rôle..."
+            placeholder={t("bo.adminUtilisateurs.searchPlaceholder")}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -303,7 +312,7 @@ export default function AdminUtilisateursPage() {
               setRoleFilter(v);
               setCurrentPage(1);
             }}
-            options={[{ value: "", label: "Tous les rôles" }, ...ROLE_OPTIONS]}
+            options={[{ value: "", label: t("bo.adminUtilisateurs.allRoles") }, ...ROLE_OPTIONS]}
           />
           <FilterSelect
             value={statusFilter}
@@ -311,7 +320,7 @@ export default function AdminUtilisateursPage() {
               setStatusFilter(v);
               setCurrentPage(1);
             }}
-            options={[{ value: "", label: "Tous les statuts" }, ...STATUS_OPTIONS]}
+            options={[{ value: "", label: t("bo.adminUtilisateurs.allStatuses") }, ...STATUS_OPTIONS]}
           />
         </div>
 
@@ -319,19 +328,19 @@ export default function AdminUtilisateursPage() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Utilisateur</th>
-                <th>Email</th>
-                <th>Rôle</th>
-                <th>Statut</th>
-                <th>Créé le</th>
-                <th>Actions</th>
+                <th>{t("bo.adminUtilisateurs.colUser")}</th>
+                <th>{t("bo.adminUtilisateurs.colEmail")}</th>
+                <th>{t("bo.adminUtilisateurs.colRole")}</th>
+                <th>{t("bo.adminUtilisateurs.colStatus")}</th>
+                <th>{t("bo.adminUtilisateurs.colCreatedOn")}</th>
+                <th>{t("bo.adminUtilisateurs.colActions")}</th>
               </tr>
             </thead>
             <tbody>
               {filteredUsers.length === 0 && (
                 <tr>
                   <td colSpan={6} className={styles.empty}>
-                    Aucun utilisateur ne correspond à ces critères.
+                    {t("bo.adminUtilisateurs.noMatch")}
                   </td>
                 </tr>
               )}
@@ -374,7 +383,7 @@ export default function AdminUtilisateursPage() {
                           type="button"
                           className={styles.iconBtn}
                           onClick={() => openEdit(u)}
-                          title="Modifier"
+                          title={t("bo.adminUtilisateurs.edit")}
                         >
                           <i className="bi bi-pencil" />
                         </button>
@@ -383,7 +392,13 @@ export default function AdminUtilisateursPage() {
                           className={styles.iconBtn}
                           onClick={() => handleToggleActive(u)}
                           disabled={isSelf || isBusy}
-                          title={isSelf ? "Impossible sur son propre compte" : isDisabled ? "Activer" : "Désactiver"}
+                          title={
+                            isSelf
+                              ? t("bo.adminUtilisateurs.selfActionBlocked")
+                              : isDisabled
+                                ? t("bo.adminUtilisateurs.activate")
+                                : t("bo.adminUtilisateurs.deactivate")
+                          }
                         >
                           <i className={`bi ${isDisabled ? "bi-play-circle" : "bi-pause-circle"}`} />
                         </button>
@@ -392,7 +407,7 @@ export default function AdminUtilisateursPage() {
                           className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
                           onClick={() => setDeleteTarget(u)}
                           disabled={isSelf}
-                          title={isSelf ? "Impossible sur son propre compte" : "Supprimer"}
+                          title={isSelf ? t("bo.adminUtilisateurs.selfActionBlocked") : t("bo.adminUtilisateurs.delete")}
                         >
                           <i className="bi bi-trash" />
                         </button>
@@ -407,7 +422,7 @@ export default function AdminUtilisateursPage() {
           {filteredUsers.length > 0 && (
             <div className={styles.paginationRow}>
               <span>
-                Page {safePage} / {totalPages} · {filteredUsers.length} utilisateur(s)
+                {t("bo.adminUtilisateurs.pageOf", { page: safePage, total: totalPages, count: filteredUsers.length })}
               </span>
               <div className={styles.paginationButtons}>
                 <button
@@ -417,7 +432,7 @@ export default function AdminUtilisateursPage() {
                   disabled={safePage <= 1}
                 >
                   <i className="bi bi-chevron-left" />
-                  Précédent
+                  {t("bo.adminUtilisateurs.previous")}
                 </button>
                 <button
                   type="button"
@@ -425,7 +440,7 @@ export default function AdminUtilisateursPage() {
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={safePage >= totalPages}
                 >
-                  Suivant
+                  {t("bo.adminUtilisateurs.next")}
                   <i className="bi bi-chevron-right" />
                 </button>
               </div>
@@ -438,26 +453,26 @@ export default function AdminUtilisateursPage() {
       <Modal
         isOpen={formOpen}
         onClose={closeForm}
-        title={formMode === "create" ? "Nouvel utilisateur" : "Modifier l'utilisateur"}
+        title={formMode === "create" ? t("bo.adminUtilisateurs.createTitle") : t("bo.adminUtilisateurs.editTitle")}
       >
         <form onSubmit={handleSubmitForm}>
           <Banner banner={formBanner} />
           <TextField
-            label="Prénom"
+            label={t("bo.adminUtilisateurs.firstNameLabel")}
             name="prenom"
             value={formDraft.prenom}
             onChange={(e) => setFormDraft((d) => ({ ...d, prenom: e.target.value }))}
             required
           />
           <TextField
-            label="Nom"
+            label={t("bo.adminUtilisateurs.lastNameLabel")}
             name="nom"
             value={formDraft.nom}
             onChange={(e) => setFormDraft((d) => ({ ...d, nom: e.target.value }))}
             required
           />
           <TextField
-            label="Email"
+            label={t("bo.adminUtilisateurs.emailLabel")}
             name="email"
             type="email"
             value={formDraft.email}
@@ -465,37 +480,37 @@ export default function AdminUtilisateursPage() {
             required
           />
           <SelectField
-            label="Rôle"
+            label={t("bo.adminUtilisateurs.roleLabel")}
             name="role"
             options={ROLE_OPTIONS}
             value={formDraft.role}
             onChange={(e) => setFormDraft((d) => ({ ...d, role: e.target.value }))}
           />
           <SelectField
-            label="Statut du compte"
+            label={t("bo.adminUtilisateurs.accountStatusLabel")}
             name="statut_compte"
             options={STATUS_OPTIONS}
             value={formDraft.statut_compte}
             onChange={(e) => setFormDraft((d) => ({ ...d, statut_compte: e.target.value }))}
           />
           <TextField
-            label={formMode === "create" ? "Mot de passe" : "Nouveau mot de passe (optionnel)"}
+            label={formMode === "create" ? t("bo.adminUtilisateurs.passwordLabel") : t("bo.adminUtilisateurs.newPasswordLabel")}
             name="mot_de_passe"
             type="password"
             value={formDraft.mot_de_passe}
             onChange={(e) => setFormDraft((d) => ({ ...d, mot_de_passe: e.target.value }))}
-            hint="8 caractères minimum"
+            hint={t("bo.adminUtilisateurs.passwordHint")}
             required={formMode === "create"}
             minLength={8}
           />
           <div className={styles.editActions}>
             <button type="submit" className={styles.btn} disabled={formBusy}>
               <i className="bi bi-check-lg" />
-              {formBusy ? "Enregistrement..." : "Enregistrer"}
+              {formBusy ? t("bo.adminUtilisateurs.saving") : t("bo.adminUtilisateurs.save")}
             </button>
             <button type="button" className={styles.btnOutline} onClick={closeForm} disabled={formBusy}>
               <i className="bi bi-x-lg" />
-              Annuler
+              {t("bo.adminUtilisateurs.cancel")}
             </button>
           </div>
         </form>
@@ -506,13 +521,17 @@ export default function AdminUtilisateursPage() {
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleConfirmDelete}
-        title="Supprimer l'utilisateur"
+        title={t("bo.adminUtilisateurs.deleteUserTitle")}
         message={
           deleteTarget
-            ? `Supprimer définitivement ${deleteTarget.prenom} ${deleteTarget.nom} (${deleteTarget.email}) ? Cette action est irréversible.`
+            ? t("bo.adminUtilisateurs.deleteUserConfirm", {
+                prenom: deleteTarget.prenom,
+                nom: deleteTarget.nom,
+                email: deleteTarget.email,
+              })
             : ""
         }
-        confirmLabel="Supprimer"
+        confirmLabel={t("bo.adminUtilisateurs.delete")}
         danger
         isBusy={deleteBusy}
       />

@@ -10,6 +10,7 @@ import { fetchNotifications, markNotificationRead, NOTIFICATION_STATUS, NOTIFICA
 import { fetchReclamations, createReclamation, RECLAMATION_STATUS, RECLAMATION_STATUS_LABELS } from "@/lib/reclamations";
 import TextField from "@/components/TextField";
 import uiStyles from "@/components/ui.module.css";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -25,26 +26,31 @@ function formatTime(value) {
   return new Date(value).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 }
 
-function previewText(message) {
+function previewText(message, t) {
   if (message.message) return message.message;
-  if (message.piece_jointe) return message.piece_jointe_type?.startsWith("image/") ? "📷 Photo" : "📎 Fichier";
+  if (message.piece_jointe) {
+    return message.piece_jointe_type?.startsWith("image/")
+      ? t("bo.proprietaireMessagerie.photoPreview")
+      : t("bo.proprietaireMessagerie.filePreview");
+  }
   return "";
 }
 
-function formatDayLabel(value) {
+function formatDayLabel(value, t) {
   const date = new Date(value);
   const today = new Date();
   const isToday = date.toDateString() === today.toDateString();
-  if (isToday) return "Aujourd'hui";
+  if (isToday) return t("bo.proprietaireMessagerie.today");
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
-  if (date.toDateString() === yesterday.toDateString()) return "Hier";
+  if (date.toDateString() === yesterday.toDateString()) return t("bo.proprietaireMessagerie.yesterday");
   return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 const EMPTY_RECLAMATION_FORM = { sujet: "", message: "" };
 
 export default function ProprietaireMessageriePage() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const [activeView, setActiveView] = useState("messagerie");
   const viewTabRefs = useRef({});
@@ -113,7 +119,7 @@ export default function ProprietaireMessageriePage() {
       prenom: l.prenom,
       email: l.email,
       photo: l.photo,
-      role: "Locataire",
+      role: t("bo.proprietaireMessagerie.roleTenant"),
     }));
     const managerContacts = mandates
       .filter((m) => m.statut === MANDAT_STATUS.ACTIF && m.gestionnaire)
@@ -123,7 +129,7 @@ export default function ProprietaireMessageriePage() {
         prenom: m.gestionnaire.prenom,
         email: m.gestionnaire.email,
         photo: m.gestionnaire.photo,
-        role: "Gestionnaire",
+        role: t("bo.proprietaireMessagerie.roleManager"),
       }));
     const acceptedReclamation = reclamations.find(
       (r) => r.statut === RECLAMATION_STATUS.ACCEPTEE && r.traite_par
@@ -136,13 +142,14 @@ export default function ProprietaireMessageriePage() {
             prenom: acceptedReclamation.traite_par.prenom,
             email: acceptedReclamation.traite_par.email,
             photo: acceptedReclamation.traite_par.photo,
-            role: "Administration",
+            role: t("bo.proprietaireMessagerie.roleAdmin"),
           },
         ]
       : [];
     return [...tenantContacts, ...managerContacts, ...adminContact].filter(
       (c, i, arr) => arr.findIndex((o) => o.id === c.id) === i
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locataires, mandates, reclamations]);
 
   useEffect(() => {
@@ -199,7 +206,7 @@ export default function ProprietaireMessageriePage() {
       });
       setReclamations((prev) => [created, ...prev]);
       setReclamationForm(EMPTY_RECLAMATION_FORM);
-      setReclamationBanner({ type: "success", message: "Réclamation envoyée à l'administration." });
+      setReclamationBanner({ type: "success", message: t("bo.proprietaireMessagerie.reclamationSent") });
     } catch (err) {
       setReclamationBanner({ type: "error", message: extractErrorMessage(err) });
     } finally {
@@ -283,7 +290,7 @@ export default function ProprietaireMessageriePage() {
   }
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.common.loading")}</p>;
   }
 
   return (
@@ -293,13 +300,11 @@ export default function ProprietaireMessageriePage() {
       <div className={styles.section} style={{ marginBottom: 0 }}>
         <h2 className={styles.sectionTitle}>
           <i className="bi bi-chat-dots-fill" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-          Discussions
+          {t("bo.proprietaireMessagerie.title")}
         </h2>
-        <p className={styles.sectionSubtitle}>
-          Échangez avec vos locataires et gestionnaires, ou contactez l&apos;administration.
-        </p>
+        <p className={styles.sectionSubtitle}>{t("bo.proprietaireMessagerie.subtitle")}</p>
 
-        <div className={styles.discussionToggle} role="tablist" aria-label="Messagerie ou réclamation">
+        <div className={styles.discussionToggle} role="tablist" aria-label={t("bo.proprietaireMessagerie.tabsLabel")}>
           {viewTabIndicator && (
             <span
               className={styles.discussionToggleBubble}
@@ -317,7 +322,7 @@ export default function ProprietaireMessageriePage() {
             onClick={() => setActiveView("messagerie")}
           >
             <i className="bi bi-chat-dots-fill" />
-            Messagerie
+            {t("bo.proprietaireMessagerie.messagingTab")}
           </button>
           <button
             type="button"
@@ -330,7 +335,7 @@ export default function ProprietaireMessageriePage() {
             onClick={() => setActiveView("reclamation")}
           >
             <i className="bi bi-headset" />
-            Réclamation
+            {t("bo.proprietaireMessagerie.reclamationTab")}
           </button>
         </div>
 
@@ -339,12 +344,14 @@ export default function ProprietaireMessageriePage() {
           {/* ---- Liste des contacts ---- */}
           <div className={styles.msgContacts}>
             <div className={styles.msgContactsHeader}>
-              <span className={styles.msgContactsTitle}>Contacts ({contacts.length})</span>
+              <span className={styles.msgContactsTitle}>
+                {t("bo.proprietaireMessagerie.contactsCount", { count: contacts.length })}
+              </span>
             </div>
             {contacts.length === 0 && (
               <div className={styles.msgEmptyState}>
                 <i className="bi bi-people" />
-                Aucun contact. Vos locataires et gestionnaires apparaîtront ici.
+                {t("bo.proprietaireMessagerie.noContacts")}
               </div>
             )}
             {conversations.map(({ contact, last }) => {
@@ -378,7 +385,9 @@ export default function ProprietaireMessageriePage() {
                     </div>
                     <div className={styles.msgContactPreviewRow}>
                       <span className={styles.msgContactPreview}>
-                        {last ? `${last.user_id === user?.id ? "Vous : " : ""}${previewText(last)}` : "Aucun message"}
+                        {last
+                          ? `${last.user_id === user?.id ? t("bo.proprietaireMessagerie.you") : ""}${previewText(last, t)}`
+                          : t("bo.proprietaireMessagerie.noMessage")}
                       </span>
                       <span className={styles.msgContactRole}>{contact.role}</span>
                     </div>
@@ -393,7 +402,7 @@ export default function ProprietaireMessageriePage() {
             {!selectedConversation ? (
               <div className={styles.msgEmptyState}>
                 <i className="bi bi-chat-square-text" />
-                Sélectionnez un contact pour démarrer une conversation.
+                {t("bo.proprietaireMessagerie.selectContact")}
               </div>
             ) : (
               <>
@@ -423,18 +432,19 @@ export default function ProprietaireMessageriePage() {
                   {selectedConversation.thread.length === 0 && (
                     <div className={styles.msgEmptyState}>
                       <i className="bi bi-chat-dots" />
-                      Aucun message pour l&apos;instant. Dites bonjour !
+                      {t("bo.proprietaireMessagerie.noMessagesYet")}
                     </div>
                   )}
                   {selectedConversation.thread.map((m, i) => {
                     const mine = m.user_id === user?.id;
                     const prev = selectedConversation.thread[i - 1];
-                    const showDaySeparator = !prev || formatDayLabel(prev.date_sent) !== formatDayLabel(m.date_sent);
+                    const showDaySeparator =
+                      !prev || formatDayLabel(prev.date_sent, t) !== formatDayLabel(m.date_sent, t);
                     return (
                       <div key={m.id}>
                         {showDaySeparator && (
                           <div style={{ textAlign: "center", margin: "0.8rem 0" }}>
-                            <span className={styles.msgContactMeta}>{formatDayLabel(m.date_sent)}</span>
+                            <span className={styles.msgContactMeta}>{formatDayLabel(m.date_sent, t)}</span>
                           </div>
                         )}
                         <div className={`${styles.msgBubbleRow} ${mine ? styles.msgBubbleRowMine : ""}`}>
@@ -442,7 +452,7 @@ export default function ProprietaireMessageriePage() {
                             <div
                               className={`${styles.msgBubble} ${mine ? styles.msgBubbleMine : styles.msgBubbleTheirs}`}
                               onDoubleClick={() => mine && handleDeleteMessage(m.id)}
-                              title={mine ? "Double-clic pour supprimer" : undefined}
+                              title={mine ? t("bo.proprietaireMessagerie.deleteHint") : undefined}
                             >
                               {m.piece_jointe &&
                                 (m.piece_jointe_type?.startsWith("image/") ? (
@@ -469,7 +479,7 @@ export default function ProprietaireMessageriePage() {
                                     className={styles.msgAttachmentFile}
                                   >
                                     <i className="bi bi-file-earmark-arrow-down" />
-                                    <span>{m.piece_jointe_nom || "Fichier"}</span>
+                                    <span>{m.piece_jointe_nom || t("bo.proprietaireMessagerie.fileFallbackName")}</span>
                                   </a>
                                 ))}
                               {m.message && (
@@ -511,14 +521,14 @@ export default function ProprietaireMessageriePage() {
                         type="button"
                         className={styles.msgStagedRemove}
                         onClick={() => setStagedAttachment(null)}
-                        title="Retirer"
+                        title={t("bo.proprietaireMessagerie.removeAttachment")}
                       >
                         <i className="bi bi-x-lg" />
                       </button>
                     </div>
                   )}
                   <div className={styles.msgComposerRow}>
-                    <label className={styles.msgAttachBtn} title="Joindre un fichier">
+                    <label className={styles.msgAttachBtn} title={t("bo.proprietaireMessagerie.attachFile")}>
                       <i className={`bi ${attachBusy ? "bi-hourglass-split" : "bi-paperclip"}`} />
                       <input
                         type="file"
@@ -529,7 +539,7 @@ export default function ProprietaireMessageriePage() {
                     </label>
                     <textarea
                       rows={1}
-                      placeholder="Écrivez un message... (Entrée pour envoyer, Maj+Entrée pour un saut de ligne)"
+                      placeholder={t("bo.proprietaireMessagerie.messagePlaceholder")}
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
                       onKeyDown={handleKeyDown}
@@ -539,7 +549,7 @@ export default function ProprietaireMessageriePage() {
                       type="submit"
                       className={styles.msgSendBtn}
                       disabled={sendBusy || (!draft.trim() && !stagedAttachment)}
-                      title="Envoyer"
+                      title={t("bo.proprietaireMessagerie.send")}
                     >
                       <i className="bi bi-send-fill" />
                     </button>
@@ -555,54 +565,57 @@ export default function ProprietaireMessageriePage() {
           <div className={`${styles.card} ${styles.chartFade}`} style={{ marginTop: "1.25rem" }}>
             <h3 className={styles.cardTitle}>
               <i className="bi bi-headset" style={{ color: "var(--primary)" }} />
-              Contacter l&apos;administration
+              {t("bo.proprietaireMessagerie.contactAdmin")}
             </h3>
 
             <Banner banner={reclamationBanner} />
 
             {adminUnlocked ? (
               <p className={styles.sectionSubtitle} style={{ marginTop: "0.5rem" }}>
-                Votre réclamation a été acceptée : l&apos;administration est désormais disponible dans l&apos;onglet{" "}
-                <strong>Messagerie</strong>.
+                {t("bo.proprietaireMessagerie.acceptedNoticeBefore")}{" "}
+                <strong>{t("bo.proprietaireMessagerie.messagingTab")}</strong>
+                {t("bo.proprietaireMessagerie.acceptedNoticeAfter")}
               </p>
             ) : hasPendingReclamation ? (
               <p className={styles.sectionSubtitle} style={{ marginTop: "0.5rem" }}>
-                Votre réclamation « {latestReclamation.sujet} » est{" "}
-                <strong>{RECLAMATION_STATUS_LABELS[latestReclamation.statut].toLowerCase()}</strong>, en attente de
-                traitement par l&apos;administration.
+                {t("bo.proprietaireMessagerie.pendingNotice", {
+                  subject: latestReclamation.sujet,
+                  status: RECLAMATION_STATUS_LABELS[latestReclamation.statut].toLowerCase(),
+                })}
               </p>
             ) : (
               <>
                 {latestReclamation?.statut === RECLAMATION_STATUS.REJETEE && (
                   <p className={styles.sectionSubtitle} style={{ marginTop: "0.5rem" }}>
-                    Votre dernière réclamation («&nbsp;{latestReclamation.sujet}&nbsp;») a été{" "}
-                    <strong>{RECLAMATION_STATUS_LABELS[latestReclamation.statut].toLowerCase()}</strong>. Vous pouvez
-                    en soumettre une nouvelle ci-dessous.
+                    {t("bo.proprietaireMessagerie.rejectedNotice", {
+                      subject: latestReclamation.sujet,
+                      status: RECLAMATION_STATUS_LABELS[latestReclamation.statut].toLowerCase(),
+                    })}
                   </p>
                 )}
                 <form onSubmit={handleSubmitReclamation} style={{ marginTop: "0.75rem" }}>
                   <TextField
-                    label="Sujet"
+                    label={t("bo.proprietaireMessagerie.subjectLabel")}
                     name="reclamation-sujet"
                     value={reclamationForm.sujet}
                     onChange={(e) => setReclamationForm((f) => ({ ...f, sujet: e.target.value }))}
                     required
                   />
                   <label className={uiStyles.field}>
-                    Message
+                    {t("bo.proprietaireMessagerie.messageLabel")}
                     <textarea
                       className={uiStyles.fieldInput}
                       rows={3}
                       value={reclamationForm.message}
                       onChange={(e) => setReclamationForm((f) => ({ ...f, message: e.target.value }))}
-                      placeholder="Décrivez votre demande..."
+                      placeholder={t("bo.proprietaireMessagerie.messageDescribeePlaceholder")}
                       required
                     />
                   </label>
                   <div className={styles.editActions} style={{ marginTop: "0.9rem" }}>
                     <button type="submit" className={styles.btn} disabled={reclamationBusy}>
                       <i className="bi bi-send" />
-                      {reclamationBusy ? "Envoi..." : "Envoyer la réclamation"}
+                      {reclamationBusy ? t("bo.proprietaireMessagerie.sending") : t("bo.proprietaireMessagerie.sendReclamation")}
                     </button>
                   </div>
                 </form>

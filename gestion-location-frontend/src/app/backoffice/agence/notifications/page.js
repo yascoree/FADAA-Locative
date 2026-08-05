@@ -16,6 +16,7 @@ import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import ToggleSwitch from "@/components/ToggleSwitch";
 import FilterSelect from "@/components/FilterSelect";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -34,6 +35,8 @@ const TYPE_ICON = {
   [NOTIFICATION_TYPE.MANDAT]: "bi-person-badge-fill",
   [NOTIFICATION_TYPE.DISCUSSION]: "bi-chat-dots-fill",
   [NOTIFICATION_TYPE.RELANCE]: "bi-exclamation-octagon-fill",
+  [NOTIFICATION_TYPE.ABONNEMENT]: "bi-credit-card-2-front-fill",
+  [NOTIFICATION_TYPE.MAINTENANCE]: "bi-tools",
 };
 
 const TYPE_TONE_CLASS = {
@@ -43,10 +46,13 @@ const TYPE_TONE_CLASS = {
   [NOTIFICATION_TYPE.MANDAT]: "notifIconAccent",
   [NOTIFICATION_TYPE.DISCUSSION]: "notifIconPrimary",
   [NOTIFICATION_TYPE.RELANCE]: "notifIconDanger",
+  [NOTIFICATION_TYPE.ABONNEMENT]: "notifIconDanger",
+  [NOTIFICATION_TYPE.MAINTENANCE]: "notifIconDanger",
 };
 
-// L'espace Gestionnaire n'a pas de page dédiée aux mandats (c'est le propriétaire qui
-// les crée) : ce type renvoie donc vers le Dashboard, à défaut de mieux.
+// L'espace Gestionnaire n'a pas de page dédiée aux mandats ni aux abonnements
+// (le propriétaire est seul titulaire des deux) : ces types renvoient donc
+// vers le Dashboard, à défaut de mieux.
 const TYPE_TARGET = {
   [NOTIFICATION_TYPE.PAIEMENT]: "/backoffice/agence/paiements",
   [NOTIFICATION_TYPE.ECHEANCE]: "/backoffice/agence/echeances",
@@ -54,25 +60,28 @@ const TYPE_TARGET = {
   [NOTIFICATION_TYPE.MANDAT]: "/backoffice/agence",
   [NOTIFICATION_TYPE.DISCUSSION]: "/backoffice/agence/discussions",
   [NOTIFICATION_TYPE.RELANCE]: "/backoffice/agence/echeances",
+  [NOTIFICATION_TYPE.ABONNEMENT]: "/backoffice/agence",
+  [NOTIFICATION_TYPE.MAINTENANCE]: "/backoffice/agence/maintenance",
 };
 
 const TYPE_OPTIONS = Object.entries(NOTIFICATION_TYPE_LABELS).map(([value, label]) => ({ value, label }));
 
-function formatDate(value) {
+function formatDate(value, t) {
   const date = new Date(value);
   const now = new Date();
   const diffMs = now - date;
   const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return "À l'instant";
-  if (diffMin < 60) return `Il y a ${diffMin} min`;
+  if (diffMin < 1) return t("bo.proprietaireNotifications.timeJustNow");
+  if (diffMin < 60) return t("bo.proprietaireNotifications.timeMinutesAgo", { count: diffMin });
   const diffH = Math.floor(diffMin / 60);
-  if (diffH < 24) return `Il y a ${diffH} h`;
+  if (diffH < 24) return t("bo.proprietaireNotifications.timeHoursAgo", { count: diffH });
   const diffD = Math.floor(diffH / 24);
-  if (diffD < 7) return `Il y a ${diffD} j`;
+  if (diffD < 7) return t("bo.proprietaireNotifications.timeDaysAgo", { count: diffD });
   return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export default function AgenceNotificationsPage() {
+  const { t } = useLanguage();
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -167,7 +176,7 @@ export default function AgenceNotificationsPage() {
   }
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.common.loading")}</p>;
   }
 
   return (
@@ -178,8 +187,8 @@ export default function AgenceNotificationsPage() {
       {/* ---- Stats ---- */}
       <div className={styles.section}>
         <div className={styles.statsGrid}>
-          <StatCard icon="bi-bell-fill" tone="primary" label="Notifications" value={stats.total} />
-          <StatCard icon="bi-envelope-fill" tone="accent" label="Non lues" value={stats.nonLues} />
+          <StatCard icon="bi-bell-fill" tone="primary" label={t("bo.proprietaireNotifications.statTotal")} value={stats.total} />
+          <StatCard icon="bi-envelope-fill" tone="accent" label={t("bo.proprietaireNotifications.statUnread")} value={stats.nonLues} />
         </div>
       </div>
 
@@ -189,10 +198,10 @@ export default function AgenceNotificationsPage() {
           <div>
             <h2 className={styles.sectionTitle}>
               <i className="bi bi-bell" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-              {showMasquees ? "Notifications masquées" : "Notifications"}
+              {showMasquees ? t("bo.proprietaireNotifications.titleHidden") : t("bo.proprietaireNotifications.title")}
             </h2>
             <p className={styles.sectionSubtitle}>
-              {filteredNotifications.length} notification(s) affichée(s) sur {notifications.length}.
+              {t("bo.agenceNotifications.subtitle", { shown: filteredNotifications.length, total: notifications.length })}
             </p>
           </div>
           {!showMasquees && (
@@ -203,25 +212,25 @@ export default function AgenceNotificationsPage() {
               disabled={markingAll || stats.nonLues === 0}
             >
               <i className="bi bi-check2-all" />
-              {markingAll ? "..." : "Tout marquer comme lu"}
+              {markingAll ? "..." : t("bo.proprietaireNotifications.markAllRead")}
             </button>
           )}
         </div>
 
         <div className={styles.filtersRow}>
-          <ToggleSwitch checked={showMasquees} onChange={setShowMasquees} label="Voir les notifications masquées" />
+          <ToggleSwitch checked={showMasquees} onChange={setShowMasquees} label={t("bo.proprietaireNotifications.showHidden")} />
           <FilterSelect
             value={typeFilter}
             onChange={setTypeFilter}
-            options={[{ value: "", label: "Tous les types" }, ...TYPE_OPTIONS]}
+            options={[{ value: "", label: t("bo.proprietaireNotifications.allTypes") }, ...TYPE_OPTIONS]}
           />
           <FilterSelect
             value={statusFilter}
             onChange={setStatusFilter}
             options={[
-              { value: "", label: "Toutes" },
-              { value: NOTIFICATION_STATUS.NON_LUE, label: "Non lues" },
-              { value: NOTIFICATION_STATUS.LUE, label: "Lues" },
+              { value: "", label: t("bo.proprietaireNotifications.allStatuses") },
+              { value: NOTIFICATION_STATUS.NON_LUE, label: t("bo.proprietaireNotifications.unreadOnly") },
+              { value: NOTIFICATION_STATUS.LUE, label: t("bo.proprietaireNotifications.readOnly") },
             ]}
           />
           <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
@@ -231,7 +240,7 @@ export default function AgenceNotificationsPage() {
           <div className={styles.notifList}>
             {filteredNotifications.length === 0 && (
               <p className={styles.empty} style={{ padding: "1.5rem" }}>
-                Aucune notification ne correspond à ces critères.
+                {t("bo.proprietaireNotifications.noMatch")}
               </p>
             )}
             {filteredNotifications.map((n) => {
@@ -249,12 +258,12 @@ export default function AgenceNotificationsPage() {
                   </span>
                   <div className={styles.notifBody}>
                     <div className={styles.notifTop}>
-                      <span className={styles.notifTitle}>{n.titre || NOTIFICATION_TYPE_LABELS[n.type] || "Notification"}</span>
-                      <span className={styles.notifDate}>{formatDate(n.date_creation)}</span>
+                      <span className={styles.notifTitle}>{n.titre || NOTIFICATION_TYPE_LABELS[n.type] || t("bo.proprietaireNotifications.notification")}</span>
+                      <span className={styles.notifDate}>{formatDate(n.date_creation, t)}</span>
                     </div>
                     {n.description && <div className={styles.notifDesc}>{n.description}</div>}
                   </div>
-                  {isUnread && <span className={styles.notifDot} title="Non lue" />}
+                  {isUnread && <span className={styles.notifDot} title={t("bo.proprietaireNotifications.unreadTitle")} />}
                   <div className={styles.notifActions}>
                     {showMasquees ? (
                       <button
@@ -265,7 +274,7 @@ export default function AgenceNotificationsPage() {
                           e.stopPropagation();
                           handleRestaurer(n);
                         }}
-                        title="Restaurer"
+                        title={t("bo.proprietaireNotifications.restore")}
                       >
                         <i className="bi bi-arrow-counterclockwise" />
                       </button>
@@ -278,7 +287,7 @@ export default function AgenceNotificationsPage() {
                           e.stopPropagation();
                           handleMasquer(n);
                         }}
-                        title="Masquer"
+                        title={t("bo.proprietaireNotifications.hide")}
                       >
                         <i className="bi bi-eye-slash" />
                       </button>

@@ -17,6 +17,7 @@ function useNavSections() {
       items: [
         { href: "/backoffice/locataire", label: t("bo.locataireSidebar.dashboard"), icon: "bi-grid", exact: true },
         { href: "/backoffice/locataire/bail", label: t("bo.locataireSidebar.myLease"), icon: "bi-file-earmark-text" },
+        { href: "/backoffice/locataire/maintenance", label: t("bo.locataireSidebar.maintenance"), icon: "bi-tools" },
       ],
     },
     {

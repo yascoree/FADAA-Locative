@@ -85,14 +85,9 @@ export async function saveMandatePermissions(mandatId, permissionCodes) {
 
 // Regroupe le catalogue plat (CREATE_PROPERTY, UPDATE_PROPERTY, ...) par ressource,
 // pour l'affichage en tableau (une section par ressource, une case par action).
-const RESOURCE_LABELS = {
-  PROPERTY: "Biens",
-  LOT: "Lots",
-  LEASE: "Baux",
-  DUE_DATE: "Échéances",
-  PAYMENT: "Paiements",
-};
-
+// Le libellé venant du backend (permission.libelle) n'est pas traduit ; on garde
+// seulement la clé de ressource/action ici, l'affichage traduit label/action côté
+// composant via `_action` et `resource`.
 const ACTION_ORDER = { VIEW: 0, CREATE: 1, UPDATE: 2, DELETE: 3 };
 
 export function groupPermissionCatalog(catalog) {
@@ -101,7 +96,7 @@ export function groupPermissionCatalog(catalog) {
     const [action, ...rest] = permission.code.split("_");
     const resource = rest.join("_");
     if (!groups.has(resource)) {
-      groups.set(resource, { resource, label: RESOURCE_LABELS[resource] || resource, permissions: [] });
+      groups.set(resource, { resource, permissions: [] });
     }
     groups.get(resource).permissions.push({ ...permission, _action: action });
   });

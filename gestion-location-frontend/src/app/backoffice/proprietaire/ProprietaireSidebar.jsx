@@ -6,52 +6,77 @@ import { usePathname } from "next/navigation";
 import { API_BASE_URL } from "@/lib/apiClient";
 import { fetchNotifications, NOTIFICATION_STATUS, NOTIFICATION_TYPE } from "@/lib/notifications";
 import LogoIcon from "@/components/LogoIcon";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "./proprietaire.module.css";
 
-const NAV_SECTIONS = [
-  {
-    label: "Général",
-    items: [
-      { href: "/backoffice/proprietaire", label: "Dashboard", icon: "bi-grid", exact: true },
-      { href: "/backoffice/proprietaire/biens", label: "Biens", icon: "bi-house-door" },
-      { href: "/backoffice/proprietaire/lots", label: "Lots", icon: "bi-grid-3x3-gap" },
-      { href: "/backoffice/proprietaire/baux", label: "Baux", icon: "bi-file-earmark-text" },
-    ],
-  },
-  {
-    label: "Finances",
-    items: [
-      { href: "/backoffice/proprietaire/echeances", label: "Échéances", icon: "bi-calendar-event" },
-      { href: "/backoffice/proprietaire/paiements", label: "Paiements", icon: "bi-cash-stack" },
-      { href: "/backoffice/proprietaire/revenus", label: "Revenus", icon: "bi-graph-up" },
-    ],
-  },
-  {
-    label: "Locataires & Équipe",
-    items: [
-      { href: "/backoffice/proprietaire/permissions", label: "Gestionnaires", icon: "bi-person-badge" },
-      { href: "/backoffice/proprietaire/locataires", label: "Locataires", icon: "bi-people" },
-    ],
-  },
-  {
-    label: "Échanges",
-    items: [
-      { href: "/backoffice/proprietaire/messagerie", label: "Discussions", icon: "bi-chat-dots", badgeKey: "discussions" },
-      { href: "/backoffice/proprietaire/notifications", label: "Notifications", icon: "bi-bell", badgeKey: "notifications" },
-    ],
-  },
-  {
-    label: "Compte",
-    items: [{ href: "/backoffice/proprietaire/parametres", label: "Paramètres", icon: "bi-gear" }],
-  },
-];
+function useNavSections() {
+  const { t } = useLanguage();
+  return [
+    {
+      label: t("bo.proprietaireSidebar.general"),
+      items: [
+        { href: "/backoffice/proprietaire", label: t("bo.proprietaireSidebar.dashboard"), icon: "bi-grid", exact: true },
+        { href: "/backoffice/proprietaire/biens", label: t("bo.proprietaireSidebar.biens"), icon: "bi-house-door" },
+        { href: "/backoffice/proprietaire/lots", label: t("bo.proprietaireSidebar.lots"), icon: "bi-grid-3x3-gap" },
+        { href: "/backoffice/proprietaire/baux", label: t("bo.proprietaireSidebar.baux"), icon: "bi-file-earmark-text" },
+      ],
+    },
+    {
+      label: t("bo.proprietaireSidebar.finances"),
+      items: [
+        { href: "/backoffice/proprietaire/echeances", label: t("bo.proprietaireSidebar.echeances"), icon: "bi-calendar-event" },
+        { href: "/backoffice/proprietaire/paiements", label: t("bo.proprietaireSidebar.paiements"), icon: "bi-cash-stack" },
+        { href: "/backoffice/proprietaire/revenus", label: t("bo.proprietaireSidebar.revenus"), icon: "bi-graph-up" },
+      ],
+    },
+    {
+      label: t("bo.proprietaireSidebar.team"),
+      items: [
+        { href: "/backoffice/proprietaire/permissions", label: t("bo.proprietaireSidebar.managers"), icon: "bi-person-badge" },
+        { href: "/backoffice/proprietaire/locataires", label: t("bo.proprietaireSidebar.locataires"), icon: "bi-people" },
+        {
+          href: "/backoffice/proprietaire/maintenance",
+          label: t("bo.proprietaireSidebar.maintenance"),
+          icon: "bi-tools",
+          badgeKey: "maintenance",
+        },
+      ],
+    },
+    {
+      label: t("bo.proprietaireSidebar.exchanges"),
+      items: [
+        {
+          href: "/backoffice/proprietaire/messagerie",
+          label: t("bo.proprietaireSidebar.discussions"),
+          icon: "bi-chat-dots",
+          badgeKey: "discussions",
+        },
+        {
+          href: "/backoffice/proprietaire/notifications",
+          label: t("bo.proprietaireSidebar.notifications"),
+          icon: "bi-bell",
+          badgeKey: "notifications",
+        },
+      ],
+    },
+    {
+      label: t("bo.proprietaireSidebar.account"),
+      items: [
+        { href: "/backoffice/proprietaire/abonnement", label: t("bo.proprietaireSidebar.subscription"), icon: "bi-credit-card-2-front" },
+        { href: "/backoffice/proprietaire/parametres", label: t("bo.proprietaireSidebar.settings"), icon: "bi-gear" },
+      ],
+    },
+  ];
+}
 
 export default function ProprietaireSidebar({ user, onLogout }) {
+  const { t } = useLanguage();
+  const NAV_SECTIONS = useNavSections();
   const pathname = usePathname();
   const initial = `${user?.prenom?.[0] || ""}${user?.nom?.[0] || ""}`.toUpperCase();
   const itemRefs = useRef({});
   const [bubble, setBubble] = useState(null);
-  const [badges, setBadges] = useState({ discussions: 0, notifications: 0 });
+  const [badges, setBadges] = useState({ discussions: 0, notifications: 0, maintenance: 0 });
 
   useEffect(() => {
     let cancelled = false;
@@ -62,7 +87,10 @@ export default function ProprietaireSidebar({ user, onLogout }) {
         const unread = list.filter((n) => n.statut === NOTIFICATION_STATUS.NON_LUE);
         setBadges({
           discussions: unread.filter((n) => n.type === NOTIFICATION_TYPE.DISCUSSION).length,
-          notifications: unread.filter((n) => n.type !== NOTIFICATION_TYPE.DISCUSSION).length,
+          maintenance: unread.filter((n) => n.type === NOTIFICATION_TYPE.MAINTENANCE).length,
+          notifications: unread.filter(
+            (n) => n.type !== NOTIFICATION_TYPE.DISCUSSION && n.type !== NOTIFICATION_TYPE.MAINTENANCE
+          ).length,
         });
       } catch {
         // Les badges sont un simple confort d'UX : une erreur ne doit jamais casser la sidebar.
@@ -85,7 +113,7 @@ export default function ProprietaireSidebar({ user, onLogout }) {
       });
     });
     return found;
-  }, [pathname]);
+  }, [pathname, NAV_SECTIONS]);
 
   useEffect(() => {
     const el = activeHref ? itemRefs.current[activeHref] : null;
@@ -142,9 +170,9 @@ export default function ProprietaireSidebar({ user, onLogout }) {
           <span className={styles.userName}>
             {user?.prenom} {user?.nom}
           </span>
-          <span className={styles.userRole}>Propriétaire</span>
+          <span className={styles.userRole}>{t("bo.proprietaireSidebar.role")}</span>
         </div>
-        <button type="button" className={styles.logoutButton} onClick={onLogout} title="Se déconnecter">
+        <button type="button" className={styles.logoutButton} onClick={onLogout} title={t("bo.common.logout")}>
           <i className="bi bi-box-arrow-right" />
         </button>
       </div>

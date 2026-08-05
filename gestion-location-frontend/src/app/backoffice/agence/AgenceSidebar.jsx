@@ -6,45 +6,67 @@ import { usePathname } from "next/navigation";
 import { API_BASE_URL } from "@/lib/apiClient";
 import { fetchNotifications, NOTIFICATION_STATUS, NOTIFICATION_TYPE } from "@/lib/notifications";
 import LogoIcon from "@/components/LogoIcon";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "./agence.module.css";
 
-const NAV_SECTIONS = [
-  {
-    label: "Général",
-    items: [
-      { href: "/backoffice/agence", label: "Dashboard", icon: "bi-grid", exact: true },
-      { href: "/backoffice/agence/biens", label: "Biens", icon: "bi-house-door" },
-      { href: "/backoffice/agence/lots", label: "Lots", icon: "bi-grid-3x3-gap" },
-      { href: "/backoffice/agence/baux", label: "Baux", icon: "bi-file-earmark-text" },
-      { href: "/backoffice/agence/locataires", label: "Locataires", icon: "bi-people" },
-    ],
-  },
-  {
-    label: "Finances",
-    items: [
-      { href: "/backoffice/agence/echeances", label: "Échéances", icon: "bi-calendar-check" },
-      { href: "/backoffice/agence/paiements", label: "Paiements", icon: "bi-receipt" },
-    ],
-  },
-  {
-    label: "Échanges",
-    items: [
-      { href: "/backoffice/agence/discussions", label: "Discussions", icon: "bi-chat-dots", badgeKey: "discussions" },
-      { href: "/backoffice/agence/notifications", label: "Notifications", icon: "bi-bell", badgeKey: "notifications" },
-    ],
-  },
-  {
-    label: "Compte",
-    items: [{ href: "/backoffice/agence/parametres", label: "Paramètres", icon: "bi-gear" }],
-  },
-];
+function useNavSections() {
+  const { t } = useLanguage();
+  return [
+    {
+      label: t("bo.agenceSidebar.general"),
+      items: [
+        { href: "/backoffice/agence", label: t("bo.agenceSidebar.dashboard"), icon: "bi-grid", exact: true },
+        { href: "/backoffice/agence/biens", label: t("bo.agenceSidebar.biens"), icon: "bi-house-door" },
+        { href: "/backoffice/agence/lots", label: t("bo.agenceSidebar.lots"), icon: "bi-grid-3x3-gap" },
+        { href: "/backoffice/agence/baux", label: t("bo.agenceSidebar.baux"), icon: "bi-file-earmark-text" },
+        { href: "/backoffice/agence/locataires", label: t("bo.agenceSidebar.locataires"), icon: "bi-people" },
+        {
+          href: "/backoffice/agence/maintenance",
+          label: t("bo.agenceSidebar.maintenance"),
+          icon: "bi-tools",
+          badgeKey: "maintenance",
+        },
+      ],
+    },
+    {
+      label: t("bo.agenceSidebar.finances"),
+      items: [
+        { href: "/backoffice/agence/echeances", label: t("bo.agenceSidebar.echeances"), icon: "bi-calendar-check" },
+        { href: "/backoffice/agence/paiements", label: t("bo.agenceSidebar.paiements"), icon: "bi-receipt" },
+      ],
+    },
+    {
+      label: t("bo.agenceSidebar.exchanges"),
+      items: [
+        {
+          href: "/backoffice/agence/discussions",
+          label: t("bo.agenceSidebar.discussions"),
+          icon: "bi-chat-dots",
+          badgeKey: "discussions",
+        },
+        {
+          href: "/backoffice/agence/notifications",
+          label: t("bo.agenceSidebar.notifications"),
+          icon: "bi-bell",
+          badgeKey: "notifications",
+        },
+      ],
+    },
+    {
+      label: t("bo.agenceSidebar.account"),
+      items: [{ href: "/backoffice/agence/parametres", label: t("bo.agenceSidebar.settings"), icon: "bi-gear" }],
+    },
+  ];
+}
 
 export default function AgenceSidebar({ user, onLogout }) {
+  const { t } = useLanguage();
+  const NAV_SECTIONS = useNavSections();
   const pathname = usePathname();
   const initial = `${user?.prenom?.[0] || ""}${user?.nom?.[0] || ""}`.toUpperCase();
   const itemRefs = useRef({});
   const [bubble, setBubble] = useState(null);
-  const [badges, setBadges] = useState({ discussions: 0, notifications: 0 });
+  const [badges, setBadges] = useState({ discussions: 0, notifications: 0, maintenance: 0 });
 
   useEffect(() => {
     let cancelled = false;
@@ -55,7 +77,10 @@ export default function AgenceSidebar({ user, onLogout }) {
         const unread = list.filter((n) => n.statut === NOTIFICATION_STATUS.NON_LUE);
         setBadges({
           discussions: unread.filter((n) => n.type === NOTIFICATION_TYPE.DISCUSSION).length,
-          notifications: unread.filter((n) => n.type !== NOTIFICATION_TYPE.DISCUSSION).length,
+          maintenance: unread.filter((n) => n.type === NOTIFICATION_TYPE.MAINTENANCE).length,
+          notifications: unread.filter(
+            (n) => n.type !== NOTIFICATION_TYPE.DISCUSSION && n.type !== NOTIFICATION_TYPE.MAINTENANCE
+          ).length,
         });
       } catch {
         // Les badges sont un simple confort d'UX : une erreur ne doit jamais casser la sidebar.
@@ -78,7 +103,7 @@ export default function AgenceSidebar({ user, onLogout }) {
       });
     });
     return found;
-  }, [pathname]);
+  }, [pathname, NAV_SECTIONS]);
 
   useEffect(() => {
     const el = activeHref ? itemRefs.current[activeHref] : null;
@@ -135,9 +160,9 @@ export default function AgenceSidebar({ user, onLogout }) {
           <span className={styles.userName}>
             {user?.prenom} {user?.nom}
           </span>
-          <span className={styles.userRole}>Gestionnaire</span>
+          <span className={styles.userRole}>{t("bo.agenceSidebar.role")}</span>
         </div>
-        <button type="button" className={styles.logoutButton} onClick={onLogout} title="Se déconnecter">
+        <button type="button" className={styles.logoutButton} onClick={onLogout} title={t("bo.common.logout")}>
           <i className="bi bi-box-arrow-right" />
         </button>
       </div>

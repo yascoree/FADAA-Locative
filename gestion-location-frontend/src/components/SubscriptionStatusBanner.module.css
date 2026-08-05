@@ -1,0 +1,69 @@
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.65rem 1.2rem;
+  font-size: 0.86rem;
+  font-weight: 550;
+  color: #fff;
+}
+
+.bannerDanger {
+  background: var(--danger);
+}
+
+.bannerWarning {
+  background: var(--warning);
+  color: var(--text);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  color: inherit;
+  font-weight: 650;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  transition: background 0.12s ease;
+}
+
+.cta:hover {
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  opacity: 0.75;
+  cursor: pointer;
+  transition: background 0.12s ease, opacity 0.12s ease;
+}
+
+.dismiss:hover {
+  background: rgba(255, 255, 255, 0.22);
+  opacity: 1;
+}
+
+@media (max-width: 700px) {
+  .banner {
+    flex-wrap: wrap;
+  }
+}
