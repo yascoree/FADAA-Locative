@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from jose import JWTError
@@ -14,6 +15,9 @@ from app.core.security import (
     password_fingerprint,
     verify_password,
 )
+from app.api.deps import active_agence_id
+from app.models.agence import Agence
+from app.models.agence_membre import AgenceMembre, AgenceMembreStatus, RoleAgence
 from app.models.utilisateur import StatutCompte, Utilisateur, UtilisateurRole
 from app.schemas.auth import Token
 from app.schemas.utilisateur import UtilisateurCreate
@@ -21,16 +25,23 @@ from app.services import subscription_service
 from app.services.email_service import send_email
 from app.services.exceptions import BadRequest, Forbidden, NotFound
 
-PUBLIC_REGISTER_ROLES = (UtilisateurRole.PROPRIETAIRE,)
+PUBLIC_REGISTER_ROLES = (UtilisateurRole.PROPRIETAIRE, UtilisateurRole.GESTIONNAIRE)
 
 
 def register(db: Session, utilisateur_in: UtilisateurCreate) -> Utilisateur:
-    """Public registration — Proprietaire only. A Gestionnaire has no self-service
-    signup: their account is created by a proprietaire (see
-    utilisateur_service.create_gestionnaire_invite), which is the only way they get
-    access. Admin/Locataire are also excluded (created via mandate or by an admin)."""
+    """Public registration — Proprietaire or Gestionnaire (self-service "Agence"
+    signup). Admin/Locataire are excluded (created via mandate or by an admin).
+
+    A self-registered Gestionnaire becomes the ADMIN of a brand-new single-member
+    Agence named after utilisateur_in.agence_nom (required for this role — the
+    agence's name is distinct from the responsible person's own name, so it can't
+    be derived the way create_gestionnaire_invite does it). They set their own
+    password immediately (ACTIF), with no invite/reset-password step in between."""
     if utilisateur_in.role not in PUBLIC_REGISTER_ROLES:
-        raise BadRequest("role must be PROPRIETAIRE")
+        raise BadRequest("role must be PROPRIETAIRE or GESTIONNAIRE")
+
+    if utilisateur_in.role == UtilisateurRole.GESTIONNAIRE and not (utilisateur_in.agence_nom or "").strip():
+        raise BadRequest("agence_nom is required to register as an agence")
 
     existing = db.query(Utilisateur).filter(Utilisateur.email == utilisateur_in.email).first()
     if existing:
@@ -49,10 +60,27 @@ def register(db: Session, utilisateur_in: UtilisateurCreate) -> Utilisateur:
     db.commit()
     db.refresh(utilisateur)
 
-    # Each proprietaire starts automatically with a free trial subscription.
-    # Gestionnaires have no subscription of their own.
     if utilisateur.role == UtilisateurRole.PROPRIETAIRE:
+        # Each proprietaire starts automatically with a free trial subscription.
+        # Gestionnaires have no subscription of their own — their agence is billed
+        # through the proprietaires who mandate it.
         subscription_service.create_trial_subscription(db, utilisateur.id)
+    elif utilisateur.role == UtilisateurRole.GESTIONNAIRE:
+        agence = Agence(nom=utilisateur_in.agence_nom.strip())
+        db.add(agence)
+        db.commit()
+        db.refresh(agence)
+
+        db.add(
+            AgenceMembre(
+                agence_id=agence.id,
+                utilisateur_id=utilisateur.id,
+                role_agence=RoleAgence.ADMIN,
+                statut=AgenceMembreStatus.ACTIF,
+                date_debut=datetime.utcnow().date(),
+            )
+        )
+        db.commit()
 
     return utilisateur
 
@@ -63,6 +91,12 @@ def login(db: Session, email: str, password: str) -> Token:
         raise Forbidden("Incorrect email or password")
     if utilisateur.statut_compte != StatutCompte.ACTIF:
         raise Forbidden("Account is not active")
+    if utilisateur.role == UtilisateurRole.GESTIONNAIRE and active_agence_id(db, utilisateur.id) is None:
+        # Un gestionnaire révoqué de son agence (voir agence_service.remove_agence_member)
+        # n'a plus rien à faire dans l'app tant qu'il n'est pas réinvité ailleurs —
+        # même garde-fou que get_current_user, ici pour rejeter dès la connexion
+        # plutôt que de délivrer un token qui échouera à la toute première requête.
+        raise Forbidden("Your access to this agence has been revoked")
 
     access_token = create_access_token(data={"sub": str(utilisateur.id)})
     refresh_token = create_refresh_token(data={"sub": str(utilisateur.id)})

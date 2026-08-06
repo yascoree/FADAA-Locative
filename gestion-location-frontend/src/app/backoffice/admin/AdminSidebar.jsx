@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { API_BASE_URL } from "@/lib/apiClient";
-import { fetchNotifications, NOTIFICATION_STATUS, NOTIFICATION_TYPE } from "@/lib/notifications";
+import { fetchNotifications, NOTIFICATION_STATUS, NOTIFICATION_TYPE, NOTIFICATIONS_CHANGED_EVENT } from "@/lib/notifications";
 import { fetchDemandesDemo, DEMANDE_DEMO_STATUS } from "@/lib/demandesDemo";
 import { fetchPlanChangeRequests, PLAN_CHANGE_REQUEST_STATUS } from "@/lib/subscriptions";
 import LogoIcon from "@/components/LogoIcon";
@@ -89,10 +89,12 @@ export default function AdminSidebar({ user, onLogout }) {
       }
     }
     load();
-    const interval = setInterval(load, 15000);
+    const interval = setInterval(load, 8000);
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, load);
     return () => {
       cancelled = true;
       clearInterval(interval);
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, load);
     };
   }, []);
 

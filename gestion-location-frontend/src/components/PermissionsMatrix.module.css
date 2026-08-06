@@ -1,0 +1,114 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1.1rem 1.4rem;
+}
+
+.group {
+  background: var(--bg);
+  border-radius: var(--radius-field);
+  padding: 0.85rem 0.9rem;
+}
+
+.groupLabel {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--secondary);
+  margin-bottom: 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.groupLabel i {
+  color: var(--primary);
+  font-size: 0.86rem;
+}
+
+.groupBlockedHint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: -0.2rem 0 0.6rem;
+}
+
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.35rem 0;
+  cursor: pointer;
+}
+
+.switchRow:not(:last-child) {
+  border-bottom: 1px dashed var(--border);
+}
+
+.switchRowLabel {
+  font-size: 0.83rem;
+  color: var(--text);
+}
+
+.switchRowDisabled {
+  cursor: not-allowed;
+}
+
+.switchRowDisabled .switchRowLabel {
+  color: var(--text-muted);
+}
+
+.switchTrack {
+  position: relative;
+  width: 2.15rem;
+  height: 1.2rem;
+  border-radius: 999px;
+  background: var(--border);
+  flex-shrink: 0;
+  transition: background 0.16s ease;
+}
+
+.switchTrack::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(1.2rem - 4px);
+  height: calc(1.2rem - 4px);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.16s ease;
+}
+
+.switchInput {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.switchInput:checked + .switchTrack {
+  background: var(--primary);
+}
+
+.switchInput:checked + .switchTrack::after {
+  transform: translateX(0.95rem);
+}
+
+.switchInput:disabled {
+  cursor: not-allowed;
+}
+
+.switchInput:disabled + .switchTrack {
+  opacity: 0.5;
+}
+
+.switchInput:focus-visible + .switchTrack {
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}

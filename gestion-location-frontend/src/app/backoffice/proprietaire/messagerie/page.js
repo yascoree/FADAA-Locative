@@ -5,6 +5,7 @@ import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import { useAuth } from "@/context/AuthContext";
 import { fetchLocataires } from "@/lib/tenants";
 import { fetchMandates, MANDAT_STATUS } from "@/lib/mandates";
+import { fetchAgenceMembers } from "@/lib/agences";
 import { fetchDiscussions, sendMessage, deleteDiscussion, uploadDiscussionAttachment } from "@/lib/discussions";
 import { fetchNotifications, markNotificationRead, NOTIFICATION_STATUS, NOTIFICATION_TYPE } from "@/lib/notifications";
 import { fetchReclamations, createReclamation, RECLAMATION_STATUS, RECLAMATION_STATUS_LABELS } from "@/lib/reclamations";
@@ -56,7 +57,7 @@ export default function ProprietaireMessageriePage() {
   const viewTabRefs = useRef({});
   const [viewTabIndicator, setViewTabIndicator] = useState(null);
   const [locataires, setLocataires] = useState([]);
-  const [mandates, setMandates] = useState([]);
+  const [agenceMembers, setAgenceMembers] = useState([]);
   const [messages, setMessages] = useState([]);
   const [reclamations, setReclamations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -86,9 +87,19 @@ export default function ProprietaireMessageriePage() {
           fetchReclamations(),
         ]);
         setLocataires(locatairesList);
-        setMandates(mandatesList);
         setMessages(discussions);
         setReclamations(reclamationsList);
+
+        // Un mandat pointe vers une Agence, pas vers un employé précis : pour
+        // pouvoir écrire à une vraie personne (Discussion est user <-> user), on
+        // récupère les membres actifs de chaque agence mandatée.
+        const activeAgenceIds = [
+          ...new Set(
+            mandatesList.filter((m) => m.statut === MANDAT_STATUS.ACTIF && m.agence).map((m) => m.agence.id)
+          ),
+        ];
+        const membersByAgence = await Promise.all(activeAgenceIds.map((id) => fetchAgenceMembers(id)));
+        setAgenceMembers(membersByAgence.flat());
       } catch (err) {
         setLoadError(extractErrorMessage(err));
       } finally {
@@ -121,14 +132,14 @@ export default function ProprietaireMessageriePage() {
       photo: l.photo,
       role: t("bo.proprietaireMessagerie.roleTenant"),
     }));
-    const managerContacts = mandates
-      .filter((m) => m.statut === MANDAT_STATUS.ACTIF && m.gestionnaire)
-      .map((m) => ({
-        id: m.gestionnaire.id,
-        nom: m.gestionnaire.nom,
-        prenom: m.gestionnaire.prenom,
-        email: m.gestionnaire.email,
-        photo: m.gestionnaire.photo,
+    const managerContacts = agenceMembers
+      .filter((membre) => membre.utilisateur)
+      .map((membre) => ({
+        id: membre.utilisateur.id,
+        nom: membre.utilisateur.nom,
+        prenom: membre.utilisateur.prenom,
+        email: membre.utilisateur.email,
+        photo: membre.utilisateur.photo,
         role: t("bo.proprietaireMessagerie.roleManager"),
       }));
     const acceptedReclamation = reclamations.find(
@@ -150,7 +161,7 @@ export default function ProprietaireMessageriePage() {
       (c, i, arr) => arr.findIndex((o) => o.id === c.id) === i
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locataires, mandates, reclamations]);
+  }, [locataires, agenceMembers, reclamations]);
 
   useEffect(() => {
     // Ouvrir la messagerie vaut lecture : on marque les notifications de type

@@ -27,7 +27,10 @@ def create_reclamation(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(require_proprietaire),
 ):
-    return reclamation_service.create_reclamation(db, current_user, reclamation_in)
+    try:
+        return reclamation_service.create_reclamation(db, current_user, reclamation_in)
+    except BadRequest as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
 @router.put("/{reclamation_id}", response_model=ReclamationRead)

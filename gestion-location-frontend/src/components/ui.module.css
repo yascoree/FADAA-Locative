@@ -219,6 +219,16 @@
   max-width: 760px;
 }
 
+/* Plein écran : pour une configuration riche (ex. matrice de permissions) qui
+   mérite tout l'espace disponible sans pour autant devenir une page à part —
+   l'utilisateur garde le contexte de la liste derrière lui. */
+.modalFull {
+  max-width: none;
+  width: calc(100vw - 3rem);
+  height: calc(100vh - 3rem);
+  max-height: none;
+}
+
 .modalHeader {
   display: flex;
   align-items: flex-start;

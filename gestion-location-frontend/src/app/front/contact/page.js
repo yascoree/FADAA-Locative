@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import NavBar from "@/components/landing/NavBar";
 import Footer from "@/components/landing/Footer";
 import { createContactMessage } from "@/lib/contactMessages";
@@ -12,14 +13,22 @@ import styles from "./contact.module.css";
 const CONTACT_ICONS = ["bi-envelope", "bi-telephone", "bi-geo-alt", "bi-clock"];
 const CONTACT_HREFS = ["mailto:contact@fadaalocative.ma", "tel:+212500000000", null, null];
 
+// Index dans contact.subjects (même ordre dans les 3 langues) — utilisé pour
+// pré-sélectionner "Demande de démo" quand on arrive via ?subject=demo
+// (CTA "Demander une démo" de la landing).
+const SUBJECT_INDEX_DEMO = 1;
+
 function ContactForm() {
   const { t } = useLanguage();
+  const searchParams = useSearchParams();
   const subjects = t("contact.subjects");
   const [prenom, setPrenom] = useState("");
   const [nom, setNom] = useState("");
   const [email, setEmail] = useState("");
   const [telephone, setTelephone] = useState("");
-  const [sujet, setSujet] = useState(subjects[0]);
+  const [sujet, setSujet] = useState(
+    searchParams.get("subject") === "demo" ? subjects[SUBJECT_INDEX_DEMO] : subjects[0]
+  );
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState("idle"); // idle | busy | sent | error
   const [error, setError] = useState(null);
@@ -231,7 +240,9 @@ export default function ContactPage() {
           </div>
         </div>
 
-        <ContactForm />
+        <Suspense fallback={null}>
+          <ContactForm />
+        </Suspense>
       </div>
 
       <Footer />

@@ -17,3 +17,13 @@ export async function createLocataire({ nom, prenom, email, motDePasse, statutCo
   });
   return data;
 }
+
+export async function deactivateLocataire(locataireId) {
+  const { data } = await apiClient.post(`/tenants/${locataireId}/deactivate`);
+  return data;
+}
+
+export async function activateLocataire(locataireId) {
+  const { data } = await apiClient.post(`/tenants/${locataireId}/activate`);
+  return data;
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import { useAuth } from "@/context/AuthContext";
 import { fetchBiens } from "@/lib/properties";
@@ -37,6 +38,7 @@ function formatDayLabel(value, t) {
 export default function LocataireDiscussionsPage() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const searchParams = useSearchParams();
   const [biens, setBiens] = useState([]);
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -142,19 +144,32 @@ export default function LocataireDiscussionsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contacts, messages, user?.id]);
 
-  const selectedConversation = conversations.find((c) => c.contact.id === selectedId) || null;
+  // Arrivée via "Contacter le propriétaire" (page Bail) : ?contact=<id> ouvre
+  // directement le fil concerné plutôt que de laisser l'utilisateur le
+  // rechercher dans la liste — tant qu'il n'a pas explicitement cliqué un
+  // autre contact (selectedId reste alors sa dernière sélection réelle).
+  const contactParam = searchParams.get("contact");
+  const paramContactId = contactParam ? Number(contactParam) : null;
+  const activeContactId =
+    selectedId !== null ? selectedId : contacts.some((c) => c.id === paramContactId) ? paramContactId : null;
+
+  const selectedConversation = conversations.find((c) => c.contact.id === activeContactId) || null;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [selectedConversation?.thread.length, selectedId]);
+  }, [selectedConversation?.thread.length, activeContactId]);
 
   async function handleSend(e) {
     e.preventDefault();
-    if ((!draft.trim() && !stagedAttachment) || !selectedId) return;
+    if ((!draft.trim() && !stagedAttachment) || !activeContactId) return;
     setSendBusy(true);
     setSendError(null);
     try {
-      const created = await sendMessage({ destinataireId: selectedId, message: draft.trim(), attachment: stagedAttachment });
+      const created = await sendMessage({
+        destinataireId: activeContactId,
+        message: draft.trim(),
+        attachment: stagedAttachment,
+      });
       setMessages((prev) => [...prev, created]);
       setDraft("");
       setStagedAttachment(null);
@@ -168,7 +183,7 @@ export default function LocataireDiscussionsPage() {
   async function handleAttachmentChange(e) {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file || !selectedId) return;
+    if (!file || !activeContactId) return;
     setAttachBusy(true);
     setSendError(null);
     try {
@@ -232,7 +247,7 @@ export default function LocataireDiscussionsPage() {
                 <button
                   type="button"
                   key={contact.id}
-                  className={`${styles.msgContactItem} ${selectedId === contact.id ? styles.msgContactItemActive : ""}`}
+                  className={`${styles.msgContactItem} ${activeContactId === contact.id ? styles.msgContactItemActive : ""}`}
                   onClick={() => setSelectedId(contact.id)}
                 >
                   {contact.photo ? (

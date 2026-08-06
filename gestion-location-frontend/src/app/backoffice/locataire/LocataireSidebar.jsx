@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { API_BASE_URL } from "@/lib/apiClient";
-import { fetchNotifications, NOTIFICATION_STATUS, NOTIFICATION_TYPE } from "@/lib/notifications";
+import { fetchNotifications, NOTIFICATION_STATUS, NOTIFICATION_TYPE, NOTIFICATIONS_CHANGED_EVENT } from "@/lib/notifications";
 import LogoIcon from "@/components/LogoIcon";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "./locataire.module.css";
@@ -76,10 +76,12 @@ export default function LocataireSidebar({ user, onLogout }) {
       }
     }
     load();
-    const interval = setInterval(load, 15000);
+    const interval = setInterval(load, 8000);
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, load);
     return () => {
       cancelled = true;
       clearInterval(interval);
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, load);
     };
   }, []);
 

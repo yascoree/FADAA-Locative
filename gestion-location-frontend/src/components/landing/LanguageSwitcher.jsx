@@ -26,8 +26,9 @@ export default function LanguageSwitcher() {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-label={current.label}
       >
-        {current.short} <i className={`bi bi-chevron-down ${open ? styles.langSwitchChevronOpen : ""}`} />
+        <i className="bi bi-globe2" />
       </button>
       {open && (
         <ul className={styles.langSwitchMenu} role="listbox">

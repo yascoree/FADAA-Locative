@@ -556,6 +556,170 @@
   margin: 0 0 1.25rem;
 }
 
+/* ---------- En-tête de page avec action (ex: "Inviter un client") ---------- */
+
+.pageHeaderRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.inviteButton {
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 650;
+  font-size: 0.86rem;
+  padding: 0.68rem 1.2rem;
+  border-radius: var(--radius-field);
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: fit-content;
+}
+
+.inviteButton:hover {
+  background: var(--primary-dark);
+}
+
+/* ---------- Bascule d'onglets (ex: Mes clients / Invitations) ---------- */
+
+.tabSwitch {
+  display: inline-flex;
+  gap: 0.25rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 0.25rem;
+  border-radius: var(--radius-field);
+  margin-bottom: 1.25rem;
+}
+
+.tabBtn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.5rem 0.9rem;
+  border-radius: calc(var(--radius-field) - 4px);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.tabBtnActive {
+  background: var(--surface);
+  color: var(--primary-dark);
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+
+.tabBtn:hover:not(.tabBtnActive) {
+  color: var(--secondary);
+}
+
+/* ---------- Modale "Inviter un client" ---------- */
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  margin-bottom: 1.1rem;
+}
+
+.inviteField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.inviteField label {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--secondary);
+}
+
+.inviteField input {
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field);
+  padding: 0.65rem 0.8rem;
+}
+
+.inviteField input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.inviteLinkBox {
+  margin-top: 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  background: rgba(207, 187, 153, 0.16);
+  border: 1px solid rgba(207, 187, 153, 0.4);
+  border-radius: var(--radius-field);
+  padding: 0.85rem 1rem;
+}
+
+.inviteLinkBox > i {
+  color: var(--primary);
+  font-size: 1.1rem;
+  margin-top: 0.1rem;
+  flex-shrink: 0;
+}
+
+.inviteLinkLabel {
+  font-size: 0.82rem;
+  color: var(--secondary);
+  line-height: 1.45;
+  margin-bottom: 0.55rem;
+}
+
+.inviteLinkRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.inviteLinkRow input {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+.inviteLinkRow button {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.inviteLinkRow button:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
 .banner {
   border-radius: var(--radius-field);
   padding: 0.65rem 0.9rem;
@@ -2214,4 +2378,65 @@
   background: var(--primary);
   flex-shrink: 0;
   margin-top: 0.42rem;
+}
+
+/* ---------- Page Clients ---------- */
+
+.badgeInfo {
+  background: var(--info-soft);
+  color: var(--info);
+}
+
+.clientRow {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 0.6rem;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.clientRow:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.clientRowBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.clientRowTop {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.mandatRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.mandatRow:last-child {
+  border-bottom: none;
+}
+
+.mandatRowLabel {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.25rem;
 }

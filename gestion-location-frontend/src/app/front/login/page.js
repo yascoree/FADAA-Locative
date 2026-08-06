@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { ROLE_DASHBOARD_PATH, PUBLIC_REGISTER_ROLES } from "@/lib/roles";
+import { ROLE_DASHBOARD_PATH, publicRegisterRoles, ROLES } from "@/lib/roles";
 import { extractErrorMessage } from "@/lib/apiClient";
 import { requestPasswordReset } from "@/lib/passwordReset";
 import { fetchAvis } from "@/lib/avis";
@@ -14,6 +14,7 @@ import LogoIcon from "@/components/LogoIcon";
 import styles from "./login.module.css";
 
 const QUOTE_ROTATION_MS = 6000;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function EyeIcon() {
   return (
@@ -122,6 +123,63 @@ function BrandPanel() {
   );
 }
 
+function getPasswordStrength(pw) {
+  if (!pw) return 0;
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  if (score <= 1) return 1;
+  if (score <= 3) return 2;
+  return 3;
+}
+
+const STRENGTH_BAR_CLASS = [null, "pwStrengthBarWeak", "pwStrengthBarMedium", "pwStrengthBarStrong"];
+const STRENGTH_LABEL_CLASS = [null, "pwStrengthLabelWeak", "pwStrengthLabelMedium", "pwStrengthLabelStrong"];
+const STRENGTH_LABEL_KEY = [null, "login.pwStrengthWeak", "login.pwStrengthMedium", "login.pwStrengthStrong"];
+
+function PasswordStrengthMeter({ password }) {
+  const { t } = useLanguage();
+  const strength = getPasswordStrength(password);
+  const hasLength = password.length >= 8;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+
+  return (
+    <div>
+      <div className={styles.pwStrengthMeter}>
+        {[1, 2, 3].map((bar) => (
+          <span
+            key={bar}
+            className={`${styles.pwStrengthBar} ${bar <= strength ? styles[STRENGTH_BAR_CLASS[strength]] : ""}`}
+          />
+        ))}
+      </div>
+      {password.length > 0 && (
+        <p className={`${styles.pwStrengthLabel} ${styles[STRENGTH_LABEL_CLASS[strength]]}`}>
+          {t("login.pwStrengthLabel")} : {t(STRENGTH_LABEL_KEY[strength])}
+        </p>
+      )}
+      <ul className={styles.pwChecklist}>
+        <li className={`${styles.pwChecklistItem} ${hasLength ? styles.pwChecklistItemMet : ""}`}>
+          <span className={styles.pwChecklistDot}>{hasLength && <i className="bi bi-check" />}</span>
+          {t("login.pwReqLength")}
+        </li>
+        <li className={`${styles.pwChecklistItem} ${hasUpper ? styles.pwChecklistItemMet : ""}`}>
+          <span className={styles.pwChecklistDot}>{hasUpper && <i className="bi bi-check" />}</span>
+          {t("login.pwReqUpper")}
+        </li>
+        <li className={`${styles.pwChecklistItem} ${hasNumber ? styles.pwChecklistItemMet : ""}`}>
+          <span className={styles.pwChecklistDot}>{hasNumber && <i className="bi bi-check" />}</span>
+          {t("login.pwReqNumber")}
+        </li>
+      </ul>
+    </div>
+  );
+}
+
 function PasswordField({ id, label, value, onChange, placeholder, autoComplete, minLength, invalid }) {
   const { t } = useLanguage();
   const [visible, setVisible] = useState(false);
@@ -176,7 +234,13 @@ export default function LoginPage() {
   const [forgotError, setForgotError] = useState(null);
 
   // ---- Register form state ----
-  const role = PUBLIC_REGISTER_ROLES[0].value;
+  // Étape 1 : "Qui êtes-vous ?" (Propriétaire ou Agence) — ce choix vient en
+  // premier car il détermine les champs affichés à l'étape 2 (une agence a un
+  // nom distinct du nom de son responsable, un propriétaire non).
+  const REGISTER_STEPS_TOTAL = 4;
+  const [registerStep, setRegisterStep] = useState(1);
+  const [accountType, setAccountType] = useState(null);
+  const [agenceName, setAgenceName] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
@@ -186,10 +250,31 @@ export default function LoginPage() {
   const [registerBusy, setRegisterBusy] = useState(false);
   const [registerBanner, setRegisterBanner] = useState(null);
 
+  const isAgence = Number(accountType) === ROLES.GESTIONNAIRE;
   const passwordsMatch = registerPassword.length > 0 && registerPassword === registerConfirm;
   const passwordMismatchTyped = registerConfirm.length > 0 && !passwordsMatch;
-  const canSubmitRegister =
-    passwordsMatch && registerPassword.length >= 8 && terms && !registerBusy && firstName && lastName && registerEmail;
+  const emailFormatValid = EMAIL_REGEX.test(registerEmail.trim());
+  const emailInvalidTyped = registerEmail.trim().length > 0 && !emailFormatValid;
+  const step1Valid = accountType !== null;
+  const step2Valid =
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0 &&
+    emailFormatValid &&
+    (!isAgence || agenceName.trim().length > 0);
+  const step3Valid = passwordsMatch && registerPassword.length >= 8;
+  const step4Valid = terms;
+  const canSubmitRegister = step1Valid && step2Valid && step3Valid && step4Valid && !registerBusy;
+
+  function goToNextRegisterStep() {
+    if (registerStep === 1 && !step1Valid) return;
+    if (registerStep === 2 && !step2Valid) return;
+    if (registerStep === 3 && !step3Valid) return;
+    setRegisterStep((s) => Math.min(s + 1, REGISTER_STEPS_TOTAL));
+  }
+
+  function goToPrevRegisterStep() {
+    setRegisterStep((s) => Math.max(s - 1, 1));
+  }
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -214,7 +299,8 @@ export default function LoginPage() {
         prenom: firstName,
         email: registerEmail,
         mot_de_passe: registerPassword,
-        role: Number(role),
+        role: Number(accountType),
+        ...(isAgence ? { agence_nom: agenceName.trim() } : {}),
       });
       const me = await login(registerEmail, registerPassword);
       router.push(ROLE_DASHBOARD_PATH[me.role] || "/");
@@ -225,6 +311,7 @@ export default function LoginPage() {
   }
 
   function switchTab(tab) {
+    if (tab === "register" && activeTab !== "register") setRegisterStep(1);
     setActiveTab(tab);
   }
 
@@ -348,103 +435,211 @@ export default function LoginPage() {
                 </button>
               </p>
 
+              <div className={styles.stepProgress} role="progressbar" aria-valuenow={registerStep} aria-valuemin={1} aria-valuemax={REGISTER_STEPS_TOTAL}>
+                {Array.from({ length: REGISTER_STEPS_TOTAL }, (_, i) => i + 1).map((s) => (
+                  <span
+                    key={s}
+                    className={`${styles.stepSegment} ${
+                      s < registerStep ? styles.stepSegmentDone : s === registerStep ? styles.stepSegmentActive : ""
+                    }`}
+                  >
+                    <span className={styles.stepSegmentFill} />
+                  </span>
+                ))}
+              </div>
+              <span className={styles.stepMeta}>
+                {t("login.stepOf", {
+                  step: registerStep,
+                  total: REGISTER_STEPS_TOTAL,
+                  label: t(`login.step${registerStep}Label`),
+                })}
+              </span>
+              <p className={styles.stepSubtitle}>{t(`login.step${registerStep}Subtitle`)}</p>
+
               {registerBanner && (
                 <div className={`${styles.banner} ${registerBanner.type === "success" ? styles.bannerSuccess : styles.bannerError}`}>
                   {registerBanner.message}
                 </div>
               )}
 
-              <span className={styles.accountBadge}>
-                <i className="bi bi-house-check-fill" />
-                {t("login.accountBadge")}
-              </span>
+              {registerStep === 1 && (
+                <>
+                  <div className={styles.accountTypeGrid} role="radiogroup" aria-label={t("login.accountTypeLabel")}>
+                    {publicRegisterRoles(t).map((opt) => (
+                      <button
+                        type="button"
+                        key={opt.value}
+                        role="radio"
+                        aria-checked={accountType === opt.value}
+                        className={`${styles.accountTypeCard} ${
+                          accountType === opt.value ? styles.accountTypeCardActive : ""
+                        }`}
+                        onClick={() => setAccountType(opt.value)}
+                      >
+                        <i className={`bi ${opt.icon} ${styles.accountTypeIcon}`} />
+                        <span className={styles.accountTypeTitle}>{opt.label}</span>
+                        <span className={styles.accountTypeHint}>{opt.hint}</span>
+                      </button>
+                    ))}
+                  </div>
 
-              <div className={styles.nameGrid}>
-                <div className={styles.field}>
-                  <label htmlFor="register-firstname">{t("login.firstNameLabel")}</label>
-                  <input
-                    type="text"
-                    id="register-firstname"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    placeholder={t("login.firstNameLabel")}
-                    autoComplete="given-name"
-                    required
+                  <p className={styles.alreadyInvited}>
+                    {t("login.alreadyInvitedPrefix")}{" "}
+                    <button type="button" onClick={() => switchTab("login")}>
+                      {t("login.alreadyInvitedLink")}
+                    </button>
+                  </p>
+
+                  <div className={styles.wizardNav}>
+                    <button type="button" className={styles.btnSubmit} disabled={!step1Valid} onClick={goToNextRegisterStep}>
+                      {t("login.btnNext")}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {registerStep === 2 && (
+                <>
+                  {isAgence && (
+                    <div className={styles.field}>
+                      <label htmlFor="register-agence-name">{t("login.agenceNameLabel")}</label>
+                      <input
+                        type="text"
+                        id="register-agence-name"
+                        value={agenceName}
+                        onChange={(e) => setAgenceName(e.target.value)}
+                        placeholder={t("login.agenceNamePlaceholder")}
+                        autoComplete="organization"
+                        required
+                      />
+                    </div>
+                  )}
+
+                  {isAgence && <span className={styles.fieldGroupLabel}>{t("login.responsableLabel")}</span>}
+
+                  <div className={styles.nameGrid}>
+                    <div className={styles.field}>
+                      <label htmlFor="register-firstname">{t("login.firstNameLabel")}</label>
+                      <input
+                        type="text"
+                        id="register-firstname"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        placeholder={t("login.firstNameLabel")}
+                        autoComplete="given-name"
+                        required
+                      />
+                    </div>
+                    <div className={styles.field}>
+                      <label htmlFor="register-lastname">{t("login.lastNameLabel")}</label>
+                      <input
+                        type="text"
+                        id="register-lastname"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        placeholder={t("login.lastNameLabel")}
+                        autoComplete="family-name"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className={styles.field}>
+                    <label htmlFor="register-email">{isAgence ? t("login.emailProLabel") : t("login.emailLabel")}</label>
+                    <input
+                      type="email"
+                      id="register-email"
+                      value={registerEmail}
+                      onChange={(e) => setRegisterEmail(e.target.value)}
+                      placeholder="vous@exemple.com"
+                      autoComplete="email"
+                      data-invalid={emailInvalidTyped ? "true" : "false"}
+                      required
+                    />
+                    {emailInvalidTyped && <p className={styles.fieldError}>{t("login.emailInvalid")}</p>}
+                  </div>
+
+                  <div className={styles.wizardNav}>
+                    <button type="button" className={styles.btnGhost} onClick={goToPrevRegisterStep}>
+                      {t("login.btnBack")}
+                    </button>
+                    <button type="button" className={styles.btnSubmit} disabled={!step2Valid} onClick={goToNextRegisterStep}>
+                      {t("login.btnNext")}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {registerStep === 3 && (
+                <>
+                  <PasswordField
+                    id="register-password"
+                    label={t("login.passwordLabel")}
+                    value={registerPassword}
+                    onChange={setRegisterPassword}
+                    placeholder={t("login.pwReqLength")}
+                    autoComplete="new-password"
+                    minLength={8}
                   />
-                </div>
-                <div className={styles.field}>
-                  <label htmlFor="register-lastname">{t("login.lastNameLabel")}</label>
-                  <input
-                    type="text"
-                    id="register-lastname"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    placeholder={t("login.lastNameLabel")}
-                    autoComplete="family-name"
-                    required
-                  />
-                </div>
-              </div>
 
-              <div className={styles.field}>
-                <label htmlFor="register-email">{t("login.emailLabel")}</label>
-                <input
-                  type="email"
-                  id="register-email"
-                  value={registerEmail}
-                  onChange={(e) => setRegisterEmail(e.target.value)}
-                  placeholder="vous@exemple.com"
-                  autoComplete="email"
-                  required
-                />
-              </div>
+                  <PasswordStrengthMeter password={registerPassword} />
 
-              <PasswordField
-                id="register-password"
-                label={t("login.passwordLabel")}
-                value={registerPassword}
-                onChange={setRegisterPassword}
-                placeholder="8 caractères minimum"
-                autoComplete="new-password"
-                minLength={8}
-              />
+                  <div>
+                    <PasswordField
+                      id="register-password-confirm"
+                      label={t("login.confirmPasswordLabel")}
+                      value={registerConfirm}
+                      onChange={setRegisterConfirm}
+                      placeholder={t("login.confirmPasswordPlaceholder")}
+                      autoComplete="new-password"
+                      invalid={passwordMismatchTyped}
+                    />
+                    {passwordMismatchTyped && <p className={styles.fieldError}>{t("login.passwordMismatch")}</p>}
+                  </div>
 
-              <div>
-                <PasswordField
-                  id="register-password-confirm"
-                  label={t("login.confirmPasswordLabel")}
-                  value={registerConfirm}
-                  onChange={setRegisterConfirm}
-                  placeholder="Retapez votre mot de passe"
-                  autoComplete="new-password"
-                  invalid={passwordMismatchTyped}
-                />
-                {passwordMismatchTyped && <p className={styles.fieldError}>{t("login.passwordMismatch")}</p>}
-              </div>
+                  <div className={styles.wizardNav}>
+                    <button type="button" className={styles.btnGhost} onClick={goToPrevRegisterStep}>
+                      {t("login.btnBack")}
+                    </button>
+                    <button type="button" className={styles.btnSubmit} disabled={!step3Valid} onClick={goToNextRegisterStep}>
+                      {t("login.btnNext")}
+                    </button>
+                  </div>
+                </>
+              )}
 
-              <div className={`${styles.checkboxRow} ${styles.termsRow}`}>
-                <input
-                  type="checkbox"
-                  className={styles.checkbox}
-                  id="register-terms"
-                  checked={terms}
-                  onChange={(e) => setTerms(e.target.checked)}
-                />
-                <label htmlFor="register-terms">
-                  {t("login.termsPrefix")}{" "}
-                  <Link href="/front/conditions-utilisation" target="_blank">
-                    {t("login.termsLink")}
-                  </Link>{" "}
-                  {t("login.andWord")}{" "}
-                  <Link href="/front/politique-confidentialite" target="_blank">
-                    {t("login.privacyLink")}
-                  </Link>
-                </label>
-              </div>
+              {registerStep === 4 && (
+                <>
+                  <div className={`${styles.checkboxRow} ${styles.termsRow}`}>
+                    <input
+                      type="checkbox"
+                      className={styles.checkbox}
+                      id="register-terms"
+                      checked={terms}
+                      onChange={(e) => setTerms(e.target.checked)}
+                    />
+                    <label htmlFor="register-terms">
+                      {t("login.termsPrefix")}{" "}
+                      <Link href="/front/conditions-utilisation" target="_blank">
+                        {t("login.termsLink")}
+                      </Link>{" "}
+                      {t("login.andWord")}{" "}
+                      <Link href="/front/politique-confidentialite" target="_blank">
+                        {t("login.privacyLink")}
+                      </Link>
+                    </label>
+                  </div>
 
-              <button type="submit" className={styles.btnSubmit} disabled={!canSubmitRegister}>
-                {registerBusy ? t("login.submitCreating") : t("login.submitCreate")}
-              </button>
+                  <div className={styles.wizardNav}>
+                    <button type="button" className={styles.btnGhost} onClick={goToPrevRegisterStep}>
+                      {t("login.btnBack")}
+                    </button>
+                    <button type="submit" className={styles.btnSubmit} disabled={!canSubmitRegister}>
+                      {registerBusy ? t("login.submitCreating") : t("login.submitCreate")}
+                    </button>
+                  </div>
+                </>
+              )}
             </form>
           )}
 

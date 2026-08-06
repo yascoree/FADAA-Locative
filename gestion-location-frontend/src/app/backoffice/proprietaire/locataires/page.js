@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { extractErrorMessage, isPlanLimitError, API_BASE_URL } from "@/lib/apiClient";
-import { fetchLocataires, createLocataire } from "@/lib/tenants";
+import { fetchLocataires, createLocataire, deactivateLocataire, activateLocataire } from "@/lib/tenants";
 import { fetchBiens, fetchBaux, fetchEcheances, fetchPaiements, BAIL_STATUS, BAIL_STATUS_LABELS, ECHEANCE_STATUS } from "@/lib/properties";
 import { ACCOUNT_STATUS, accountStatusLabels } from "@/lib/users";
 import { SORT_OPTIONS, sortList } from "@/lib/sort";
@@ -102,6 +102,8 @@ export default function ProprietaireLocatairesPage() {
   const { checkBeforeOpen } = usePlanGate("locataires");
 
   const [selectedId, setSelectedId] = useState(null);
+  const [statusBusyId, setStatusBusyId] = useState(null);
+  const [statusBanner, setStatusBanner] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -237,6 +239,22 @@ export default function ProprietaireLocatairesPage() {
       }
     } finally {
       setFormBusy(false);
+    }
+  }
+
+  async function handleToggleStatus(locataire) {
+    setStatusBanner(null);
+    setStatusBusyId(locataire.id);
+    try {
+      const updated =
+        locataire.statut_compte === ACCOUNT_STATUS.ACTIF
+          ? await deactivateLocataire(locataire.id)
+          : await activateLocataire(locataire.id);
+      setLocataires((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+    } catch (err) {
+      setStatusBanner({ type: "error", message: extractErrorMessage(err) });
+    } finally {
+      setStatusBusyId(null);
     }
   }
 
@@ -477,6 +495,23 @@ export default function ProprietaireLocatairesPage() {
               </div>
             }
           >
+            <Banner banner={statusBanner} />
+            {selected.statut_compte !== ACCOUNT_STATUS.INVITE_EN_ATTENTE && (
+              <div className={styles.editActions} style={{ marginBottom: "1rem" }}>
+                <button
+                  type="button"
+                  className={selected.statut_compte === ACCOUNT_STATUS.ACTIF ? styles.btnOutline : styles.btn}
+                  onClick={() => handleToggleStatus(selected)}
+                  disabled={statusBusyId === selected.id}
+                >
+                  <i className={`bi ${selected.statut_compte === ACCOUNT_STATUS.ACTIF ? "bi-slash-circle" : "bi-check-circle"}`} />
+                  {selected.statut_compte === ACCOUNT_STATUS.ACTIF
+                    ? t("bo.proprietaireLocataires.deactivate")
+                    : t("bo.proprietaireLocataires.reactivate")}
+                </button>
+              </div>
+            )}
+
             <div className={styles.tenantStatTiles}>
               <div className={styles.tenantStatTile}>
                 <span className={styles.tenantStatTileIcon}>

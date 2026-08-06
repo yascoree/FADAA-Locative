@@ -1,5 +1,17 @@
 import apiClient from "@/lib/apiClient";
 
+// Émis après toute mutation (lue/masquée/restaurée) pour que NotificationBell
+// (topbar) se resynchronise immédiatement plutôt que d'attendre son prochain
+// polling — sans ça le badge restait visuellement en retard de plusieurs
+// secondes sur une action que l'utilisateur vient de faire sur la page Notifications.
+export const NOTIFICATIONS_CHANGED_EVENT = "fadaa:notifications-changed";
+
+function notifyNotificationsChanged() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
+  }
+}
+
 export const NOTIFICATION_STATUS = {
   NON_LUE: 1,
   LUE: 2,
@@ -48,6 +60,7 @@ export async function markNotificationRead(notificationId) {
   const { data } = await apiClient.put(`/notifications/${notificationId}`, {
     statut: NOTIFICATION_STATUS.LUE,
   });
+  notifyNotificationsChanged();
   return data;
 }
 
@@ -55,9 +68,11 @@ export async function markNotificationRead(notificationId) {
 // (elle reste en base pour l'historique) et la retire de la liste de l'utilisateur.
 export async function masquerNotification(notificationId) {
   await apiClient.delete(`/notifications/${notificationId}`);
+  notifyNotificationsChanged();
 }
 
 export async function restaurerNotification(notificationId) {
   const { data } = await apiClient.post(`/notifications/${notificationId}/restaurer`);
+  notifyNotificationsChanged();
   return data;
 }

@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.security import create_password_reset_token, hash_password
+from app.models.agence import Agence
+from app.models.agence_membre import AgenceMembre, AgenceMembreStatus, RoleAgence
 from app.models.mandat import Mandat, MandatStatus
 from app.models.utilisateur import StatutCompte, Utilisateur, UtilisateurRole
 from app.schemas.gestionnaire_invite import GestionnaireInviteCreate
@@ -45,12 +47,17 @@ def list_gestionnaires(db: Session, skip: int = 0, limit: int = 100) -> list[Uti
 def create_gestionnaire_invite(
     db: Session, proprietaire: Utilisateur, payload: GestionnaireInviteCreate
 ) -> tuple[Utilisateur, Mandat, Optional[str]]:
-    """Proprietaire-only: a Gestionnaire can no longer self-register (see
-    auth_service.PUBLIC_REGISTER_ROLES), so this is now the only way one gets an
-    account — created by the proprietaire they'll work for, with access granted in
-    the same step. The account starts INVITE_EN_ATTENTE with a random, unusable
-    password; a set-password email (reset-password flow) is sent, or its link is
-    returned directly in test mode (see email_service.send_email)."""
+    """Proprietaire-only: invites a Gestionnaire who doesn't already have an
+    account (a Gestionnaire can also self-register directly, see
+    auth_service.PUBLIC_REGISTER_ROLES) — created by the proprietaire they'll work
+    for, with access granted in the same step. The account starts
+    INVITE_EN_ATTENTE with a random, unusable password; a set-password email
+    (reset-password flow) is sent, or its link is returned directly in test mode
+    (see email_service.send_email).
+
+    A Mandat belongs to an Agence, not to an individual user (see app.models.mandat)
+    — so this also creates a single-member Agence for the new gestionnaire, who
+    becomes its ADMIN and can later grow it via agence_service.invite_agence_member."""
     existing = db.query(Utilisateur).filter(Utilisateur.email == payload.email).first()
     if existing:
         raise BadRequest("Email already registered")
@@ -72,11 +79,27 @@ def create_gestionnaire_invite(
     db.commit()
     db.refresh(utilisateur)
 
+    agence = Agence(nom=f"{payload.prenom} {payload.nom}")
+    db.add(agence)
+    db.commit()
+    db.refresh(agence)
+
+    db.add(
+        AgenceMembre(
+            agence_id=agence.id,
+            utilisateur_id=utilisateur.id,
+            role_agence=RoleAgence.ADMIN,
+            statut=AgenceMembreStatus.ACTIF,
+            date_debut=datetime.utcnow().date(),
+        )
+    )
+    db.commit()
+
     mandat = mandat_service.create_mandat(
         db,
         proprietaire,
         MandatCreate(
-            gestionnaire_id=utilisateur.id,
+            agence_id=agence.id,
             proprietaire_id=proprietaire.id,
             bien_id=payload.bien_id,
             statut=MandatStatus.ACTIF,
@@ -207,8 +230,8 @@ def activate_utilisateur(db: Session, utilisateur_id: int) -> Utilisateur:
     return utilisateur
 
 
-def deactivate_utilisateur(db: Session, admin: Utilisateur, utilisateur_id: int) -> Utilisateur:
-    if utilisateur_id == admin.id:
+def deactivate_utilisateur(db: Session, current_user: Utilisateur, utilisateur_id: int) -> Utilisateur:
+    if utilisateur_id == current_user.id:
         raise BadRequest("Cannot deactivate your own account")
     utilisateur = (
         db.query(Utilisateur)

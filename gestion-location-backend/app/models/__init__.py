@@ -9,6 +9,8 @@ from app.models.bail import Bail
 from app.models.echeance import Echeance
 from app.models.paiement import Paiement
 from app.models.quittance import Quittance
+from app.models.agence import Agence
+from app.models.agence_membre import AgenceMembre
 from app.models.mandat import Mandat
 from app.models.permission import Permission
 from app.models.manager_permission import ManagerPermission
@@ -27,6 +29,7 @@ from app.models.contact_message import ContactMessage
 from app.models.plan_change_request import PlanChangeRequest
 from app.models.charge import Charge
 from app.models.demande_maintenance import DemandeMaintenance
+from app.models.invitation_client import InvitationClient
 
 __all__ = [
     "Utilisateur",
@@ -40,6 +43,8 @@ __all__ = [
     "Echeance",
     "Paiement",
     "Quittance",
+    "Agence",
+    "AgenceMembre",
     "Mandat",
     "Permission",
     "ManagerPermission",
@@ -58,4 +63,5 @@ __all__ = [
     "PlanChangeRequest",
     "Charge",
     "DemandeMaintenance",
+    "InvitationClient",
 ]

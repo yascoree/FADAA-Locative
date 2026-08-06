@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api import (
+    agences,
     auth,
     avis,
     baux,
@@ -17,6 +18,7 @@ from app.api import (
     echeances,
     fcm_tokens,
     historique,
+    invitations_client,
     locataires,
     lots,
     maintenance,
@@ -75,6 +77,8 @@ app.include_router(echeances.router)
 app.include_router(paiements.router)
 app.include_router(quittances.router)
 app.include_router(mandats.router)
+app.include_router(agences.router)
+app.include_router(invitations_client.router)
 app.include_router(maintenance.router)
 app.include_router(permissions.router)
 app.include_router(notifications.router)

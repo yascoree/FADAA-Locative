@@ -63,3 +63,36 @@ def update_locataire(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except Forbidden as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+
+
+@router.post("/{locataire_id}/deactivate", response_model=UtilisateurRead)
+def deactivate_locataire(
+    locataire_id: int,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(get_current_user),
+):
+    """Réservé à l'admin, au propriétaire de ce locataire, ou à un gestionnaire
+    mandaté avec le droit UPDATE_LEASE sur le bien concerné (voir
+    locataire_service._can_manage_tenant_status)."""
+    try:
+        return locataire_service.deactivate_locataire(db, current_user, locataire_id)
+    except NotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except Forbidden as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except BadRequest as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+
+@router.post("/{locataire_id}/activate", response_model=UtilisateurRead)
+def activate_locataire(
+    locataire_id: int,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(get_current_user),
+):
+    try:
+        return locataire_service.activate_locataire(db, current_user, locataire_id)
+    except NotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except Forbidden as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))

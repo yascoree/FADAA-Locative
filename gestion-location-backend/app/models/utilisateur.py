@@ -45,9 +45,6 @@ class Utilisateur(Base):
     )
     biens = relationship("Bien", back_populates="proprietaire", foreign_keys="Bien.proprietaire_id")
     baux = relationship("Bail", back_populates="locataire", foreign_keys="Bail.locataire_id")
-    mandats_gestionnaire = relationship(
-        "Mandat", back_populates="gestionnaire", foreign_keys="Mandat.gestionnaire_id"
-    )
     mandats_proprietaire = relationship(
         "Mandat", back_populates="proprietaire", foreign_keys="Mandat.proprietaire_id"
     )
@@ -78,6 +75,19 @@ class Utilisateur(Base):
         back_populates="utilisateur"
     )
 
+    # Au plus une ligne ACTIF par utilisateur (voir AgenceMembre) : relation
+    # viewonly en lecture seule pour exposer l'agence courante sans dupliquer la
+    # contrainte d'unicité déjà portée par AgenceMembre.
+    agence_membre_actif = relationship(
+        "AgenceMembre",
+        primaryjoin=(
+            "and_(Utilisateur.id == AgenceMembre.utilisateur_id, "
+            "AgenceMembre.statut == 'ACTIF')"
+        ),
+        viewonly=True,
+        uselist=False,
+    )
+
     @property
     def photo(self) -> str | None:
         """URL de la photo de profil, exposée directement sur l'utilisateur (via
@@ -86,3 +96,15 @@ class Utilisateur(Base):
         if self.profil and self.profil.deleted_at is None:
             return self.profil.photo
         return None
+
+    @property
+    def agence_id(self) -> int | None:
+        """Id de l'agence dont cet utilisateur est membre actif, s'il en a une
+        (voir agence_membre_actif) — exposé sur UtilisateurRead pour que le
+        frontend puisse transmettre directement l'agence lors de la création
+        d'un Mandat sans écran de recherche dédié."""
+        return self.agence_membre_actif.agence_id if self.agence_membre_actif else None
+
+    @property
+    def agence_nom(self) -> str | None:
+        return self.agence_membre_actif.agence.nom if self.agence_membre_actif else None

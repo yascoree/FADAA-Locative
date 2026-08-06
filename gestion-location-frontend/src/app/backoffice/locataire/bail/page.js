@@ -296,7 +296,14 @@ export default function LocataireBailPage() {
               </span>
               <i className={`bi bi-chevron-right ${styles.leaseActionChevron}`} />
             </Link>
-            <Link href="/backoffice/locataire/discussions" className={styles.leaseActionCard}>
+            <Link
+              href={
+                bien?.proprietaire_id
+                  ? `/backoffice/locataire/discussions?contact=${bien.proprietaire_id}`
+                  : "/backoffice/locataire/discussions"
+              }
+              className={styles.leaseActionCard}
+            >
               <span className={styles.leaseActionIcon}>
                 <i className="bi bi-chat-dots" />
               </span>

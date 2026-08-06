@@ -133,6 +133,19 @@ a {
   text-decoration: none;
 }
 
+/* Sans ceci, les <button>/<input>/<select>/<textarea> sans "color" explicite
+   prennent le texte blanc par défaut du user-agent dès que le navigateur/OS est
+   en color-scheme: dark (voir la règle plus bas) — même quand le thème de
+   l'app reste "light" (data-theme, bascule manuelle) et que le fond du bouton
+   est resté clair : texte blanc sur fond blanc, invisible. */
+button,
+input,
+select,
+textarea {
+  color: inherit;
+  font: inherit;
+}
+
 @media (prefers-color-scheme: dark) {
   html {
     color-scheme: dark;

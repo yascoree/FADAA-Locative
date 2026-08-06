@@ -22,6 +22,7 @@ export default function AgenceLayout({ children }) {
 
   const PAGE_TITLES = {
     "/backoffice/agence": t("bo.agenceSidebar.dashboard"),
+    "/backoffice/agence/clients": t("bo.agenceSidebar.clients"),
     "/backoffice/agence/biens": t("bo.agenceSidebar.biens"),
     "/backoffice/agence/lots": t("bo.agenceSidebar.lots"),
     "/backoffice/agence/baux": t("bo.agenceSidebar.baux"),
@@ -31,6 +32,7 @@ export default function AgenceLayout({ children }) {
     "/backoffice/agence/paiements": t("bo.agenceSidebar.paiements"),
     "/backoffice/agence/discussions": t("bo.agenceSidebar.discussions"),
     "/backoffice/agence/notifications": t("bo.agenceSidebar.notifications"),
+    "/backoffice/agence/collaborateurs": t("bo.agenceSidebar.collaborateurs"),
     "/backoffice/agence/parametres": t("bo.agenceSidebar.settings"),
   };
 

@@ -7,13 +7,11 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { ROLE_DASHBOARD_PATH } from "@/lib/roles";
 import { createAvis, fetchAvis } from "@/lib/avis";
-import { createDemandeDemo } from "@/lib/demandesDemo";
 import { fetchPartenaires, PARTENAIRE_STATUS } from "@/lib/partenaires";
 import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import NavBar from "@/components/landing/NavBar";
 import Footer from "@/components/landing/Footer";
 import ChatBot from "@/components/landing/ChatBot";
-import CalendarInput from "@/components/CalendarInput";
 import styles from "./landing.module.css";
 
 // Seules les icônes et les liens restent statiques ici — les textes viennent
@@ -53,7 +51,6 @@ const TESTIMONIALS = [
 
 function Hero() {
   const { t } = useLanguage();
-  const [showDemoModal, setShowDemoModal] = useState(false);
 
   return (
     <section className={styles.hero}>
@@ -67,20 +64,22 @@ function Hero() {
           <Link href="/front/login?tab=register" className={styles.btnPrimary}>
             {t("hero.ctaStart")}
           </Link>
-          <button type="button" className={styles.btnSecondary} onClick={() => setShowDemoModal(true)}>
+          <Link href="/front/contact?subject=demo" className={styles.btnSecondary}>
             {t("hero.ctaDemo")}
-          </button>
+          </Link>
         </div>
-        {showDemoModal && <DemoRequestModal onClose={() => setShowDemoModal(false)} />}
-        <div className={styles.statRow}>
+        <div className={styles.heroReassurance}>
           <span>
-            <strong>500+</strong> {t("hero.statAgencies")}
+            <i className="bi bi-patch-check-fill" />
+            {t("hero.reassurance1")}
           </span>
           <span>
-            <strong>12 000+</strong> {t("hero.statLots")}
+            <i className="bi bi-rocket-takeoff-fill" />
+            {t("hero.reassurance2")}
           </span>
           <span>
-            <strong>99,9%</strong> {t("hero.statUptime")}
+            <i className="bi bi-headset" />
+            {t("hero.reassurance3")}
           </span>
         </div>
       </div>
@@ -95,6 +94,16 @@ function Hero() {
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/landing/dashboard-screenshot.png" alt="" className={styles.mockScreenshot} />
+        </div>
+
+        <div className={styles.heroPhone}>
+          <div className={styles.phoneScreen}>
+            <span className={styles.phoneHeader}>Dashboard</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/landing/phone-card-loyer.png" alt="" className={styles.phoneCardImg} />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/landing/phone-card-fin-bail.png" alt="" className={styles.phoneCardImg} />
+          </div>
         </div>
       </div>
     </section>
@@ -270,52 +279,6 @@ function HowItWorks() {
   );
 }
 
-function PlatformShowcase() {
-  const { t } = useLanguage();
-  return (
-    <section className={`${styles.section} ${styles.sectionAlt}`}>
-      <div className={styles.sectionHead}>
-        <span className={styles.eyebrow}>{t("platform.eyebrow")}</span>
-        <h2 className={styles.sectionTitle}>{t("platform.title")}</h2>
-        <p className={styles.sectionSub}>{t("platform.sub")}</p>
-      </div>
-
-      <div className={styles.platformVisual} aria-hidden="true">
-        <div className={styles.dashMock}>
-          <div className={styles.mockHeader}>
-            <span className={styles.mockDot} />
-            <span className={styles.mockDot} />
-            <span className={styles.mockDot} />
-            <span className={styles.mockUrl}>app.fadaalocative.ma/dashboard</span>
-          </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/landing/dashboard-screenshot.png" alt="" className={styles.mockScreenshot} />
-        </div>
-
-        <div className={styles.phonesStack}>
-          <div className={styles.phoneBack}>
-            <div className={styles.phoneScreen}>
-              <span className={styles.phoneHeader}>Mes paiements</span>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/landing/phone-card-total-paye.png" alt="" className={styles.phoneCardImg} />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/landing/phone-card-paye-ce-mois.png" alt="" className={styles.phoneCardImg} />
-            </div>
-          </div>
-          <div className={styles.phoneFront}>
-            <div className={styles.phoneScreen}>
-              <span className={styles.phoneHeader}>Dashboard</span>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/landing/phone-card-loyer.png" alt="" className={styles.phoneCardImg} />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/landing/phone-card-fin-bail.png" alt="" className={styles.phoneCardImg} />
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 function About() {
   const { t } = useLanguage();
@@ -529,140 +492,9 @@ function AvisSection() {
   );
 }
 
-function toISODate(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function DemoRequestModal({ onClose }) {
-  const { t } = useLanguage();
-  const [nom, setNom] = useState("");
-  const [email, setEmail] = useState("");
-  const [telephone, setTelephone] = useState("+212 ");
-  const [dateSouhaitee, setDateSouhaitee] = useState("");
-  const [message, setMessage] = useState("");
-  const [status, setStatus] = useState("idle");
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    function handleKeyDown(e) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!nom.trim() || !email.trim() || !telephone.trim() || status === "busy") return;
-    setStatus("busy");
-    setError(null);
-    try {
-      await createDemandeDemo({
-        nom: nom.trim(),
-        email: email.trim(),
-        telephone: telephone.trim(),
-        dateSouhaitee: dateSouhaitee || null,
-        message: message.trim() || null,
-      });
-      setStatus("sent");
-    } catch (err) {
-      setStatus("error");
-      setError(extractErrorMessage(err));
-    }
-  }
-
-  return (
-    <div className={styles.demoOverlay} onClick={onClose}>
-      <div className={styles.demoModalCard} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-        <button type="button" className={styles.demoModalClose} onClick={onClose} aria-label={t("demo.close")}>
-          <i className="bi bi-x-lg" />
-        </button>
-
-        {status === "sent" ? (
-          <div className={styles.avisFormSentMsg}>
-            <i className="bi bi-check-circle-fill" /> {t("demo.thanks")}
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <h3 className={styles.demoModalTitle}>{t("demo.title")}</h3>
-            <p className={styles.demoModalSub}>{t("demo.sub")}</p>
-
-            <label className={styles.demoFieldGroup}>
-              <span className={styles.demoFieldLabel}>{t("demo.nameLabel")}</span>
-              <input
-                type="text"
-                value={nom}
-                onChange={(e) => setNom(e.target.value)}
-                placeholder={t("avis.namePlaceholder")}
-                className={styles.avisFormInput}
-                required
-              />
-            </label>
-
-            <label className={styles.demoFieldGroup}>
-              <span className={styles.demoFieldLabel}>{t("demo.emailLabel")}</span>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t("avis.emailPlaceholder")}
-                className={styles.avisFormInput}
-                required
-              />
-            </label>
-
-            <label className={styles.demoFieldGroup}>
-              <span className={styles.demoFieldLabel}>{t("demo.phoneLabel")}</span>
-              <input
-                type="tel"
-                value={telephone}
-                onChange={(e) => setTelephone(e.target.value)}
-                placeholder="+212 6XX XXX XXX"
-                className={styles.avisFormInput}
-                required
-              />
-            </label>
-
-            <label className={styles.demoFieldGroup}>
-              <span className={styles.demoFieldLabel}>{t("demo.dateLabel")}</span>
-              <CalendarInput
-                name="dateSouhaitee"
-                value={dateSouhaitee}
-                onChange={(e) => setDateSouhaitee(e.target.value)}
-                min={toISODate(new Date())}
-              />
-            </label>
-
-            <label className={styles.demoFieldGroup}>
-              <span className={styles.demoFieldLabel}>{t("demo.messageLabel")}</span>
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder={t("demo.messagePlaceholder")}
-                className={styles.avisFormTextarea}
-                rows={3}
-              />
-            </label>
-
-            {status === "error" && <p className={styles.avisFormError}>{error}</p>}
-
-            <button type="submit" className={styles.avisFormSubmit} disabled={status === "busy"}>
-              {status === "busy" ? t("demo.submitting") : t("demo.submit")}
-            </button>
-          </form>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function CtaBanner() {
   const { t } = useLanguage();
   const why = t("cta.why");
-  const [showDemoModal, setShowDemoModal] = useState(false);
 
   return (
     <section className={styles.section} style={{ paddingBottom: "1.5rem" }}>
@@ -684,12 +516,11 @@ function CtaBanner() {
           <Link href="/front/login?tab=register" className={styles.btnPrimaryLight}>
             {t("cta.ctaFree")}
           </Link>
-          <button type="button" className={styles.btnCtaGhost} onClick={() => setShowDemoModal(true)}>
+          <Link href="/front/contact?subject=demo" className={styles.btnCtaGhost}>
             {t("cta.ctaDemo")}
-          </button>
+          </Link>
         </div>
       </div>
-      {showDemoModal && <DemoRequestModal onClose={() => setShowDemoModal(false)} />}
     </section>
   );
 }
@@ -740,11 +571,10 @@ export default function RootPage() {
     <div className={styles.page}>
       <NavBar />
       <Hero />
-      <TrustBar />
       <Features />
       <Roles />
       <HowItWorks />
-      <PlatformShowcase />
+      <TrustBar />
       <About />
       <AvisSection />
       <CtaBanner />

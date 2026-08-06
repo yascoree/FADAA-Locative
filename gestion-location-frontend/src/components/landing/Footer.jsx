@@ -16,6 +16,14 @@ const NAV_LINKS = [
 
 const LEGAL_HREFS = ["/front/politique-confidentialite", "/front/conditions-utilisation"];
 
+// Autres produits de la suite FADAA (fadaa.ma) — ordre aligné sur
+// footer.colSolutionsLinks (École, Université, Paie) dans les 3 langues.
+const SOLUTIONS_HREFS = [
+  "https://www.fadaa.ma/nos-solutions/fadaa-ecole/",
+  "https://www.fadaa.ma/nos-solutions/fadaa-universite/",
+  "https://www.fadaa.ma/nos-solutions/fadaa-paie/",
+];
+
 export default function Footer() {
   const { t } = useLanguage();
   const pathname = usePathname();
@@ -43,7 +51,11 @@ export default function Footer() {
     },
     {
       title: t("footer.colSolutions"),
-      links: t("footer.colSolutionsLinks").map((label) => ({ label, href: "#" })),
+      links: t("footer.colSolutionsLinks").map((label, i) => ({
+        label,
+        href: SOLUTIONS_HREFS[i],
+        external: true,
+      })),
     },
     {
       title: t("footer.colLegal"),
@@ -66,7 +78,12 @@ export default function Footer() {
           <div key={col.title} className={styles.footerCol}>
             <h4>{col.title}</h4>
             {col.links.map((l) => (
-              <Link key={l.label} href={l.href} onClick={l.onClick}>
+              <Link
+                key={l.label}
+                href={l.href}
+                onClick={l.onClick}
+                {...(l.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+              >
                 {l.label}
               </Link>
             ))}

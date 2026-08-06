@@ -1,13 +1,14 @@
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.api.deps import gestionnaire_ids_for_proprietaire, managed_proprietaire_ids
+from app.api.deps import bien_ids_with_permission, gestionnaire_ids_for_proprietaire, managed_proprietaire_ids
 from app.core.security import hash_password
 from app.models.bail import Bail
 from app.models.bien import Bien
 from app.models.lot import Lot
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.utilisateur import UtilisateurCreate, UtilisateurUpdate
+from app.services import utilisateur_service
 from app.services.exceptions import BadRequest, Forbidden, NotFound
 from app.services.usage_service import enforce_limit
 
@@ -138,3 +139,44 @@ def update_locataire(
     db.commit()
     db.refresh(locataire)
     return locataire
+
+
+def _can_manage_tenant_status(db: Session, current_user: Utilisateur, tenant_id: int) -> bool:
+    """Qui peut activer/désactiver ce locataire — distinct de _is_my_tenant (lecture)
+    car un gestionnaire y a en plus besoin du droit UPDATE_LEASE : la désactivation
+    touche à la relation contractuelle, pas seulement à la consultation."""
+    if current_user.role == UtilisateurRole.ADMINISTRATEUR:
+        return True
+    if current_user.role == UtilisateurRole.PROPRIETAIRE:
+        return _is_my_tenant(db, current_user, tenant_id)
+    if current_user.role == UtilisateurRole.GESTIONNAIRE:
+        allowed_bien_ids = bien_ids_with_permission(db, current_user.id, "UPDATE_LEASE")
+        if not allowed_bien_ids:
+            return False
+        return (
+            db.query(Bail)
+            .join(Lot, Lot.id == Bail.lot_id)
+            .filter(Bail.locataire_id == tenant_id, Lot.bien_id.in_(allowed_bien_ids))
+            .first()
+            is not None
+        )
+    return False
+
+
+def _get_manageable_locataire(db: Session, current_user: Utilisateur, tenant_id: int) -> Utilisateur:
+    locataire = db.get(Utilisateur, tenant_id)
+    if not locataire or locataire.role != UtilisateurRole.LOCATAIRE:
+        raise NotFound("Tenant not found")
+    if not _can_manage_tenant_status(db, current_user, tenant_id):
+        raise Forbidden("Not allowed to manage this tenant")
+    return locataire
+
+
+def deactivate_locataire(db: Session, current_user: Utilisateur, tenant_id: int) -> Utilisateur:
+    _get_manageable_locataire(db, current_user, tenant_id)
+    return utilisateur_service.deactivate_utilisateur(db, current_user, tenant_id)
+
+
+def activate_locataire(db: Session, current_user: Utilisateur, tenant_id: int) -> Utilisateur:
+    _get_manageable_locataire(db, current_user, tenant_id)
+    return utilisateur_service.activate_utilisateur(db, tenant_id)

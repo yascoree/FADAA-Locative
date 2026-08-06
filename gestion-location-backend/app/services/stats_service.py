@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from sqlalchemy import extract, func
 from sqlalchemy.orm import Session
 
+from app.api.deps import active_agence_id
 from app.models.bail import Bail, BailStatus
 from app.models.bien import Bien
 from app.models.charge import Charge
@@ -239,10 +240,13 @@ def get_proprietaire_dashboard_stats(db: Session, owner_id: int) -> Proprietaire
 
 
 def get_gestionnaire_dashboard_stats(db: Session, gestionnaire_id: int) -> GestionnaireDashboardStats:
+    agence_id = active_agence_id(db, gestionnaire_id)
     owner_ids = (
         db.query(Mandat.proprietaire_id)
-        .filter(Mandat.gestionnaire_id == gestionnaire_id, Mandat.statut == MandatStatus.ACTIF)
+        .filter(Mandat.agence_id == agence_id, Mandat.statut == MandatStatus.ACTIF)
         .all()
+        if agence_id is not None
+        else []
     )
     owner_ids = [row[0] for row in owner_ids]
     if not owner_ids:
