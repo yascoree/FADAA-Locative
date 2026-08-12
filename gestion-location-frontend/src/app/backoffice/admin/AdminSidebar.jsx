@@ -36,6 +36,11 @@ function useNavSections() {
           href: "/backoffice/admin/abonnements",
           label: t("bo.adminSidebar.subscriptions"),
           icon: "bi-credit-card",
+        },
+        {
+          href: "/backoffice/admin/abonnements/demandes",
+          label: t("bo.adminSidebar.planChangeRequests"),
+          icon: "bi-arrow-left-right",
           badgeKey: "planRequests",
         },
         { href: "/backoffice/admin/architecture", label: t("bo.adminSidebar.categories"), icon: "bi-diagram-3" },
@@ -120,11 +125,6 @@ export default function AdminSidebar({ user, onLogout }) {
         <LogoIcon size={36} />
         <span>FADAA Locative</span>
       </div>
-
-      <Link href="/" target="_blank" rel="noopener noreferrer" className={styles.backToSiteLink}>
-        <i className="bi bi-box-arrow-up-right" />
-        {t("bo.adminSidebar.backToSite")}
-      </Link>
 
       <div className={styles.navSections}>
         {bubble && (

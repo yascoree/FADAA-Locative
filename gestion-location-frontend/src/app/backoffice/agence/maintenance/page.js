@@ -14,6 +14,8 @@ import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
+import LoadingState from "@/components/LoadingState";
+import EmptyState from "@/components/EmptyState";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "../agence.module.css";
 
@@ -133,7 +135,7 @@ export default function AgenceMaintenancePage() {
   }
 
   if (isLoading) {
-    return <p>{t("bo.common.loading")}</p>;
+    return <LoadingState label={t("bo.common.loading")} />;
   }
 
   return (
@@ -156,7 +158,7 @@ export default function AgenceMaintenancePage() {
         </h2>
         <p className={styles.sectionSubtitle}>{t("bo.proprietaireMaintenance.subtitle")}</p>
 
-        {demandes.length === 0 && <p className={styles.empty}>{t("bo.proprietaireMaintenance.noRequests")}</p>}
+        {demandes.length === 0 && <EmptyState icon="bi-tools" title={t("bo.proprietaireMaintenance.noRequests")} />}
 
         <div className={styles.reclamationList}>
           {demandes.map((d) => {

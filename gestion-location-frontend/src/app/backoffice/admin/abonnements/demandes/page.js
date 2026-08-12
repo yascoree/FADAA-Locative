@@ -104,12 +104,18 @@ export default function AdminPlanRequestsPage() {
   // largeur (le badge de "En attente" varie). Se recalcule aussi quand ce
   // badge apparaît/disparaît, pas seulement au changement d'onglet.
   useEffect(() => {
+    // isLoading est nécessaire ici : tant que la page charge, les onglets ne sont
+    // pas encore montés (tabRefs.current est vide). Si filter/counts.pending/FILTERS
+    // n'ont par ailleurs pas changé entre le rendu "chargement" et le rendu final
+    // (ex: aucune demande en attente, donc counts.pending reste à 0 avant/après),
+    // cet effet ne se redéclencherait jamais une fois les onglets réellement présents
+    // dans le DOM — l'indicateur resterait figé à sa valeur initiale {left:0,width:0}.
     const activeIndex = FILTERS.findIndex((f) => f.value === filter);
     const el = tabRefs.current[activeIndex];
     if (el) {
       setIndicator({ left: el.offsetLeft, width: el.offsetWidth });
     }
-  }, [filter, counts.pending, FILTERS]);
+  }, [filter, counts.pending, FILTERS, isLoading]);
 
   async function handleApprove(request) {
     setBanner(null);

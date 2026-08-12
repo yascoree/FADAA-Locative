@@ -8,6 +8,7 @@ import { fetchProfile, createProfile, updateProfile, uploadProfilePhoto, deleteP
 import TextField from "@/components/TextField";
 import PasswordChangeCard from "@/components/PasswordChangeCard";
 import ThemeToggle from "@/components/ThemeToggle";
+import LoadingState from "@/components/LoadingState";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "../agence.module.css";
 
@@ -146,7 +147,7 @@ export default function AgenceParametresPage() {
   }
 
   if (isLoading || !user) {
-    return <p>{t("bo.common.loading")}</p>;
+    return <LoadingState label={t("bo.common.loading")} />;
   }
 
   return (

@@ -28,6 +28,8 @@ import FilterSelect from "@/components/FilterSelect";
 import { fetchGestionnairePermissionIndex } from "@/lib/mandates";
 import PlanLimitPopup from "@/components/PlanLimitPopup";
 import ToggleSwitch from "@/components/ToggleSwitch";
+import LoadingState from "@/components/LoadingState";
+import EmptyState from "@/components/EmptyState";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "../agence.module.css";
 
@@ -342,7 +344,7 @@ export default function AgenceEcheancesPage() {
   }
 
   if (isLoading) {
-    return <p>{t("bo.common.loading")}</p>;
+    return <LoadingState label={t("bo.common.loading")} />;
   }
 
   return (
@@ -431,7 +433,7 @@ export default function AgenceEcheancesPage() {
               {filteredEcheances.length === 0 && (
                 <tr>
                   <td colSpan={7} className={styles.empty}>
-                    {t("bo.common.noMatch")}
+                    <EmptyState icon="bi-calendar-check" title={t("bo.common.noMatch")} />
                   </td>
                 </tr>
               )}

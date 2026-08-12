@@ -16,7 +16,6 @@ function useNavSections() {
       label: t("bo.agenceSidebar.general"),
       items: [
         { href: "/backoffice/agence", label: t("bo.agenceSidebar.dashboard"), icon: "bi-grid", exact: true },
-        { href: "/backoffice/agence/clients", label: t("bo.agenceSidebar.clients"), icon: "bi-person-vcard" },
         { href: "/backoffice/agence/biens", label: t("bo.agenceSidebar.biens"), icon: "bi-house-door" },
         { href: "/backoffice/agence/lots", label: t("bo.agenceSidebar.lots"), icon: "bi-grid-3x3-gap" },
         { href: "/backoffice/agence/baux", label: t("bo.agenceSidebar.baux"), icon: "bi-file-earmark-text" },
@@ -30,6 +29,12 @@ function useNavSections() {
       ],
     },
     {
+      label: t("bo.agenceSidebar.clientsGroup"),
+      items: [
+        { href: "/backoffice/agence/clients", label: t("bo.agenceSidebar.clients"), icon: "bi-person-vcard" },
+      ],
+    },
+    {
       label: t("bo.agenceSidebar.finances"),
       items: [
         { href: "/backoffice/agence/echeances", label: t("bo.agenceSidebar.echeances"), icon: "bi-calendar-check" },
@@ -37,7 +42,7 @@ function useNavSections() {
       ],
     },
     {
-      label: t("bo.agenceSidebar.exchanges"),
+      label: t("bo.agenceSidebar.communication"),
       items: [
         {
           href: "/backoffice/agence/discussions",
@@ -54,9 +59,14 @@ function useNavSections() {
       ],
     },
     {
-      label: t("bo.agenceSidebar.account"),
+      label: t("bo.agenceSidebar.team"),
       items: [
         { href: "/backoffice/agence/collaborateurs", label: t("bo.agenceSidebar.collaborateurs"), icon: "bi-people-fill" },
+      ],
+    },
+    {
+      label: t("bo.agenceSidebar.account"),
+      items: [
         { href: "/backoffice/agence/parametres", label: t("bo.agenceSidebar.settings"), icon: "bi-gear" },
       ],
     },

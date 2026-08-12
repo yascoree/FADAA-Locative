@@ -589,12 +589,12 @@
 /* ---------- Bascule d'onglets (ex: Mes clients / Invitations) ---------- */
 
 .tabSwitch {
-  display: inline-flex;
-  gap: 0.25rem;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  padding: 0.25rem;
-  border-radius: var(--radius-field);
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.3rem;
+  background: var(--border);
+  padding: 0.3rem;
+  border-radius: 999px;
   margin-bottom: 1.25rem;
 }
 
@@ -602,12 +602,16 @@
   border: none;
   background: transparent;
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 0.86rem;
   font-weight: 600;
-  padding: 0.5rem 0.9rem;
-  border-radius: calc(var(--radius-field) - 4px);
+  padding: 0.6rem 0.9rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .tabBtnActive {
@@ -619,6 +623,21 @@
 
 .tabBtn:hover:not(.tabBtnActive) {
   color: var(--secondary);
+}
+
+.tabBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.3rem;
+  height: 1.3rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 /* ---------- Modale "Inviter un client" ---------- */
@@ -1682,6 +1701,15 @@
   gap: 0.4rem;
 }
 
+.transitionalNotice {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0;
+}
+
 .detailLine {
   font-size: 0.87rem;
   color: var(--text);
@@ -2439,4 +2467,127 @@
   font-weight: 600;
   color: var(--text);
   margin-bottom: 0.25rem;
+}
+
+/* ---------- Grille de cartes collaborateur ---------- */
+
+.memberGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.memberCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.7rem;
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 1rem 1.1rem;
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.memberCard:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.memberCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+}
+
+.memberCardBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.memberCardName {
+  font-weight: 650;
+  color: var(--secondary);
+  font-size: 0.92rem;
+}
+
+.memberCardBadges {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.memberCardEmail {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+.memberCardCounts {
+  display: flex;
+  gap: 1.1rem;
+  width: 100%;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--border);
+}
+
+.memberCardCount {
+  display: flex;
+  flex-direction: column;
+}
+
+.memberCardCountValue {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--secondary);
+}
+
+.memberCardCountLabel {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.memberAccessHint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.9rem 0 0.5rem;
+}
+
+.memberAccessList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.memberAccessItem {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.86rem;
+  color: var(--text);
+}
+
+.memberAccessItem i.bi-check-circle-fill {
+  color: var(--primary);
+}
+
+.memberAccessItem i.bi-x-circle {
+  color: var(--text-muted);
+}
+
+.memberDrawerActions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1.5rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--border);
 }

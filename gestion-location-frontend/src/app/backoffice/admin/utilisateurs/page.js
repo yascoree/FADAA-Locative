@@ -16,6 +16,7 @@ import { ROLES, roleLabels } from "@/lib/roles";
 import { useAuth } from "@/context/AuthContext";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
+import Drawer from "@/components/Drawer";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
@@ -88,6 +89,7 @@ export default function AdminUtilisateursPage() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [rowBanner, setRowBanner] = useState(null);
   const [rowBusyId, setRowBusyId] = useState(null);
+  const [selectedUserId, setSelectedUserId] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -140,6 +142,8 @@ export default function AdminUtilisateursPage() {
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
   const paginatedUsers = filteredUsers.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const selectedUser = users.find((u) => u.id === selectedUserId) || null;
 
   function openCreate() {
     setFormMode("create");
@@ -333,24 +337,24 @@ export default function AdminUtilisateursPage() {
                 <th>{t("bo.adminUtilisateurs.colRole")}</th>
                 <th>{t("bo.adminUtilisateurs.colStatus")}</th>
                 <th>{t("bo.adminUtilisateurs.colCreatedOn")}</th>
-                <th>{t("bo.adminUtilisateurs.colActions")}</th>
               </tr>
             </thead>
             <tbody>
               {filteredUsers.length === 0 && (
                 <tr>
-                  <td colSpan={6} className={styles.empty}>
+                  <td colSpan={5} className={styles.empty}>
                     {t("bo.adminUtilisateurs.noMatch")}
                   </td>
                 </tr>
               )}
               {paginatedUsers.map((u) => {
                 const initials = `${u.prenom?.[0] || ""}${u.nom?.[0] || ""}`.toUpperCase();
-                const isSelf = currentUser?.id === u.id;
-                const isDisabled = u.statut_compte === ACCOUNT_STATUS.CREE_SANS_ACCES;
-                const isBusy = rowBusyId === u.id;
                 return (
-                  <tr key={u.id}>
+                  <tr
+                    key={u.id}
+                    className={`${styles.tableRowClickable} ${selectedUserId === u.id ? styles.tableRowActive : ""}`}
+                    onClick={() => setSelectedUserId(u.id)}
+                  >
                     <td>
                       <div className={styles.userCell}>
                         {u.photo ? (
@@ -377,42 +381,6 @@ export default function AdminUtilisateursPage() {
                       </span>
                     </td>
                     <td>{formatDate(u.date_creation)}</td>
-                    <td>
-                      <div className={styles.tableActions}>
-                        <button
-                          type="button"
-                          className={styles.iconBtn}
-                          onClick={() => openEdit(u)}
-                          title={t("bo.adminUtilisateurs.edit")}
-                        >
-                          <i className="bi bi-pencil" />
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.iconBtn}
-                          onClick={() => handleToggleActive(u)}
-                          disabled={isSelf || isBusy}
-                          title={
-                            isSelf
-                              ? t("bo.adminUtilisateurs.selfActionBlocked")
-                              : isDisabled
-                                ? t("bo.adminUtilisateurs.activate")
-                                : t("bo.adminUtilisateurs.deactivate")
-                          }
-                        >
-                          <i className={`bi ${isDisabled ? "bi-play-circle" : "bi-pause-circle"}`} />
-                        </button>
-                        <button
-                          type="button"
-                          className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                          onClick={() => setDeleteTarget(u)}
-                          disabled={isSelf}
-                          title={isSelf ? t("bo.adminUtilisateurs.selfActionBlocked") : t("bo.adminUtilisateurs.delete")}
-                        >
-                          <i className="bi bi-trash" />
-                        </button>
-                      </div>
-                    </td>
                   </tr>
                 );
               })}
@@ -448,6 +416,77 @@ export default function AdminUtilisateursPage() {
           )}
         </div>
       </div>
+
+      {/* ---- Détail d'un utilisateur ---- */}
+      <Drawer
+        isOpen={!!selectedUser}
+        onClose={() => setSelectedUserId(null)}
+        title={selectedUser ? `${selectedUser.prenom} ${selectedUser.nom}` : ""}
+      >
+        {selectedUser && (() => {
+          const isSelf = currentUser?.id === selectedUser.id;
+          const isDisabled = selectedUser.statut_compte === ACCOUNT_STATUS.CREE_SANS_ACCES;
+          const isBusy = rowBusyId === selectedUser.id;
+          return (
+            <>
+              <div style={{ marginBottom: "1rem", display: "flex", gap: "0.5rem" }}>
+                <span className={styles.badge}>{ROLE_LABELS[selectedUser.role]}</span>
+                <span className={`${styles.badge} ${badgeClass(selectedUser.statut_compte)}`}>
+                  {ACCOUNT_STATUS_LABELS[selectedUser.statut_compte]}
+                </span>
+              </div>
+
+              <div className={styles.detailInfoList}>
+                <div className={styles.detailInfoRow}>
+                  <span className={styles.detailInfoIcon}>
+                    <i className="bi bi-envelope" />
+                  </span>
+                  <span className={styles.detailInfoBody}>
+                    <span className={styles.detailInfoLabel}>{t("bo.adminUtilisateurs.colEmail")}</span>
+                    <span className={styles.detailInfoValue}>{selectedUser.email}</span>
+                  </span>
+                </div>
+                <div className={styles.detailInfoRow}>
+                  <span className={styles.detailInfoIcon}>
+                    <i className="bi bi-calendar-event" />
+                  </span>
+                  <span className={styles.detailInfoBody}>
+                    <span className={styles.detailInfoLabel}>{t("bo.adminUtilisateurs.colCreatedOn")}</span>
+                    <span className={styles.detailInfoValue}>{formatDate(selectedUser.date_creation)}</span>
+                  </span>
+                </div>
+              </div>
+
+              <div className={styles.editActions} style={{ marginTop: "1.5rem" }}>
+                <button type="button" className={styles.btnOutline} onClick={() => openEdit(selectedUser)}>
+                  <i className="bi bi-pencil" />
+                  {t("bo.adminUtilisateurs.edit")}
+                </button>
+                <button
+                  type="button"
+                  className={styles.btnOutline}
+                  onClick={() => handleToggleActive(selectedUser)}
+                  disabled={isSelf || isBusy}
+                  title={isSelf ? t("bo.adminUtilisateurs.selfActionBlocked") : ""}
+                >
+                  <i className={`bi ${isDisabled ? "bi-play-circle" : "bi-pause-circle"}`} />
+                  {isDisabled ? t("bo.adminUtilisateurs.activate") : t("bo.adminUtilisateurs.deactivate")}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.btnOutline} ${styles.iconBtnDanger}`}
+                  onClick={() => setDeleteTarget(selectedUser)}
+                  disabled={isSelf}
+                  title={isSelf ? t("bo.adminUtilisateurs.selfActionBlocked") : ""}
+                >
+                  <i className="bi bi-trash" />
+                  {t("bo.adminUtilisateurs.delete")}
+                </button>
+              </div>
+            </>
+          );
+        })()}
+      </Drawer>
 
       {/* ---- Créer / modifier un utilisateur ---- */}
       <Modal

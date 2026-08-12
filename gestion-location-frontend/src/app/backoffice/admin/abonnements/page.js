@@ -186,6 +186,7 @@ export default function AdminAbonnementsPage() {
   });
   const [createBusy, setCreateBusy] = useState(false);
   const [createBanner, setCreateBanner] = useState(null);
+  const [createPlanOpen, setCreatePlanOpen] = useState(false);
 
   const [search, setSearch] = useState("");
   const [planFilter, setPlanFilter] = useState("");
@@ -332,6 +333,16 @@ export default function AdminAbonnementsPage() {
     setChangePlanTargetId(row ? String(row.subscription.plan_id) : "");
   }
 
+  function openCreatePlan() {
+    setCreateBanner(null);
+    setCreatePlanOpen(true);
+  }
+
+  function closeCreatePlan() {
+    if (createBusy) return;
+    setCreatePlanOpen(false);
+  }
+
   function startEdit(plan) {
     setEditingPlanId(plan.id);
     setEditDraft(planToDraft(plan));
@@ -423,24 +434,12 @@ export default function AdminAbonnementsPage() {
         limits: emptyLimits("0"),
         unlimited: emptyLimits(true),
       });
-      setCreateBanner({ type: "success", message: t("bo.adminAbonnements.planCreated", { name: plan.name }) });
+      setCreatePlanOpen(false);
+      setPlanBanner({ type: "success", message: t("bo.adminAbonnements.planCreated", { name: plan.name }) });
     } catch (err) {
       setCreateBanner({ type: "error", message: extractErrorMessage(err) });
     } finally {
       setCreateBusy(false);
-    }
-  }
-
-  async function handleQuickSuspendToggle(subscription) {
-    setLoadError(null);
-    try {
-      const updated =
-        subscription.status === SUBSCRIPTION_STATUS.SUSPENDU
-          ? await reactivateSubscription(subscription.id)
-          : await suspendSubscription(subscription.id);
-      setSubscriptions((prev) => prev.map((s) => (s.id === subscription.id ? updated : s)));
-    } catch (err) {
-      setLoadError(extractErrorMessage(err));
     }
   }
 
@@ -795,6 +794,12 @@ export default function AdminAbonnementsPage() {
               );
             });
           })()}
+          <button type="button" className={styles.planCardAdd} onClick={openCreatePlan} style={{ "--i": sortedPlans.length }}>
+            <span className={styles.planCardAddIcon}>
+              <i className="bi bi-plus-lg" />
+            </span>
+            <span className={styles.planCardAddLabel}>{t("bo.adminAbonnements.createPlanTitle")}</span>
+          </button>
           </div>
           {sortedPlans.length > 1 && (
             <button
@@ -809,16 +814,22 @@ export default function AdminAbonnementsPage() {
         </div>
 
         {/* ---- Créer un plan ---- */}
-        <div className={styles.newPlanCard}>
-          <div className={styles.newPlanHeader}>
-            <span className={styles.newPlanHeaderIcon}>
-              <i className="bi bi-stars" />
-            </span>
-            <div>
-              <h3 className={styles.newPlanTitle}>{t("bo.adminAbonnements.createPlanTitle")}</h3>
-              <p className={styles.newPlanSubtitle}>{t("bo.adminAbonnements.createPlanSubtitle")}</p>
+        <Drawer
+          isOpen={createPlanOpen}
+          onClose={closeCreatePlan}
+          wide
+          title={
+            <div className={styles.newPlanHeader}>
+              <span className={styles.newPlanHeaderIcon}>
+                <i className="bi bi-stars" />
+              </span>
+              <div>
+                <h3 className={styles.newPlanTitle}>{t("bo.adminAbonnements.createPlanTitle")}</h3>
+                <p className={styles.newPlanSubtitle}>{t("bo.adminAbonnements.createPlanSubtitle")}</p>
+              </div>
             </div>
-          </div>
+          }
+        >
           <Banner banner={createBanner} />
 
           <div className={styles.newPlanLayout}>
@@ -988,7 +999,7 @@ export default function AdminAbonnementsPage() {
               })()}
             </div>
           </div>
-        </div>
+        </Drawer>
       </div>
 
       <ConfirmationDialog
@@ -1086,25 +1097,24 @@ export default function AdminAbonnementsPage() {
                 <th>{t("bo.adminAbonnements.colStatus")}</th>
                 <th>{t("bo.adminAbonnements.colStart")}</th>
                 <th>{t("bo.adminAbonnements.colExpiration")}</th>
-                <th>{t("bo.adminAbonnements.colActions")}</th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.length === 0 && (
                 <tr>
-                  <td colSpan={7} className={styles.empty}>
+                  <td colSpan={6} className={styles.empty}>
                     {t("bo.adminAbonnements.noMatch")}
                   </td>
                 </tr>
               )}
               {paginatedRows.map(({ subscription, user }) => {
                 const initials = `${user.prenom?.[0] || ""}${user.nom?.[0] || ""}`.toUpperCase();
-                const isSuspended = subscription.status === SUBSCRIPTION_STATUS.SUSPENDU;
                 const trial = trialInfo(subscription);
                 return (
                   <tr
                     key={subscription.id}
-                    className={selectedRowId === subscription.id ? styles.tableRowActive : ""}
+                    className={`${styles.tableRowClickable} ${selectedRowId === subscription.id ? styles.tableRowActive : ""}`}
+                    onClick={() => selectRow(subscription.id)}
                   >
                     <td>
                       <div className={styles.userCell}>
@@ -1144,26 +1154,6 @@ export default function AdminAbonnementsPage() {
                     </td>
                     <td>{formatDate(subscription.start_date)}</td>
                     <td>{formatDate(subscription.end_date)}</td>
-                    <td>
-                      <div className={styles.tableActions}>
-                        <button
-                          type="button"
-                          className={styles.iconBtn}
-                          onClick={() => selectRow(subscription.id)}
-                          title={t("bo.adminAbonnements.seeDetails")}
-                        >
-                          <i className="bi bi-eye" />
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.iconBtn}
-                          onClick={() => handleQuickSuspendToggle(subscription)}
-                          title={isSuspended ? t("bo.adminAbonnements.reactivate") : t("bo.adminAbonnements.suspend")}
-                        >
-                          <i className={`bi ${isSuspended ? "bi-play-circle" : "bi-pause-circle"}`} />
-                        </button>
-                      </div>
-                    </td>
                   </tr>
                 );
               })}

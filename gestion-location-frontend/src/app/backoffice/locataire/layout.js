@@ -21,14 +21,14 @@ export default function LocataireLayout({ children }) {
   const [isScrolled, setIsScrolled] = useState(false);
 
   const PAGE_TITLES = {
-    "/backoffice/locataire": t("bo.locataireLayout.titles.dashboard"),
-    "/backoffice/locataire/bail": t("bo.locataireLayout.titles.bail"),
-    "/backoffice/locataire/maintenance": t("bo.locataireLayout.titles.maintenance"),
-    "/backoffice/locataire/echeances": t("bo.locataireLayout.titles.echeances"),
-    "/backoffice/locataire/paiements": t("bo.locataireLayout.titles.paiements"),
-    "/backoffice/locataire/discussions": t("bo.locataireLayout.titles.discussions"),
-    "/backoffice/locataire/notifications": t("bo.locataireLayout.titles.notifications"),
-    "/backoffice/locataire/parametres": t("bo.locataireLayout.titles.parametres"),
+    "/backoffice/locataire": t("bo.locataireSidebar.dashboard"),
+    "/backoffice/locataire/bail": t("bo.locataireSidebar.myLease"),
+    "/backoffice/locataire/maintenance": t("bo.locataireSidebar.maintenance"),
+    "/backoffice/locataire/echeances": t("bo.locataireSidebar.myDueDates"),
+    "/backoffice/locataire/paiements": t("bo.locataireSidebar.myPayments"),
+    "/backoffice/locataire/discussions": t("bo.locataireSidebar.discussions"),
+    "/backoffice/locataire/notifications": t("bo.locataireSidebar.notifications"),
+    "/backoffice/locataire/parametres": t("bo.locataireSidebar.settings"),
   };
 
   function handleContentScroll(e) {

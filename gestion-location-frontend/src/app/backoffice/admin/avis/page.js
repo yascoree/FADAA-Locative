@@ -114,6 +114,7 @@ export default function AdminAvisPage() {
             <thead>
               <tr>
                 <th>{t("bo.adminAvis.colAuthor")}</th>
+                <th>{t("bo.adminAvis.colEmail")}</th>
                 <th>{t("bo.adminAvis.colRating")}</th>
                 <th>{t("bo.adminAvis.colComment")}</th>
                 <th>{t("bo.adminAvis.colDate")}</th>
@@ -124,7 +125,7 @@ export default function AdminAvisPage() {
             <tbody>
               {avisList.length === 0 && (
                 <tr>
-                  <td colSpan={6} className={styles.empty}>
+                  <td colSpan={7} className={styles.empty}>
                     {t("bo.adminAvis.noReviews")}
                   </td>
                 </tr>
@@ -137,8 +138,8 @@ export default function AdminAvisPage() {
                       <span className={styles.userName}>
                         {avis.user ? `${avis.user.prenom} ${avis.user.nom}` : `${avis.prenom} ${avis.nom}`}
                       </span>
-                      {avis.user?.email && <div className={styles.tableSubtext}>{avis.user.email}</div>}
                     </td>
+                    <td>{avis.user?.email || "—"}</td>
                     <td>
                       <Stars note={avis.note} />
                     </td>

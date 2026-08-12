@@ -26,6 +26,8 @@ import SelectField from "@/components/SelectField";
 import FilterSelect from "@/components/FilterSelect";
 import LotDetailsModal from "@/components/LotDetailsModal";
 import PlanLimitPopup from "@/components/PlanLimitPopup";
+import LoadingState from "@/components/LoadingState";
+import EmptyState from "@/components/EmptyState";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "../agence.module.css";
 
@@ -332,7 +334,7 @@ export default function AgenceLotsPage() {
   }
 
   if (isLoading) {
-    return <p>{t("bo.common.loading")}</p>;
+    return <LoadingState label={t("bo.common.loading")} />;
   }
 
   return (
@@ -428,7 +430,7 @@ export default function AgenceLotsPage() {
               {filteredLots.length === 0 && (
                 <tr>
                   <td colSpan={7} className={styles.empty}>
-                    {t("bo.common.noMatch")}
+                    <EmptyState icon="bi-grid-3x3-gap" title={t("bo.common.noMatch")} />
                   </td>
                 </tr>
               )}

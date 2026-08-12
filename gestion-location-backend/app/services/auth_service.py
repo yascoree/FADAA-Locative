@@ -98,6 +98,9 @@ def login(db: Session, email: str, password: str) -> Token:
         # plutôt que de délivrer un token qui échouera à la toute première requête.
         raise Forbidden("Your access to this agence has been revoked")
 
+    utilisateur.derniere_connexion = datetime.utcnow()
+    db.commit()
+
     access_token = create_access_token(data={"sub": str(utilisateur.id)})
     refresh_token = create_refresh_token(data={"sub": str(utilisateur.id)})
     return Token(access_token=access_token, refresh_token=refresh_token)

@@ -32,6 +32,7 @@ export const NOTIFICATION_TYPE = {
   PLAN_CHANGE_REQUEST: 12,
   ABONNEMENT: 13,
   MAINTENANCE: 14,
+  INVITATION_CLIENT: 15,
 };
 
 export const NOTIFICATION_TYPE_LABELS = {
@@ -49,6 +50,7 @@ export const NOTIFICATION_TYPE_LABELS = {
   12: "Changement de plan",
   13: "Abonnement",
   14: "Maintenance",
+  15: "Invitation d'agence",
 };
 
 export async function fetchNotifications({ masquees = false } = {}) {

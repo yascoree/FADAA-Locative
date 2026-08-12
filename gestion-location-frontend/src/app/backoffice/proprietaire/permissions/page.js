@@ -95,6 +95,7 @@ export default function AgencesPage() {
   const [acceptScopeInvitation, setAcceptScopeInvitation] = useState(null);
   const [acceptScopeBienId, setAcceptScopeBienId] = useState("all");
   const [acceptScopeBusy, setAcceptScopeBusy] = useState(false);
+  const [detailsInvitationId, setDetailsInvitationId] = useState(null);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -198,6 +199,18 @@ export default function AgencesPage() {
 
   const selectedAgencyFromDirectory = agencyDirectory.find((a) => a.id === selectedAgencyId) || null;
 
+  // Taille d'équipe par agence, tous statuts de partenariat confondus (contrairement
+  // à agencyDirectory qui exclut volontairement les agences déjà partenaires) — sert
+  // uniquement à afficher "X collaborateurs" dans le détail d'une invitation.
+  const agencyMemberCounts = useMemo(() => {
+    const counts = {};
+    gestionnaires.forEach((g) => {
+      if (!g.agence_id) return;
+      counts[g.agence_id] = (counts[g.agence_id] || 0) + 1;
+    });
+    return counts;
+  }, [gestionnaires]);
+
   // Invitations qui appellent encore une action : en attente d'une réponse, ou
   // déjà acceptées mais dont le Mandat n'a pas encore été configuré (l'acceptation
   // n'établit que la relation — voir lib/invitationsClient — la portée/permissions
@@ -215,6 +228,8 @@ export default function AgencesPage() {
         .map((inv) => ({ ...inv, needsScope: inv.statut === INVITATION_CLIENT_STATUS.ACCEPTEE })),
     [invitations, agenceGroups]
   );
+
+  const detailsInvitation = actionableInvitations.find((inv) => inv.id === detailsInvitationId) || null;
 
   async function handleAcceptInvitation(invitation) {
     setInvitationBanner(null);
@@ -466,6 +481,14 @@ export default function AgencesPage() {
                     ? t("bo.proprietairePermissions.invitationNeedsScopeSub")
                     : t("bo.proprietairePermissions.invitationPromptSub")}
                 </div>
+                <button
+                  type="button"
+                  className={styles.invitationCardDetailsLink}
+                  onClick={() => setDetailsInvitationId(inv.id)}
+                >
+                  <i className="bi bi-info-circle" />
+                  {t("bo.proprietairePermissions.invitationSeeDetails")}
+                </button>
               </div>
               <div className={styles.invitationCardActions}>
                 {inv.needsScope ? (
@@ -875,6 +898,89 @@ export default function AgencesPage() {
               onToggle={(code) => handleTogglePermission(permissionsMandat.id, code)}
               disabled={savingMandateIds.has(permissionsMandat.id) || permissionsMandat.statut !== MANDAT_STATUS.ACTIF}
             />
+          </>
+        )}
+      </Modal>
+
+      {/* ---- Détail d'une invitation d'agence ---- */}
+      <Modal
+        isOpen={!!detailsInvitation}
+        onClose={() => setDetailsInvitationId(null)}
+        title={detailsInvitation ? detailsInvitation.agence.nom : ""}
+      >
+        {detailsInvitation && (
+          <>
+            <div className={styles.invitationDetailsRow}>
+              <span className={styles.invitationCardIcon}>
+                <i className="bi bi-building" />
+              </span>
+              <div>
+                <div className={styles.invitationCardTitle}>{detailsInvitation.agence.nom}</div>
+                <div className={styles.invitationCardSub}>
+                  {t("bo.proprietairePermissions.invitationTeamSize", {
+                    count: agencyMemberCounts[detailsInvitation.agence.id] || 1,
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <p className={styles.invitationDetailsMeta}>
+              <i className="bi bi-calendar-event" />
+              {t("bo.proprietairePermissions.invitationSentOn", {
+                date: new Date(detailsInvitation.created_at).toLocaleDateString("fr-FR", {
+                  day: "2-digit",
+                  month: "long",
+                  year: "numeric",
+                }),
+              })}
+            </p>
+
+            <p className={styles.subtitle}>
+              {detailsInvitation.needsScope
+                ? t("bo.proprietairePermissions.invitationNeedsScopeSub")
+                : t("bo.proprietairePermissions.invitationPromptSub")}
+            </p>
+
+            <div className={styles.editActions}>
+              {detailsInvitation.needsScope ? (
+                <button
+                  type="button"
+                  className={styles.btn}
+                  onClick={() => {
+                    setDetailsInvitationId(null);
+                    setAcceptScopeBienId("all");
+                    setAcceptScopeInvitation(detailsInvitation);
+                  }}
+                >
+                  {t("bo.proprietairePermissions.configureAccess")}
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className={styles.btnOutline}
+                    disabled={invitationBusyId === detailsInvitation.id}
+                    onClick={() => {
+                      setDetailsInvitationId(null);
+                      handleDeclineInvitation(detailsInvitation);
+                    }}
+                  >
+                    {t("bo.proprietairePermissions.decline")}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.btn}
+                    disabled={invitationBusyId === detailsInvitation.id}
+                    onClick={() => {
+                      setDetailsInvitationId(null);
+                      handleAcceptInvitation(detailsInvitation);
+                    }}
+                  >
+                    {t("bo.proprietairePermissions.accept")}
+                  </button>
+                </>
+              )}
+            </div>
           </>
         )}
       </Modal>

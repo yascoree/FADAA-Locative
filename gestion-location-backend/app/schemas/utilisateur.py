@@ -37,6 +37,7 @@ class UtilisateurRead(UtilisateurBase):
 
     id: int
     date_creation: datetime
+    derniere_connexion: Optional[datetime] = None
     photo: Optional[str] = None
     # Agence dont ce gestionnaire est membre actif (None sinon) — permet au
     # frontend de transmettre directement agence_id lors de la création d'un
@@ -59,3 +60,4 @@ class UtilisateurMini(BaseModel):
     email: EmailStr
     photo: Optional[str] = None
     statut_compte: StatutCompte
+    derniere_connexion: Optional[datetime] = None

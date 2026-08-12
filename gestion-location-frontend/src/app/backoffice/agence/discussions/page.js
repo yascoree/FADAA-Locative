@@ -7,6 +7,7 @@ import { fetchLocataires } from "@/lib/tenants";
 import { fetchMandates, MANDAT_STATUS } from "@/lib/mandates";
 import { fetchDiscussions, sendMessage, deleteDiscussion, uploadDiscussionAttachment } from "@/lib/discussions";
 import { fetchNotifications, markNotificationRead, NOTIFICATION_STATUS, NOTIFICATION_TYPE } from "@/lib/notifications";
+import LoadingState from "@/components/LoadingState";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "../agence.module.css";
 
@@ -202,7 +203,7 @@ export default function AgenceDiscussionsPage() {
   }
 
   if (isLoading) {
-    return <p>{t("bo.common.loading")}</p>;
+    return <LoadingState label={t("bo.common.loading")} />;
   }
 
   return (

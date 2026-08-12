@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { LOT_STATUS_LABELS, BAIL_STATUS_LABELS } from "@/lib/properties";
 import { fetchDashboardStats, fetchRevenueStats } from "@/lib/stats";
 import CountUp from "@/components/CountUp";
+import LoadingState from "@/components/LoadingState";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "./agence.module.css";
 
@@ -144,7 +145,7 @@ export default function AgenceDashboardPage() {
   const today = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
 
   if (isLoading) {
-    return <p>{t("bo.common.loading")}</p>;
+    return <LoadingState label={t("bo.common.loading")} />;
   }
 
   if (loadError || !stats || !revenue) {

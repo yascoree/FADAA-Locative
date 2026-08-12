@@ -63,6 +63,7 @@ export default function NavBar() {
               {t(labelKey)}
             </Link>
           ))}
+          <Link href="/blog">{t("nav.blog")}</Link>
           <Link href="/front/contact">{t("nav.contact")}</Link>
         </nav>
         <div className={styles.navActions}>

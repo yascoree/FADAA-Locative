@@ -26,6 +26,8 @@ import FilterSelect from "@/components/FilterSelect";
 import MapPicker from "@/components/MapPicker";
 import BienDetailsModal from "@/components/BienDetailsModal";
 import PlanLimitPopup from "@/components/PlanLimitPopup";
+import LoadingState from "@/components/LoadingState";
+import EmptyState from "@/components/EmptyState";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "../agence.module.css";
 
@@ -323,7 +325,7 @@ export default function AgenceBiensPage() {
   }
 
   if (isLoading) {
-    return <p>{t("bo.common.loading")}</p>;
+    return <LoadingState label={t("bo.common.loading")} />;
   }
 
   return (
@@ -404,7 +406,7 @@ export default function AgenceBiensPage() {
               {filteredBiens.length === 0 && (
                 <tr>
                   <td colSpan={6} className={styles.empty}>
-                    {t("bo.common.noMatch")}
+                    <EmptyState icon="bi-house-door" title={t("bo.common.noMatch")} />
                   </td>
                 </tr>
               )}

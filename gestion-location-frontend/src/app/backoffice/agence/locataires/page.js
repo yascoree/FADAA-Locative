@@ -15,6 +15,9 @@ import SelectField from "@/components/SelectField";
 import FilterChip from "@/components/FilterChip";
 import FilterSelect from "@/components/FilterSelect";
 import PlanLimitPopup from "@/components/PlanLimitPopup";
+import LoadingState from "@/components/LoadingState";
+import EmptyState from "@/components/EmptyState";
+import ConfirmationDialog from "@/components/ConfirmationDialog";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "../agence.module.css";
 
@@ -102,6 +105,7 @@ export default function AgenceLocatairesPage() {
   const [selectedId, setSelectedId] = useState(null);
   const [statusBusyId, setStatusBusyId] = useState(null);
   const [statusBanner, setStatusBanner] = useState(null);
+  const [deactivateTarget, setDeactivateTarget] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -239,13 +243,14 @@ export default function AgenceLocatairesPage() {
   }
 
   async function handleToggleStatus(locataire) {
+    if (locataire.statut_compte === ACCOUNT_STATUS.ACTIF) {
+      setDeactivateTarget(locataire);
+      return;
+    }
     setStatusBanner(null);
     setStatusBusyId(locataire.id);
     try {
-      const updated =
-        locataire.statut_compte === ACCOUNT_STATUS.ACTIF
-          ? await deactivateLocataire(locataire.id)
-          : await activateLocataire(locataire.id);
+      const updated = await activateLocataire(locataire.id);
       setLocataires((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
     } catch (err) {
       setStatusBanner({ type: "error", message: extractErrorMessage(err) });
@@ -254,8 +259,23 @@ export default function AgenceLocatairesPage() {
     }
   }
 
+  async function handleConfirmDeactivate() {
+    if (!deactivateTarget) return;
+    setStatusBanner(null);
+    setStatusBusyId(deactivateTarget.id);
+    try {
+      const updated = await deactivateLocataire(deactivateTarget.id);
+      setLocataires((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+      setDeactivateTarget(null);
+    } catch (err) {
+      setStatusBanner({ type: "error", message: extractErrorMessage(err) });
+    } finally {
+      setStatusBusyId(null);
+    }
+  }
+
   if (isLoading) {
-    return <p>{t("bo.common.loading")}</p>;
+    return <LoadingState label={t("bo.common.loading")} />;
   }
 
   return (
@@ -327,7 +347,7 @@ export default function AgenceLocatairesPage() {
               {filteredLocataires.length === 0 && (
                 <tr>
                   <td colSpan={5} className={styles.empty}>
-                    {t("bo.common.noMatch")}
+                    <EmptyState icon="bi-people" title={t("bo.common.noMatch")} />
                   </td>
                 </tr>
               )}
@@ -629,6 +649,25 @@ export default function AgenceLocatairesPage() {
       </Modal>
 
       <PlanLimitPopup message={planLimitMessage} onClose={() => setPlanLimitMessage(null)} />
+
+      {/* ---- Confirmation de désactivation ---- */}
+      <ConfirmationDialog
+        isOpen={!!deactivateTarget}
+        onClose={() => setDeactivateTarget(null)}
+        onConfirm={handleConfirmDeactivate}
+        title={t("bo.proprietaireLocataires.deactivateConfirmTitle")}
+        message={
+          deactivateTarget
+            ? t("bo.proprietaireLocataires.deactivateConfirmMessage", {
+                name: `${deactivateTarget.prenom} ${deactivateTarget.nom}`,
+              })
+            : ""
+        }
+        confirmLabel={t("bo.proprietaireLocataires.deactivateConfirmLabel")}
+        danger
+        isBusy={statusBusyId === deactivateTarget?.id}
+        error={statusBanner?.type === "error" ? statusBanner.message : null}
+      />
     </div>
   );
 }

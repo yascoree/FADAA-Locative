@@ -30,9 +30,8 @@ function useNavSections() {
       ],
     },
     {
-      label: t("bo.proprietaireSidebar.team"),
+      label: t("bo.proprietaireSidebar.locatairesGroup"),
       items: [
-        { href: "/backoffice/proprietaire/permissions", label: t("bo.proprietaireSidebar.managers"), icon: "bi-building" },
         { href: "/backoffice/proprietaire/locataires", label: t("bo.proprietaireSidebar.locataires"), icon: "bi-people" },
         {
           href: "/backoffice/proprietaire/maintenance",
@@ -43,7 +42,13 @@ function useNavSections() {
       ],
     },
     {
-      label: t("bo.proprietaireSidebar.exchanges"),
+      label: t("bo.proprietaireSidebar.agencesGroup"),
+      items: [
+        { href: "/backoffice/proprietaire/permissions", label: t("bo.proprietaireSidebar.managers"), icon: "bi-building" },
+      ],
+    },
+    {
+      label: t("bo.proprietaireSidebar.communication"),
       items: [
         {
           href: "/backoffice/proprietaire/messagerie",

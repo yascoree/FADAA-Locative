@@ -39,15 +39,70 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const SITE_URL = "https://www.fadaalocative.ma";
+const SITE_NAME = "FADAA Locative";
+const DEFAULT_DESCRIPTION =
+  "FADAA Locative est le logiciel de gestion locative et immobilière au Maroc : baux, paiements de loyer, quittances et agences, tout en un.";
+
 export const metadata = {
-  title: "FADAA Locative",
-  description: "Plateforme de gestion locative",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} — Logiciel de gestion locative au Maroc`,
+    template: `%s — ${SITE_NAME}`,
+  },
+  description: DEFAULT_DESCRIPTION,
+  keywords: [
+    "gestion locative Maroc",
+    "logiciel de gestion locative",
+    "gestion immobilière",
+    "bail de location",
+    "paiement du loyer",
+    "agence immobilière",
+  ],
+  robots: { index: true, follow: true },
+  icons: {
+    icon: "/icon.png",
+    apple: "/apple-icon.png",
+  },
+  openGraph: {
+    type: "website",
+    locale: "fr_MA",
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} — Logiciel de gestion locative au Maroc`,
+    description: DEFAULT_DESCRIPTION,
+    url: SITE_URL,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE_NAME} — Logiciel de gestion locative au Maroc`,
+    description: DEFAULT_DESCRIPTION,
+  },
+};
+
+const ORGANIZATION_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: SITE_NAME,
+  url: SITE_URL,
+  logo: `${SITE_URL}/icon.png`,
+  email: "contact@fadaalocative.ma",
+  telephone: "+212500000000",
+  address: { "@type": "PostalAddress", addressCountry: "MA" },
+  sameAs: [
+    "https://web.facebook.com/fadaascol/",
+    "https://www.linkedin.com/company/fadaa-solutions/",
+    "https://www.instagram.com/fadaa_ma/",
+  ],
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="fr" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <body>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(ORGANIZATION_JSON_LD) }}
+        />
         <Script id="theme-init" strategy="beforeInteractive">
           {THEME_INIT_SCRIPT}
         </Script>

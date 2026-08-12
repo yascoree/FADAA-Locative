@@ -21,17 +21,18 @@ export default function AdminLayout({ children }) {
   const [isScrolled, setIsScrolled] = useState(false);
 
   const PAGE_TITLES = {
-    "/backoffice/admin": t("bo.adminLayout.titles.dashboard"),
-    "/backoffice/admin/utilisateurs": t("bo.adminLayout.titles.users"),
-    "/backoffice/admin/messagerie": t("bo.adminLayout.titles.messaging"),
-    "/backoffice/admin/demandes-demo": t("bo.adminLayout.titles.demoRequests"),
-    "/backoffice/admin/notifications": t("bo.adminLayout.titles.notifications"),
-    "/backoffice/admin/abonnements": t("bo.adminLayout.titles.subscriptions"),
-    "/backoffice/admin/architecture": t("bo.adminLayout.titles.categories"),
-    "/backoffice/admin/avis": t("bo.adminLayout.titles.reviews"),
-    "/backoffice/admin/partenaires": t("bo.adminLayout.titles.partners"),
-    "/backoffice/admin/historique": t("bo.adminLayout.titles.activityLog"),
-    "/backoffice/admin/parametres": t("bo.adminLayout.titles.settings"),
+    "/backoffice/admin": t("bo.adminSidebar.dashboard"),
+    "/backoffice/admin/utilisateurs": t("bo.adminSidebar.users"),
+    "/backoffice/admin/messagerie": t("bo.adminSidebar.messaging"),
+    "/backoffice/admin/demandes-demo": t("bo.adminSidebar.demoRequests"),
+    "/backoffice/admin/notifications": t("bo.adminSidebar.notifications"),
+    "/backoffice/admin/abonnements": t("bo.adminSidebar.subscriptions"),
+    "/backoffice/admin/abonnements/demandes": t("bo.adminSidebar.planChangeRequests"),
+    "/backoffice/admin/architecture": t("bo.adminSidebar.categories"),
+    "/backoffice/admin/avis": t("bo.adminSidebar.reviews"),
+    "/backoffice/admin/partenaires": t("bo.adminSidebar.partners"),
+    "/backoffice/admin/historique": t("bo.adminSidebar.activityLog"),
+    "/backoffice/admin/parametres": t("bo.adminSidebar.settings"),
   };
 
   function handleContentScroll(e) {

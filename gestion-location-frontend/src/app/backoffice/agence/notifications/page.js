@@ -16,6 +16,8 @@ import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import ToggleSwitch from "@/components/ToggleSwitch";
 import FilterSelect from "@/components/FilterSelect";
+import LoadingState from "@/components/LoadingState";
+import EmptyState from "@/components/EmptyState";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "../agence.module.css";
 
@@ -176,7 +178,7 @@ export default function AgenceNotificationsPage() {
   }
 
   if (isLoading) {
-    return <p>{t("bo.common.loading")}</p>;
+    return <LoadingState label={t("bo.common.loading")} />;
   }
 
   return (
@@ -239,9 +241,7 @@ export default function AgenceNotificationsPage() {
         <div className={styles.card} style={{ padding: 0 }}>
           <div className={styles.notifList}>
             {filteredNotifications.length === 0 && (
-              <p className={styles.empty} style={{ padding: "1.5rem" }}>
-                {t("bo.proprietaireNotifications.noMatch")}
-              </p>
+              <EmptyState icon="bi-bell" title={t("bo.proprietaireNotifications.noMatch")} />
             )}
             {filteredNotifications.map((n) => {
               const isUnread = n.statut === NOTIFICATION_STATUS.NON_LUE;

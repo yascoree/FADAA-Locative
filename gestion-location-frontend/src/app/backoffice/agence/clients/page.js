@@ -25,6 +25,8 @@ import FilterSelect from "@/components/FilterSelect";
 import Drawer from "@/components/Drawer";
 import Modal from "@/components/Modal";
 import PermissionsMatrix from "@/components/PermissionsMatrix";
+import LoadingState from "@/components/LoadingState";
+import EmptyState from "@/components/EmptyState";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "../agence.module.css";
@@ -222,7 +224,7 @@ export default function AgenceClientsPage() {
   }
 
   if (isLoading) {
-    return <p>{t("bo.common.loading")}</p>;
+    return <LoadingState label={t("bo.common.loading")} />;
   }
 
   return (
@@ -260,6 +262,7 @@ export default function AgenceClientsPage() {
           className={`${styles.tabBtn} ${activeTab === "clients" ? styles.tabBtnActive : ""}`}
           onClick={() => setActiveTab("clients")}
         >
+          <i className="bi bi-person-vcard" />
           {t("bo.agenceClients.tabClients")}
         </button>
         <button
@@ -268,9 +271,10 @@ export default function AgenceClientsPage() {
           className={`${styles.tabBtn} ${activeTab === "invitations" ? styles.tabBtnActive : ""}`}
           onClick={() => setActiveTab("invitations")}
         >
+          <i className="bi bi-envelope-paper" />
           {t("bo.agenceClients.tabInvitations")}
           {invitations.filter((i) => i.statut === INVITATION_CLIENT_STATUS.EN_ATTENTE).length > 0 && (
-            <span className={styles.badge} style={{ marginLeft: "0.4rem" }}>
+            <span className={styles.tabBadge}>
               {invitations.filter((i) => i.statut === INVITATION_CLIENT_STATUS.EN_ATTENTE).length}
             </span>
           )}
@@ -298,10 +302,7 @@ export default function AgenceClientsPage() {
           </div>
 
           {filteredClientGroups.length === 0 && (
-            <p className={styles.empty}>
-              <i className="bi bi-person-vcard" style={{ display: "block", fontSize: "1.6rem", marginBottom: "0.5rem" }} />
-              {t("bo.agenceClients.noClientYet")}
-            </p>
+            <EmptyState icon="bi-person-vcard" title={t("bo.agenceClients.noClientYet")} />
           )}
 
           <div className={styles.list}>
@@ -347,10 +348,7 @@ export default function AgenceClientsPage() {
       {activeTab === "invitations" && (
         <>
           {invitations.length === 0 ? (
-            <p className={styles.empty}>
-              <i className="bi bi-envelope-paper" style={{ display: "block", fontSize: "1.6rem", marginBottom: "0.5rem" }} />
-              {t("bo.agenceClients.noInvitationYet")}
-            </p>
+            <EmptyState icon="bi-envelope-paper" title={t("bo.agenceClients.noInvitationYet")} />
           ) : (
             <div className={styles.list}>
               {invitations.map((inv) => {
@@ -436,7 +434,19 @@ export default function AgenceClientsPage() {
         title={viewMandat ? t("bo.agenceClients.permissionsFor", { bien: bienLabel(viewMandat, t) }) : ""}
       >
         {viewMandat && (
-          <PermissionsMatrix groups={groups} granted={grantedByMandate[viewMandat.id] || new Set()} readOnly />
+          <>
+            <div className={styles.detailBlockTitle}>{t("bo.agenceClients.accessCeilingTitle")}</div>
+            <PermissionsMatrix groups={groups} granted={grantedByMandate[viewMandat.id] || new Set()} readOnly />
+
+            <div className={styles.detailBlockTitle} style={{ marginTop: "1.75rem" }}>
+              {t("bo.agenceClients.accessMemberTitle")}
+            </div>
+            <p className={styles.transitionalNotice}>
+              <i className="bi bi-info-circle" />
+              {t("bo.agenceClients.accessMemberTransitionalNote")}
+            </p>
+            <PermissionsMatrix groups={groups} granted={grantedByMandate[viewMandat.id] || new Set()} readOnly />
+          </>
         )}
       </Modal>
 

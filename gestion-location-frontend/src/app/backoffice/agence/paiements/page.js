@@ -30,6 +30,8 @@ import SelectField from "@/components/SelectField";
 import FilterChip from "@/components/FilterChip";
 import FilterSelect from "@/components/FilterSelect";
 import PlanLimitPopup from "@/components/PlanLimitPopup";
+import LoadingState from "@/components/LoadingState";
+import EmptyState from "@/components/EmptyState";
 import { useLanguage } from "@/context/LanguageContext";
 import uiStyles from "@/components/ui.module.css";
 import styles from "../agence.module.css";
@@ -433,7 +435,7 @@ export default function AgencePaiementsPage() {
   }
 
   if (isLoading) {
-    return <p>{t("bo.common.loading")}</p>;
+    return <LoadingState label={t("bo.common.loading")} />;
   }
 
   return (
@@ -529,7 +531,7 @@ export default function AgencePaiementsPage() {
               {filteredPaiements.length === 0 && (
                 <tr>
                   <td colSpan={9} className={styles.empty}>
-                    {t("bo.common.noMatch")}
+                    <EmptyState icon="bi-receipt" title={t("bo.common.noMatch")} />
                   </td>
                 </tr>
               )}

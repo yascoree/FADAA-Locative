@@ -28,7 +28,7 @@ function useNavSections() {
       ],
     },
     {
-      label: t("bo.locataireSidebar.exchanges"),
+      label: t("bo.locataireSidebar.communication"),
       items: [
         {
           href: "/backoffice/locataire/discussions",

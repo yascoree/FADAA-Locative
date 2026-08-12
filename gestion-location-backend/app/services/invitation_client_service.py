@@ -179,14 +179,19 @@ def create_invitation(
         <p>Connectez-vous à votre compte pour accepter ou refuser cette invitation.</p>
         """
         send_email(target.email, f"{agence.nom} vous invite sur FADAA Locative", html_body)
-        send_push_to_user(
-            db,
-            user_id=target.id,
-            title="Nouvelle invitation d'agence",
-            body=f"{agence.nom} souhaite gérer vos biens.",
-            notif_type=NotificationType.INVITATION_CLIENT,
-            reference_id=invitation.id,
-        )
+
+    # Toujours créer la notification in-app, même pour un compte tout juste créé
+    # (is_new_account) : elle restera non lue jusqu'à ce que ce propriétaire se
+    # connecte pour la première fois — sans quoi son invitation resterait invisible
+    # dans la cloche de notifications, seul l'email/lien d'activation en garderait trace.
+    send_push_to_user(
+        db,
+        user_id=target.id,
+        title="Nouvelle invitation d'agence",
+        body=f"{agence.nom} souhaite gérer vos biens.",
+        notif_type=NotificationType.INVITATION_CLIENT,
+        reference_id=invitation.id,
+    )
 
     return invitation, invite_link
 

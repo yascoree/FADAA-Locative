@@ -6,8 +6,26 @@ import { fetchHistorique, HISTORIQUE_ACTIONS } from "@/lib/historique";
 import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import FilterSelect from "@/components/FilterSelect";
+import Drawer from "@/components/Drawer";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "../admin.module.css";
+
+function formatValue(v) {
+  if (v === null || v === undefined || v === "") return "—";
+  if (typeof v === "boolean") return v ? "true" : "false";
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+}
+
+// old_values/new_values sont des snapshots complets de la ressource (voir
+// HistoriqueMiddleware._serialize_row), pas seulement les champs modifiés —
+// on ne garde donc que les clés dont la valeur diffère réellement entre les
+// deux snapshots pour un diff lisible, plutôt que d'afficher chaque colonne
+// inchangée de la table.
+function diffKeys(oldValues, newValues) {
+  const keys = new Set([...Object.keys(oldValues || {}), ...Object.keys(newValues || {})]);
+  return [...keys].filter((k) => JSON.stringify(oldValues?.[k]) !== JSON.stringify(newValues?.[k])).sort();
+}
 
 function Banner({ banner }) {
   if (!banner) return null;
@@ -59,6 +77,7 @@ export default function AdminHistoriquePage() {
   const [actionFilter, setActionFilter] = useState("");
   const [sortBy, setSortBy] = useState("recent");
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedEntry, setSelectedEntry] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -197,7 +216,7 @@ export default function AdminHistoriquePage() {
                 </tr>
               )}
               {paginatedEntries.map((e) => (
-                <tr key={e.id}>
+                <tr key={e.id} className={styles.tableRowClickable} onClick={() => setSelectedEntry(e)}>
                   <td>{formatDateTime(e.created_at)}</td>
                   <td>
                     {e.utilisateur ? (
@@ -252,6 +271,99 @@ export default function AdminHistoriquePage() {
           )}
         </div>
       </div>
+
+      {/* ---- Détail d'une entrée (diff avant/après) ---- */}
+      <Drawer
+        isOpen={!!selectedEntry}
+        onClose={() => setSelectedEntry(null)}
+        title={selectedEntry ? `${ACTION_LABELS[selectedEntry.action] || selectedEntry.action} — ${elementCell(selectedEntry)}` : ""}
+      >
+        {selectedEntry && (
+          <>
+            <div className={styles.detailInfoList}>
+              <div className={styles.detailInfoRow}>
+                <span className={styles.detailInfoIcon}>
+                  <i className="bi bi-calendar-event" />
+                </span>
+                <span className={styles.detailInfoBody}>
+                  <span className={styles.detailInfoLabel}>{t("bo.adminHistorique.colDate")}</span>
+                  <span className={styles.detailInfoValue}>{formatDateTime(selectedEntry.created_at)}</span>
+                </span>
+              </div>
+              <div className={styles.detailInfoRow}>
+                <span className={styles.detailInfoIcon}>
+                  <i className="bi bi-person" />
+                </span>
+                <span className={styles.detailInfoBody}>
+                  <span className={styles.detailInfoLabel}>{t("bo.adminHistorique.colUser")}</span>
+                  <span className={styles.detailInfoValue}>
+                    {selectedEntry.utilisateur
+                      ? `${selectedEntry.utilisateur.prenom} ${selectedEntry.utilisateur.nom} (${selectedEntry.utilisateur.email})`
+                      : t("bo.adminHistorique.unknownUser", { id: selectedEntry.user_id })}
+                  </span>
+                </span>
+              </div>
+              <div className={styles.detailInfoRow}>
+                <span className={styles.detailInfoIcon}>
+                  <i className="bi bi-diagram-3" />
+                </span>
+                <span className={styles.detailInfoBody}>
+                  <span className={styles.detailInfoLabel}>{t("bo.adminHistorique.colModule")}</span>
+                  <span className={styles.detailInfoValue}>{selectedEntry.module}</span>
+                </span>
+              </div>
+            </div>
+
+            {(() => {
+              const { old_values: oldValues, new_values: newValues, action } = selectedEntry;
+              if (!oldValues && !newValues) {
+                return <p className={styles.diffEmpty}>{t("bo.adminHistorique.noDetails")}</p>;
+              }
+              if (oldValues && newValues) {
+                const keys = diffKeys(oldValues, newValues);
+                if (keys.length === 0) {
+                  return <p className={styles.diffEmpty}>{t("bo.adminHistorique.noChanges")}</p>;
+                }
+                return (
+                  <div className={styles.diffBox}>
+                    <div className={styles.diffTitle}>
+                      <i className="bi bi-arrow-left-right" />
+                      {t("bo.adminHistorique.changesTitle")}
+                    </div>
+                    {keys.map((k) => (
+                      <div className={styles.diffRow} key={k}>
+                        <span className={styles.diffLabel}>{k}</span>
+                        <span className={styles.diffBefore}>{formatValue(oldValues[k])}</span>
+                        <i className="bi bi-arrow-right" />
+                        <span className={styles.diffAfter}>{formatValue(newValues[k])}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+              const snapshot = newValues || oldValues;
+              const snapshotTitle =
+                action === "DELETE" ? t("bo.adminHistorique.deletedValues") : t("bo.adminHistorique.createdValues");
+              return (
+                <div className={styles.diffBox}>
+                  <div className={styles.diffTitle}>
+                    <i className="bi bi-list-ul" />
+                    {snapshotTitle}
+                  </div>
+                  {Object.entries(snapshot)
+                    .filter(([k]) => k !== "id")
+                    .map(([k, v]) => (
+                      <div className={styles.diffRow} key={k}>
+                        <span className={styles.diffLabel}>{k}</span>
+                        <span className={styles.diffAfter}>{formatValue(v)}</span>
+                      </div>
+                    ))}
+                </div>
+              );
+            })()}
+          </>
+        )}
+      </Drawer>
     </div>
   );
 }

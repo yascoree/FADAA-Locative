@@ -847,6 +847,40 @@
   flex-shrink: 0;
 }
 
+.invitationCardDetailsLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--primary-dark);
+  font-size: 0.78rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.invitationCardDetailsLink:hover {
+  text-decoration: underline;
+}
+
+.invitationDetailsRow {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.invitationDetailsMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
 /* ---------- Sélecteur d'agence existante (recherche + cartes) ---------- */
 
 .agencySearchWrap {

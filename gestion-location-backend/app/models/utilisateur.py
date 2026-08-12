@@ -35,6 +35,7 @@ class Utilisateur(Base):
         Enum(StatutCompte, name="statut_compte"), nullable=False, default=StatutCompte.ACTIF
     )
     cree_par_id = Column(Integer, ForeignKey("utilisateurs.id"), nullable=True)
+    derniere_connexion = Column(DateTime, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted_at = Column(DateTime, nullable=True)

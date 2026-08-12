@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { extractErrorMessage } from "@/lib/apiClient";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -12,14 +13,43 @@ import {
   ROLE_AGENCE,
   AGENCE_MEMBRE_STATUS,
 } from "@/lib/agences";
+import {
+  fetchMandates,
+  fetchPermissionCatalog,
+  fetchMandatePermissions,
+  groupPermissionCatalog,
+  MANDAT_STATUS,
+} from "@/lib/mandates";
+import { fetchBiens } from "@/lib/properties";
 import { ACCOUNT_STATUS, accountStatusLabels } from "@/lib/users";
+import { timeAgo } from "@/lib/formatRelativeTime";
 import StatCard from "@/components/StatCard";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import FilterSelect from "@/components/FilterSelect";
 import Modal from "@/components/Modal";
+import Drawer from "@/components/Drawer";
+import ConfirmationDialog from "@/components/ConfirmationDialog";
+import EmptyState from "@/components/EmptyState";
+import LoadingState from "@/components/LoadingState";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "../agence.module.css";
+
+const RESOURCE_ICONS = {
+  PROPERTY: "bi-house-door",
+  LOT: "bi-grid-3x3-gap",
+  LEASE: "bi-file-earmark-text",
+  DUE_DATE: "bi-calendar-check",
+  PAYMENT: "bi-cash-stack",
+};
+
+const RESOURCE_LABEL_KEYS = {
+  PROPERTY: "bo.permissionCatalog.resourceProperty",
+  LOT: "bo.permissionCatalog.resourceLot",
+  LEASE: "bo.permissionCatalog.resourceLease",
+  DUE_DATE: "bo.permissionCatalog.resourceDueDate",
+  PAYMENT: "bo.permissionCatalog.resourcePayment",
+};
 
 function Banner({ banner }) {
   if (!banner) return null;
@@ -48,6 +78,10 @@ export default function AgenceCollaborateursPage() {
 
   const [agence, setAgence] = useState(null);
   const [members, setMembers] = useState([]);
+  const [mandates, setMandates] = useState([]);
+  const [catalog, setCatalog] = useState([]);
+  const [grantedByMandate, setGrantedByMandate] = useState({});
+  const [biens, setBiens] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
@@ -58,8 +92,9 @@ export default function AgenceCollaborateursPage() {
   const [inviteBusy, setInviteBusy] = useState(false);
   const [inviteLink, setInviteLink] = useState(null);
   const [banner, setBanner] = useState(null);
-  const [removeBusyId, setRemoveBusyId] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
+
+  const [selectedMembre, setSelectedMembre] = useState(null);
 
   const [editingMembre, setEditingMembre] = useState(null);
   const [editRole, setEditRole] = useState(ROLE_AGENCE.MEMBRE);
@@ -68,13 +103,33 @@ export default function AgenceCollaborateursPage() {
   const [editBusy, setEditBusy] = useState(false);
   const [editBanner, setEditBanner] = useState(null);
 
+  const [removeTarget, setRemoveTarget] = useState(null);
+  const [removeBusy, setRemoveBusy] = useState(false);
+  const [removeError, setRemoveError] = useState(null);
+
   useEffect(() => {
     async function init() {
       setIsLoading(true);
       try {
         const agenceData = await fetchMyAgence();
+        const [membersList, mandateList, catalogList, biensList] = await Promise.all([
+          fetchAgenceMembers(agenceData.id),
+          fetchMandates(),
+          fetchPermissionCatalog(),
+          fetchBiens(),
+        ]);
+        const grantedEntries = await Promise.all(
+          mandateList.map(async (mandat) => {
+            const granted = await fetchMandatePermissions(mandat.id);
+            return [mandat.id, new Set(granted.map((item) => item.permission.code))];
+          })
+        );
         setAgence(agenceData);
-        setMembers(await fetchAgenceMembers(agenceData.id));
+        setMembers(membersList);
+        setMandates(mandateList);
+        setCatalog(catalogList);
+        setGrantedByMandate(Object.fromEntries(grantedEntries));
+        setBiens(biensList);
       } catch (err) {
         setLoadError(extractErrorMessage(err));
       } finally {
@@ -93,6 +148,22 @@ export default function AgenceCollaborateursPage() {
   const pendingCount = activeMembers.filter((m) => m.utilisateur?.statut_compte === ACCOUNT_STATUS.INVITE_EN_ATTENTE).length;
 
   const STATUT_LABELS = accountStatusLabels(t);
+
+  const activeMandates = useMemo(() => mandates.filter((m) => m.statut === MANDAT_STATUS.ACTIF), [mandates]);
+  const clientsAccessibles = useMemo(
+    () => new Set(activeMandates.map((m) => m.proprietaire?.id).filter((id) => id != null)).size,
+    [activeMandates]
+  );
+  const biensAccessibles = biens.length;
+
+  const groups = useMemo(() => groupPermissionCatalog(catalog), [catalog]);
+  const resourceAccess = useMemo(() => {
+    return groups.map((group) => {
+      const viewCode = `VIEW_${group.resource}`;
+      const granted = activeMandates.some((m) => grantedByMandate[m.id]?.has(viewCode));
+      return { resource: group.resource, granted };
+    });
+  }, [groups, activeMandates, grantedByMandate]);
 
   const filteredMembers = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -137,15 +208,24 @@ export default function AgenceCollaborateursPage() {
     }
   }
 
-  async function handleRemove(membre) {
-    setRemoveBusyId(membre.utilisateur.id);
+  function openRemoveConfirm(membre) {
+    setRemoveError(null);
+    setRemoveTarget(membre);
+  }
+
+  async function handleConfirmRemove() {
+    if (!removeTarget) return;
+    setRemoveBusy(true);
+    setRemoveError(null);
     try {
-      await removeAgenceMember(agence.id, membre.utilisateur.id);
-      setMembers((prev) => prev.map((m) => (m.id === membre.id ? { ...m, statut: AGENCE_MEMBRE_STATUS.REVOQUE } : m)));
+      await removeAgenceMember(agence.id, removeTarget.utilisateur.id);
+      setMembers((prev) => prev.map((m) => (m.id === removeTarget.id ? { ...m, statut: AGENCE_MEMBRE_STATUS.REVOQUE } : m)));
+      setRemoveTarget(null);
+      setSelectedMembre(null);
     } catch (err) {
-      setBanner({ type: "error", message: extractErrorMessage(err) });
+      setRemoveError(extractErrorMessage(err));
     } finally {
-      setRemoveBusyId(null);
+      setRemoveBusy(false);
     }
   }
 
@@ -182,7 +262,7 @@ export default function AgenceCollaborateursPage() {
   }
 
   if (isLoading) {
-    return <p>{t("bo.common.loading")}</p>;
+    return <LoadingState label={t("bo.common.loading")} />;
   }
 
   if (loadError || !agence) {
@@ -348,77 +428,144 @@ export default function AgenceCollaborateursPage() {
         </Modal>
       )}
 
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>{t("bo.agenceCollaborateurs.colName")}</th>
-              <th>{t("bo.agenceCollaborateurs.colEmail")}</th>
-              <th>{t("bo.agenceCollaborateurs.colRole")}</th>
-              <th>{t("bo.agenceCollaborateurs.colStatus")}</th>
-              {isAdmin && <th>{t("bo.agenceCollaborateurs.colActions")}</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {filteredMembers.length === 0 && (
-              <tr>
-                <td colSpan={isAdmin ? 5 : 4} className={styles.empty}>
-                  {t("bo.agenceCollaborateurs.noMembers")}
-                </td>
-              </tr>
+      {filteredMembers.length === 0 ? (
+        <EmptyState icon="bi-people" title={t("bo.agenceCollaborateurs.noMembers")} />
+      ) : (
+        <div className={styles.memberGrid}>
+          {filteredMembers.map((membre) => {
+            const isRevoked = membre.statut === AGENCE_MEMBRE_STATUS.REVOQUE;
+            const statusText = isRevoked
+              ? t("bo.agenceCollaborateurs.filterRevoked")
+              : STATUT_LABELS[membre.utilisateur?.statut_compte] || "—";
+            const initials = `${membre.utilisateur?.prenom?.[0] || ""}${membre.utilisateur?.nom?.[0] || ""}`.toUpperCase();
+            return (
+              <button
+                type="button"
+                key={membre.id}
+                className={styles.memberCard}
+                onClick={() => setSelectedMembre(membre)}
+              >
+                <div className={styles.memberCardHeader}>
+                  <span className={styles.avatar}>{initials || "?"}</span>
+                  <div className={styles.memberCardBody}>
+                    <div className={styles.memberCardName}>
+                      {membre.utilisateur?.prenom} {membre.utilisateur?.nom}
+                    </div>
+                    <div className={styles.memberCardBadges}>
+                      <span className={`${styles.badge} ${membre.role_agence === ROLE_AGENCE.ADMIN ? styles.badgeActive : styles.badgeWarning}`}>
+                        {roleLabel(membre.role_agence, t)}
+                      </span>
+                      <span className={memberStatusBadge(membre)}>{statusText}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className={styles.memberCardEmail}>{membre.utilisateur?.email}</div>
+                {!isRevoked && (
+                  <div className={styles.memberCardCounts}>
+                    <div className={styles.memberCardCount}>
+                      <span className={styles.memberCardCountValue}>{clientsAccessibles}</span>
+                      <span className={styles.memberCardCountLabel}>{t("bo.agenceCollaborateurs.clientsAccessible")}</span>
+                    </div>
+                    <div className={styles.memberCardCount}>
+                      <span className={styles.memberCardCountValue}>{biensAccessibles}</span>
+                      <span className={styles.memberCardCountLabel}>{t("bo.agenceCollaborateurs.biensAccessible")}</span>
+                    </div>
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ---- Détail d'un collaborateur ---- */}
+      <Drawer
+        isOpen={!!selectedMembre}
+        onClose={() => setSelectedMembre(null)}
+        title={selectedMembre ? `${selectedMembre.utilisateur?.prenom} ${selectedMembre.utilisateur?.nom}` : ""}
+      >
+        {selectedMembre && (
+          <>
+            <div className={styles.memberCardBadges} style={{ marginBottom: "1rem" }}>
+              <span className={`${styles.badge} ${selectedMembre.role_agence === ROLE_AGENCE.ADMIN ? styles.badgeActive : styles.badgeWarning}`}>
+                {roleLabel(selectedMembre.role_agence, t)}
+              </span>
+              <span className={memberStatusBadge(selectedMembre)}>
+                {selectedMembre.statut === AGENCE_MEMBRE_STATUS.REVOQUE
+                  ? t("bo.agenceCollaborateurs.filterRevoked")
+                  : STATUT_LABELS[selectedMembre.utilisateur?.statut_compte] || "—"}
+              </span>
+            </div>
+
+            <div className={styles.detailBlockTitle}>{t("bo.agenceClients.sectionInfos")}</div>
+            <p className={styles.sectionSubtitle} style={{ margin: "0 0 0.4rem" }}>{selectedMembre.utilisateur?.email}</p>
+            <p className={styles.sectionSubtitle} style={{ margin: "0 0 1rem" }}>
+              {t("bo.agenceCollaborateurs.lastConnection")}:{" "}
+              {selectedMembre.utilisateur?.derniere_connexion
+                ? timeAgo(selectedMembre.utilisateur.derniere_connexion, t)
+                : t("bo.common.neverConnected")}
+            </p>
+
+            {selectedMembre.statut !== AGENCE_MEMBRE_STATUS.REVOQUE && (
+              <>
+                <div className={styles.detailBlockTitle}>{t("bo.agenceCollaborateurs.accessSummaryTitle")}</div>
+                <p className={styles.transitionalNotice}>
+                  <i className="bi bi-info-circle" />
+                  {t("bo.agenceCollaborateurs.viaAgenceMandate")}
+                </p>
+                <div className={styles.memberAccessList}>
+                  {resourceAccess.map((r) => (
+                    <div key={r.resource} className={styles.memberAccessItem}>
+                      <i className={`bi ${r.granted ? "bi-check-circle-fill" : "bi-x-circle"}`} />
+                      <i className={`bi ${RESOURCE_ICONS[r.resource] || "bi-dot"}`} />
+                      {t(RESOURCE_LABEL_KEYS[r.resource] || r.resource)}
+                    </div>
+                  ))}
+                </div>
+                <Link href="/backoffice/agence/clients" className={styles.btnOutline} style={{ display: "inline-flex", marginTop: "1rem" }}>
+                  {t("bo.agenceCollaborateurs.seeFullAccessDetail")}
+                  <i className="bi bi-arrow-right" />
+                </Link>
+              </>
             )}
-            {filteredMembers.map((membre) => {
-              const isRevoked = membre.statut === AGENCE_MEMBRE_STATUS.REVOQUE;
-              const statusText = isRevoked
-                ? t("bo.agenceCollaborateurs.filterRevoked")
-                : STATUT_LABELS[membre.utilisateur?.statut_compte] || "—";
-              return (
-                <tr key={membre.id}>
-                  <td>
-                    {membre.utilisateur?.prenom} {membre.utilisateur?.nom}
-                  </td>
-                  <td>{membre.utilisateur?.email}</td>
-                  <td>
-                    <span
-                      className={`${styles.badge} ${membre.role_agence === ROLE_AGENCE.ADMIN ? styles.badgeActive : styles.badgeWarning}`}
-                    >
-                      {roleLabel(membre.role_agence, t)}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={memberStatusBadge(membre)}>{statusText}</span>
-                  </td>
-                  {isAdmin && (
-                    <td>
-                      {!isRevoked && (
-                        <div className={styles.tableActions}>
-                          <button
-                            type="button"
-                            className={styles.iconBtn}
-                            onClick={() => openEdit(membre)}
-                            title={t("bo.agenceCollaborateurs.edit")}
-                          >
-                            <i className="bi bi-pencil" />
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.iconBtn}
-                            onClick={() => handleRemove(membre)}
-                            disabled={removeBusyId === membre.utilisateur?.id}
-                            title={t("bo.agenceCollaborateurs.remove")}
-                          >
-                            <i className="bi bi-person-dash" />
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  )}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+
+            {isAdmin && selectedMembre.statut !== AGENCE_MEMBRE_STATUS.REVOQUE && (
+              <div className={styles.memberDrawerActions}>
+                <button type="button" className={styles.btnOutline} onClick={() => openEdit(selectedMembre)}>
+                  <i className="bi bi-pencil" />
+                  {t("bo.agenceCollaborateurs.edit")}
+                </button>
+                <button type="button" className={styles.btnOutline} onClick={() => openRemoveConfirm(selectedMembre)}>
+                  <i className="bi bi-person-dash" />
+                  {t("bo.agenceCollaborateurs.remove")}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </Drawer>
+
+      {/* ---- Confirmation de retrait ---- */}
+      <ConfirmationDialog
+        isOpen={!!removeTarget}
+        onClose={() => {
+          setRemoveTarget(null);
+          setRemoveError(null);
+        }}
+        onConfirm={handleConfirmRemove}
+        title={t("bo.agenceCollaborateurs.removeConfirmTitle")}
+        message={
+          removeTarget
+            ? t("bo.agenceCollaborateurs.removeConfirmMessage", {
+                name: `${removeTarget.utilisateur?.prenom} ${removeTarget.utilisateur?.nom}`,
+              })
+            : ""
+        }
+        confirmLabel={t("bo.agenceCollaborateurs.removeConfirmLabel")}
+        danger
+        isBusy={removeBusy}
+        error={removeError}
+      />
     </div>
   );
 }

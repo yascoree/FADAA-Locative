@@ -26,6 +26,8 @@ import SelectField from "@/components/SelectField";
 import FilterSelect from "@/components/FilterSelect";
 import RadioGroupField from "@/components/RadioGroupField";
 import PlanLimitPopup from "@/components/PlanLimitPopup";
+import LoadingState from "@/components/LoadingState";
+import EmptyState from "@/components/EmptyState";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "../agence.module.css";
 
@@ -345,7 +347,7 @@ export default function AgenceBauxPage() {
   }
 
   if (isLoading) {
-    return <p>{t("bo.common.loading")}</p>;
+    return <LoadingState label={t("bo.common.loading")} />;
   }
 
   return (
@@ -458,7 +460,7 @@ export default function AgenceBauxPage() {
               {filteredBaux.length === 0 && (
                 <tr>
                   <td colSpan={6} className={styles.empty}>
-                    {t("bo.common.noMatch")}
+                    <EmptyState icon="bi-file-earmark-text" title={t("bo.common.noMatch")} />
                   </td>
                 </tr>
               )}

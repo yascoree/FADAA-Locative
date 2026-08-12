@@ -39,6 +39,7 @@ const TYPE_ICON = {
   [NOTIFICATION_TYPE.PLAN_CHANGE_REQUEST]: "bi-arrow-repeat",
   [NOTIFICATION_TYPE.ABONNEMENT]: "bi-credit-card-2-front-fill",
   [NOTIFICATION_TYPE.MAINTENANCE]: "bi-tools",
+  [NOTIFICATION_TYPE.INVITATION_CLIENT]: "bi-building-fill-add",
 };
 
 const TYPE_TONE_CLASS = {
@@ -52,6 +53,7 @@ const TYPE_TONE_CLASS = {
   [NOTIFICATION_TYPE.PLAN_CHANGE_REQUEST]: "notifIconPrimary",
   [NOTIFICATION_TYPE.ABONNEMENT]: "notifIconDanger",
   [NOTIFICATION_TYPE.MAINTENANCE]: "notifIconDanger",
+  [NOTIFICATION_TYPE.INVITATION_CLIENT]: "notifIconAccent",
 };
 
 const TYPE_TARGET = {
@@ -65,6 +67,7 @@ const TYPE_TARGET = {
   [NOTIFICATION_TYPE.PLAN_CHANGE_REQUEST]: "/backoffice/proprietaire/abonnement",
   [NOTIFICATION_TYPE.ABONNEMENT]: "/backoffice/proprietaire/abonnement",
   [NOTIFICATION_TYPE.MAINTENANCE]: "/backoffice/proprietaire/maintenance",
+  [NOTIFICATION_TYPE.INVITATION_CLIENT]: "/backoffice/proprietaire/permissions",
 };
 
 const TYPE_OPTIONS = Object.entries(NOTIFICATION_TYPE_LABELS).map(([value, label]) => ({ value, label }));
