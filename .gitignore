@@ -60,5 +60,6 @@ gestion-location-backend/serviceAccountKey.json
 next-env.d.ts
 
 # Coding
-.vscode
-.claude
+.vscode/
+.claude/
+.codex/
