@@ -17,6 +17,10 @@ class UtilisateurBase(BaseModel):
 
 class UtilisateurCreate(UtilisateurBase):
     mot_de_passe: str = Field(min_length=8, max_length=128)
+    # Uniquement pour l'inscription publique en tant qu'Agence (role=GESTIONNAIRE) :
+    # nom de l'agence à créer, distinct du nom du responsable (nom/prenom
+    # ci-dessus). Ignoré pour tout autre rôle — voir auth_service.register.
+    agence_nom: Optional[str] = Field(default=None, min_length=1, max_length=150)
 
 
 class UtilisateurUpdate(BaseModel):
@@ -33,7 +37,13 @@ class UtilisateurRead(UtilisateurBase):
 
     id: int
     date_creation: datetime
+    derniere_connexion: Optional[datetime] = None
     photo: Optional[str] = None
+    # Agence dont ce gestionnaire est membre actif (None sinon) — permet au
+    # frontend de transmettre directement agence_id lors de la création d'un
+    # Mandat, sans écran de recherche d'agence dédié.
+    agence_id: Optional[int] = None
+    agence_nom: Optional[str] = None
 
 
 class UtilisateurMini(BaseModel):
@@ -49,3 +59,5 @@ class UtilisateurMini(BaseModel):
     prenom: str
     email: EmailStr
     photo: Optional[str] = None
+    statut_compte: StatutCompte
+    derniere_connexion: Optional[datetime] = None

@@ -2,17 +2,23 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
-import { fetchLocataires, createLocataire } from "@/lib/tenants";
+import { extractErrorMessage, isPlanLimitError, API_BASE_URL } from "@/lib/apiClient";
+import { fetchLocataires, createLocataire, deactivateLocataire, activateLocataire } from "@/lib/tenants";
 import { fetchBiens, fetchBaux, fetchEcheances, fetchPaiements, BAIL_STATUS, BAIL_STATUS_LABELS, ECHEANCE_STATUS } from "@/lib/properties";
-import { ACCOUNT_STATUS, ACCOUNT_STATUS_LABELS } from "@/lib/users";
+import { ACCOUNT_STATUS, accountStatusLabels } from "@/lib/users";
 import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import Modal from "@/components/Modal";
+import Drawer from "@/components/Drawer";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import FilterChip from "@/components/FilterChip";
 import FilterSelect from "@/components/FilterSelect";
+import PlanLimitPopup from "@/components/PlanLimitPopup";
+import LoadingState from "@/components/LoadingState";
+import EmptyState from "@/components/EmptyState";
+import ConfirmationDialog from "@/components/ConfirmationDialog";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -28,6 +34,19 @@ function accountBadgeClass(statut) {
   if (statut === ACCOUNT_STATUS.ACTIF) return styles.badgeActive;
   if (statut === ACCOUNT_STATUS.INVITE_EN_ATTENTE) return styles.badgeWarning;
   return styles.badgeDanger;
+}
+
+function accountStatusIcon(statut) {
+  if (statut === ACCOUNT_STATUS.ACTIF) return "bi-check-circle-fill";
+  if (statut === ACCOUNT_STATUS.INVITE_EN_ATTENTE) return "bi-hourglass-split";
+  return "bi-slash-circle-fill";
+}
+
+function avatarRingClass(locataire, isOverdueFlag) {
+  if (isOverdueFlag) return styles.tenantAvatarRingOverdue;
+  if (locataire.statut_compte === ACCOUNT_STATUS.ACTIF) return styles.tenantAvatarRingActive;
+  if (locataire.statut_compte === ACCOUNT_STATUS.INVITE_EN_ATTENTE) return styles.tenantAvatarRingPending;
+  return styles.tenantAvatarRingDisabled;
 }
 
 function bailBadgeClass(statut) {
@@ -52,12 +71,17 @@ function isOverdue(echeance) {
   return new Date(echeance.date_echeance) < new Date(new Date().toDateString());
 }
 
-const STATUS_OPTIONS = Object.entries(ACCOUNT_STATUS_LABELS).map(([value, label]) => ({ value, label }));
 const PAGE_SIZE = 10;
 
 const EMPTY_FORM = { prenom: "", nom: "", email: "", mot_de_passe: "", statut_compte: String(ACCOUNT_STATUS.ACTIF) };
 
 export default function AgenceLocatairesPage() {
+  const { t } = useLanguage();
+  const ACCOUNT_STATUS_LABELS = useMemo(() => accountStatusLabels(t), [t]);
+  const STATUS_OPTIONS = useMemo(
+    () => Object.entries(ACCOUNT_STATUS_LABELS).map(([value, label]) => ({ value, label })),
+    [ACCOUNT_STATUS_LABELS]
+  );
   const searchParams = useSearchParams();
   const [locataires, setLocataires] = useState([]);
   const [baux, setBaux] = useState([]);
@@ -76,8 +100,12 @@ export default function AgenceLocatairesPage() {
   const [formDraft, setFormDraft] = useState(EMPTY_FORM);
   const [formBusy, setFormBusy] = useState(false);
   const [formBanner, setFormBanner] = useState(null);
+  const [planLimitMessage, setPlanLimitMessage] = useState(null);
 
   const [selectedId, setSelectedId] = useState(null);
+  const [statusBusyId, setStatusBusyId] = useState(null);
+  const [statusBanner, setStatusBanner] = useState(null);
+  const [deactivateTarget, setDeactivateTarget] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -204,14 +232,50 @@ export default function AgenceLocatairesPage() {
       setLocataires((prev) => [...prev, created]);
       setFormOpen(false);
     } catch (err) {
-      setFormBanner({ type: "error", message: extractErrorMessage(err) });
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setFormBanner({ type: "error", message: extractErrorMessage(err) });
+      }
     } finally {
       setFormBusy(false);
     }
   }
 
+  async function handleToggleStatus(locataire) {
+    if (locataire.statut_compte === ACCOUNT_STATUS.ACTIF) {
+      setDeactivateTarget(locataire);
+      return;
+    }
+    setStatusBanner(null);
+    setStatusBusyId(locataire.id);
+    try {
+      const updated = await activateLocataire(locataire.id);
+      setLocataires((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+    } catch (err) {
+      setStatusBanner({ type: "error", message: extractErrorMessage(err) });
+    } finally {
+      setStatusBusyId(null);
+    }
+  }
+
+  async function handleConfirmDeactivate() {
+    if (!deactivateTarget) return;
+    setStatusBanner(null);
+    setStatusBusyId(deactivateTarget.id);
+    try {
+      const updated = await deactivateLocataire(deactivateTarget.id);
+      setLocataires((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+      setDeactivateTarget(null);
+    } catch (err) {
+      setStatusBanner({ type: "error", message: extractErrorMessage(err) });
+    } finally {
+      setStatusBusyId(null);
+    }
+  }
+
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <LoadingState label={t("bo.common.loading")} />;
   }
 
   return (
@@ -221,10 +285,10 @@ export default function AgenceLocatairesPage() {
       {/* ---- Stats ---- */}
       <div className={styles.section}>
         <div className={styles.statsGrid}>
-          <StatCard icon="bi-people-fill" tone="primary" label="Locataires gérés" value={stats.total} />
-          <StatCard icon="bi-file-earmark-check-fill" tone="accent" label="Avec bail actif" value={stats.avecBailActif} />
-          <StatCard icon="bi-exclamation-octagon-fill" tone="danger" label="En retard de paiement" value={stats.enRetard} />
-          <StatCard icon="bi-slash-circle-fill" tone="warning" label="Comptes désactivés" value={stats.desactives} />
+          <StatCard icon="bi-people-fill" tone="primary" label={t("bo.agenceLocataires.title")} value={stats.total} />
+          <StatCard icon="bi-file-earmark-check-fill" tone="accent" label={t("bo.proprietaireLocataires.statActiveLease")} value={stats.avecBailActif} />
+          <StatCard icon="bi-exclamation-octagon-fill" tone="danger" label={t("bo.proprietaireLocataires.statOverdue")} value={stats.enRetard} />
+          <StatCard icon="bi-slash-circle-fill" tone="warning" label={t("bo.proprietaireLocataires.statDisabled")} value={stats.desactives} />
         </div>
       </div>
 
@@ -234,23 +298,22 @@ export default function AgenceLocatairesPage() {
           <div>
             <h2 className={styles.sectionTitle}>
               <i className="bi bi-table" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-              Locataires gérés
+              {t("bo.agenceLocataires.title")}
             </h2>
             <p className={styles.sectionSubtitle}>
-              {filteredLocataires.length} locataire(s) affiché(s) sur {locataires.length}, tous propriétaires
-              confondus.
+              {t("bo.agenceLocataires.subtitle", { shown: filteredLocataires.length, total: locataires.length })}
             </p>
           </div>
           <button type="button" className={styles.btn} onClick={openCreate}>
             <i className="bi bi-plus-lg" />
-            Nouveau locataire
+            {t("bo.proprietaireLocataires.newTenant")}
           </button>
         </div>
 
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher par nom, e-mail, bien occupé..."
+            placeholder={t("bo.proprietaireLocataires.searchPlaceholder")}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -264,7 +327,7 @@ export default function AgenceLocatairesPage() {
               setCurrentPage(1);
             }}
           >
-            En retard uniquement
+            {t("bo.proprietaireLocataires.overdueOnly")}
           </FilterChip>
           <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
@@ -273,47 +336,57 @@ export default function AgenceLocatairesPage() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Locataire</th>
-                <th>Email</th>
-                <th>Bien(s) occupé(s)</th>
-                <th>Statut du compte</th>
-                <th>Actions</th>
+                <th>{t("bo.proprietaireLocataires.colTenant")}</th>
+                <th>{t("bo.proprietaireLocataires.colEmail")}</th>
+                <th>{t("bo.proprietaireLocataires.colBiensOccupied")}</th>
+                <th>{t("bo.proprietaireLocataires.colAccountStatus")}</th>
+                <th>{t("bo.proprietaireLocataires.colActions")}</th>
               </tr>
             </thead>
             <tbody>
               {filteredLocataires.length === 0 && (
                 <tr>
                   <td colSpan={5} className={styles.empty}>
-                    Aucun locataire ne correspond à ces critères.
+                    <EmptyState icon="bi-people" title={t("bo.common.noMatch")} />
                   </td>
                 </tr>
               )}
               {paginatedLocataires.map((l) => {
                 const activeBaux = bauxOf(l.id).filter((b) => b.statut === BAIL_STATUS.ACTIF);
                 const initials = `${l.prenom?.[0] || ""}${l.nom?.[0] || ""}`.toUpperCase();
+                const overdue = locataireHasOverdue.get(l.id);
+                const isActive = selectedId === l.id;
                 return (
-                  <tr key={l.id} className={selectedId === l.id ? styles.tableRowActive : ""}>
+                  <tr
+                    key={l.id}
+                    className={`${isActive ? styles.tableRowActive : ""} ${overdue ? styles.tenantRowOverdue : ""}`}
+                  >
                     <td>
                       <div className={styles.userCell}>
-                        {l.photo ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={`${API_BASE_URL}${l.photo}`}
-                            alt=""
-                            className={styles.avatarSm}
-                            style={{ objectFit: "cover" }}
-                          />
-                        ) : (
-                          <span className={styles.avatarSm}>{initials || "?"}</span>
-                        )}
-                        <span className={styles.userName}>
-                          {l.prenom} {l.nom}
+                        <span className={`${styles.tenantAvatarRing} ${avatarRingClass(l, overdue)}`}>
+                          {l.photo ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={`${API_BASE_URL}${l.photo}`}
+                              alt=""
+                              className={styles.tenantAvatarInner}
+                              style={{ objectFit: "cover" }}
+                            />
+                          ) : (
+                            <span className={styles.tenantAvatarInner}>{initials || "?"}</span>
+                          )}
                         </span>
-                        {locataireHasOverdue.get(l.id) && (
-                          <span className={styles.badge} style={{ background: "var(--danger-soft)", color: "var(--danger)" }}>
-                            Retard
-                          </span>
-                        )}
+                        <div>
+                          <div className={styles.userName}>
+                            {l.prenom} {l.nom}
+                          </div>
+                          {overdue && (
+                            <span className={styles.tenantOverdueTag}>
+                              <i className="bi bi-exclamation-triangle-fill" />
+                              {t("bo.proprietaireLocataires.overdueBadge")}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td>{l.email}</td>
@@ -321,7 +394,7 @@ export default function AgenceLocatairesPage() {
                       {activeBaux.length > 0
                         ? activeBaux.map((b) => bienLotLabel(b)).join(", ")
                         : bauxOf(l.id).length > 0
-                          ? "Aucun bail actif"
+                          ? t("bo.proprietaireLocataires.noActiveLease")
                           : "—"}
                     </td>
                     <td>
@@ -335,7 +408,7 @@ export default function AgenceLocatairesPage() {
                           type="button"
                           className={styles.iconBtn}
                           onClick={() => setSelectedId(selectedId === l.id ? null : l.id)}
-                          title="Voir le détail"
+                          title={t("bo.common.seeDetails")}
                         >
                           <i className="bi bi-eye" />
                         </button>
@@ -350,7 +423,7 @@ export default function AgenceLocatairesPage() {
           {filteredLocataires.length > 0 && (
             <div className={styles.paginationRow}>
               <span>
-                Page {safePage} / {totalPages} · {filteredLocataires.length} locataire(s)
+                {t("bo.proprietaireLocataires.pageOf", { page: safePage, total: totalPages, count: filteredLocataires.length })}
               </span>
               <div className={styles.paginationButtons}>
                 <button
@@ -360,7 +433,7 @@ export default function AgenceLocatairesPage() {
                   disabled={safePage <= 1}
                 >
                   <i className="bi bi-chevron-left" />
-                  Précédent
+                  {t("bo.common.previous")}
                 </button>
                 <button
                   type="button"
@@ -368,7 +441,7 @@ export default function AgenceLocatairesPage() {
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={safePage >= totalPages}
                 >
-                  Suivant
+                  {t("bo.common.next")}
                   <i className="bi bi-chevron-right" />
                 </button>
               </div>
@@ -378,68 +451,119 @@ export default function AgenceLocatairesPage() {
 
         {/* ---- Détail du locataire ---- */}
         {selected && (
-          <div className={styles.detailCard}>
-            <div className={styles.detailHeader}>
-              <h3 className={styles.detailTitle}>
-                <i className="bi bi-person-vcard-fill" style={{ color: "var(--primary)" }} />
-                {selected.prenom} {selected.nom}
-              </h3>
-              <button type="button" className={styles.btnOutline} onClick={() => setSelectedId(null)}>
-                <i className="bi bi-x-lg" />
-                Fermer
-              </button>
-            </div>
-
-            <div className={styles.detailColumns}>
-              <div>
-                <div className={styles.detailBlockTitle}>
-                  <i className="bi bi-person-fill" />
-                  Coordonnées
-                </div>
-                <div className={styles.detailLine}>
-                  <strong>Email :</strong> {selected.email}
-                </div>
-                <div className={styles.detailLine}>
-                  <strong>Statut du compte :</strong> {ACCOUNT_STATUS_LABELS[selected.statut_compte]}
-                </div>
-                <div className={styles.detailLine}>
-                  <strong>Compte créé le :</strong> {formatDate(selected.date_creation)}
+          <Drawer
+            isOpen={!!selected}
+            onClose={() => setSelectedId(null)}
+            title={
+              <div className={styles.detailHeaderIdentity}>
+                <span
+                  className={`${styles.tenantAvatarRing} ${styles.tenantAvatarRingLg} ${avatarRingClass(
+                    selected,
+                    locataireHasOverdue.get(selected.id)
+                  )}`}
+                >
+                  {selected.photo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`${API_BASE_URL}${selected.photo}`}
+                      alt=""
+                      className={styles.tenantAvatarInner}
+                      style={{ objectFit: "cover" }}
+                    />
+                  ) : (
+                    <span className={styles.tenantAvatarInner}>
+                      {`${selected.prenom?.[0] || ""}${selected.nom?.[0] || ""}`.toUpperCase() || "?"}
+                    </span>
+                  )}
+                </span>
+                <div>
+                  <h3 className={styles.detailTitle}>
+                    {selected.prenom} {selected.nom}
+                  </h3>
+                  <div className={styles.detailHeaderMeta}>
+                    <span className={`${styles.badge} ${styles.badgeWithIcon} ${accountBadgeClass(selected.statut_compte)}`}>
+                      <i className={`bi ${accountStatusIcon(selected.statut_compte)}`} />
+                      {ACCOUNT_STATUS_LABELS[selected.statut_compte]}
+                    </span>
+                  </div>
+                  <div className={styles.detailHeaderMeta} style={{ marginTop: "0.3rem" }}>
+                    <i className="bi bi-envelope" />
+                    {selected.email}
+                  </div>
                 </div>
               </div>
-              <div>
-                <div className={styles.detailBlockTitle}>
+            }
+          >
+            <Banner banner={statusBanner} />
+            {selected.statut_compte !== ACCOUNT_STATUS.INVITE_EN_ATTENTE && (
+              <div className={styles.editActions} style={{ marginBottom: "1rem" }}>
+                <button
+                  type="button"
+                  className={selected.statut_compte === ACCOUNT_STATUS.ACTIF ? styles.btnOutline : styles.btn}
+                  onClick={() => handleToggleStatus(selected)}
+                  disabled={statusBusyId === selected.id}
+                >
+                  <i className={`bi ${selected.statut_compte === ACCOUNT_STATUS.ACTIF ? "bi-slash-circle" : "bi-check-circle"}`} />
+                  {selected.statut_compte === ACCOUNT_STATUS.ACTIF
+                    ? t("bo.proprietaireLocataires.deactivate")
+                    : t("bo.proprietaireLocataires.reactivate")}
+                </button>
+              </div>
+            )}
+
+            <div className={styles.tenantStatTiles}>
+              <div className={styles.tenantStatTile}>
+                <span className={styles.tenantStatTileIcon}>
                   <i className="bi bi-cash-stack" />
-                  Résumé financier
+                </span>
+                <div>
+                  <div className={styles.tenantStatTileLabel}>{t("bo.proprietaireLocataires.totalPaid")}</div>
+                  <div className={styles.tenantStatTileValue}>
+                    {formatCurrency(paiementsOf(selected.id).reduce((sum, p) => sum + Number(p.montant || 0), 0))}
+                  </div>
                 </div>
-                <div className={styles.detailLine}>
-                  <strong>Total payé :</strong>{" "}
-                  {formatCurrency(paiementsOf(selected.id).reduce((sum, p) => sum + Number(p.montant || 0), 0))}
+              </div>
+              <div className={styles.tenantStatTile}>
+                <span className={`${styles.tenantStatTileIcon} ${styles.tenantStatTileIconDanger}`}>
+                  <i className="bi bi-exclamation-triangle-fill" />
+                </span>
+                <div>
+                  <div className={styles.tenantStatTileLabel}>{t("bo.proprietaireLocataires.overdueDueDates")}</div>
+                  <div className={styles.tenantStatTileValue}>{echeancesOf(selected.id).filter(isOverdue).length}</div>
                 </div>
-                <div className={styles.detailLine}>
-                  <strong>Échéances en retard :</strong> {echeancesOf(selected.id).filter(isOverdue).length}
+              </div>
+              <div className={styles.tenantStatTile}>
+                <span className={styles.tenantStatTileIcon}>
+                  <i className="bi bi-calendar-check" />
+                </span>
+                <div>
+                  <div className={styles.tenantStatTileLabel}>{t("bo.proprietaireLocataires.memberSince")}</div>
+                  <div className={styles.tenantStatTileValue} style={{ fontSize: "0.92rem" }}>
+                    {formatDate(selected.date_creation)}
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className={styles.detailBlockTitle}>
               <i className="bi bi-file-earmark-text-fill" />
-              Historique des baux
+              {t("bo.proprietaireLocataires.leaseHistory")}
             </div>
             <div className={styles.tableWrap} style={{ marginTop: "0.5rem" }}>
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th>Bien / Lot</th>
-                    <th>Période</th>
-                    <th>Loyer</th>
-                    <th>Statut</th>
+                    <th>{t("bo.proprietaireLocataires.colBienLot")}</th>
+                    <th>{t("bo.proprietaireLocataires.colPeriod")}</th>
+                    <th>{t("bo.proprietaireLocataires.colRent")}</th>
+                    <th>{t("bo.proprietaireLocataires.colStatus")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {bauxOf(selected.id).length === 0 && (
                     <tr>
                       <td colSpan={4} className={styles.empty}>
-                        Aucun bail.
+                        {t("bo.proprietaireLocataires.noLease")}
                       </td>
                     </tr>
                   )}
@@ -460,33 +584,33 @@ export default function AgenceLocatairesPage() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </Drawer>
         )}
       </div>
 
       {/* ---- Nouveau locataire ---- */}
-      <Modal isOpen={formOpen} onClose={closeForm} title="Nouveau locataire">
+      <Modal isOpen={formOpen} onClose={closeForm} title={t("bo.proprietaireLocataires.createTitle")}>
         <form onSubmit={handleSubmitForm}>
           <Banner banner={formBanner} />
           <p className={styles.sectionSubtitle} style={{ marginBottom: "1rem" }}>
-            Créez un compte locataire, puis utilisez son e-mail lors de la création d&apos;un bail.
+            {t("bo.proprietaireLocataires.createHint")}
           </p>
           <TextField
-            label="Prénom"
+            label={t("bo.proprietaireLocataires.firstNameLabel")}
             name="prenom"
             value={formDraft.prenom}
             onChange={(e) => setFormDraft((d) => ({ ...d, prenom: e.target.value }))}
             required
           />
           <TextField
-            label="Nom"
+            label={t("bo.proprietaireLocataires.lastNameLabel")}
             name="nom"
             value={formDraft.nom}
             onChange={(e) => setFormDraft((d) => ({ ...d, nom: e.target.value }))}
             required
           />
           <TextField
-            label="Email"
+            label={t("bo.proprietaireLocataires.emailLabel")}
             name="email"
             type="email"
             value={formDraft.email}
@@ -494,17 +618,17 @@ export default function AgenceLocatairesPage() {
             required
           />
           <TextField
-            label="Mot de passe"
+            label={t("bo.proprietaireLocataires.passwordLabel")}
             name="mot_de_passe"
             type="password"
             value={formDraft.mot_de_passe}
             onChange={(e) => setFormDraft((d) => ({ ...d, mot_de_passe: e.target.value }))}
-            hint="8 caractères minimum"
+            hint={t("bo.proprietaireLocataires.passwordHint")}
             minLength={8}
             required
           />
           <SelectField
-            label="Statut du compte"
+            label={t("bo.proprietaireLocataires.accountStatusLabel")}
             name="statut_compte"
             options={STATUS_OPTIONS}
             value={formDraft.statut_compte}
@@ -514,15 +638,36 @@ export default function AgenceLocatairesPage() {
           <div className={styles.editActions} style={{ marginTop: "1.2rem" }}>
             <button type="submit" className={styles.btn} disabled={formBusy}>
               <i className="bi bi-check-lg" />
-              {formBusy ? "Création..." : "Créer"}
+              {formBusy ? t("bo.proprietaireLocataires.creating") : t("bo.proprietaireLocataires.create")}
             </button>
             <button type="button" className={styles.btnOutline} onClick={closeForm} disabled={formBusy}>
               <i className="bi bi-x-lg" />
-              Annuler
+              {t("bo.common.cancel")}
             </button>
           </div>
         </form>
       </Modal>
+
+      <PlanLimitPopup message={planLimitMessage} onClose={() => setPlanLimitMessage(null)} />
+
+      {/* ---- Confirmation de désactivation ---- */}
+      <ConfirmationDialog
+        isOpen={!!deactivateTarget}
+        onClose={() => setDeactivateTarget(null)}
+        onConfirm={handleConfirmDeactivate}
+        title={t("bo.proprietaireLocataires.deactivateConfirmTitle")}
+        message={
+          deactivateTarget
+            ? t("bo.proprietaireLocataires.deactivateConfirmMessage", {
+                name: `${deactivateTarget.prenom} ${deactivateTarget.nom}`,
+              })
+            : ""
+        }
+        confirmLabel={t("bo.proprietaireLocataires.deactivateConfirmLabel")}
+        danger
+        isBusy={statusBusyId === deactivateTarget?.id}
+        error={statusBanner?.type === "error" ? statusBanner.message : null}
+      />
     </div>
   );
 }

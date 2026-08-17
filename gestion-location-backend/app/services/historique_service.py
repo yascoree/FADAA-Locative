@@ -3,6 +3,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
+from app.models.agence import Agence
 from app.models.avis import Avis
 from app.models.bail import Bail
 from app.models.bien import Bien
@@ -50,11 +51,11 @@ def _quittance_label(q: Quittance) -> Optional[str]:
 
 
 def _mandat_label(m: Mandat) -> Optional[str]:
-    gestionnaire = f"{m.gestionnaire.prenom} {m.gestionnaire.nom}" if m.gestionnaire else None
+    agence = m.agence.nom if m.agence else None
     proprietaire = f"{m.proprietaire.prenom} {m.proprietaire.nom}" if m.proprietaire else None
-    if gestionnaire and proprietaire:
-        return f"{gestionnaire} → {proprietaire}"
-    return gestionnaire or proprietaire
+    if agence and proprietaire:
+        return f"{agence} → {proprietaire}"
+    return agence or proprietaire
 
 
 def _subscription_label(s: Subscription) -> Optional[str]:
@@ -93,6 +94,7 @@ MODULE_LABEL_MAP = {
     "users": (Utilisateur, _user_label),
     "tenants": (Utilisateur, _user_label),
     "mandates": (Mandat, _mandat_label),
+    "agences": (Agence, lambda a: a.nom),
     "permissions": (Permission, lambda p: p.libelle),
     "profiles": (Profil, lambda p: None),
     "reviews": (Avis, lambda a: f"{a.prenom} {a.nom}".strip()),

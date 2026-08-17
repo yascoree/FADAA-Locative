@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { fetchNotifications, NOTIFICATION_STATUS } from "@/lib/notifications";
+import { fetchNotifications, NOTIFICATION_STATUS, NOTIFICATIONS_CHANGED_EVENT } from "@/lib/notifications";
 import styles from "./ui.module.css";
 
 /** Accès notifications du topbar : compteur réel de non-lues (GET /notifications/),
@@ -25,10 +25,15 @@ export default function NotificationBell({ href }) {
     load();
     // Poll périodiquement pour que le badge (nouveaux messages, échéances...) se
     // mette à jour sans que l'utilisateur ait à recharger la page.
-    const interval = setInterval(load, 15000);
+    const interval = setInterval(load, 8000);
+    // Resynchronisation immédiate quand l'utilisateur lit/masque/restaure une
+    // notification sur la page Notifications elle-même (voir lib/notifications.js)
+    // — sans ça le badge restait visiblement en retard jusqu'au prochain poll.
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, load);
     return () => {
       cancelled = true;
       clearInterval(interval);
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, load);
     };
   }, []);
 

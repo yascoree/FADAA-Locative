@@ -15,6 +15,7 @@ import { SORT_OPTIONS, sortList } from "@/lib/sort";
 import StatCard from "@/components/StatCard";
 import FilterChip from "@/components/FilterChip";
 import FilterSelect from "@/components/FilterSelect";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../locataire.module.css";
 
 function Banner({ banner }) {
@@ -40,6 +41,7 @@ const MODE_OPTIONS = Object.entries(MODE_PAIEMENT_LABELS).map(([value, label]) =
 const PAGE_SIZE = 10;
 
 export default function LocatairePaiementsPage() {
+  const { t } = useLanguage();
   const [paiements, setPaiements] = useState([]);
   const [biens, setBiens] = useState([]);
   const [quittances, setQuittances] = useState([]);
@@ -138,7 +140,7 @@ export default function LocatairePaiementsPage() {
   const paginatedPaiements = filteredPaiements.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.common.loading")}</p>;
   }
 
   return (
@@ -149,10 +151,15 @@ export default function LocatairePaiementsPage() {
       {/* ---- Stats ---- */}
       <div className={styles.section}>
         <div className={styles.statsGrid}>
-          <StatCard icon="bi-receipt" tone="primary" label="Paiements" value={stats.count} />
-          <StatCard icon="bi-cash-stack" tone="accent" label="Total payé" value={formatCurrency(stats.total)} />
-          <StatCard icon="bi-calendar-check-fill" tone="primary" label="Payé ce mois" value={formatCurrency(stats.moisCourant)} />
-          <StatCard icon="bi-graph-up-arrow" tone="accent" label="Moyenne / paiement" value={formatCurrency(stats.moyenne)} />
+          <StatCard icon="bi-receipt" tone="primary" label={t("bo.locatairePaiements.statPaiements")} value={stats.count} />
+          <StatCard icon="bi-cash-stack" tone="accent" label={t("bo.locatairePaiements.statTotalPaid")} value={formatCurrency(stats.total)} />
+          <StatCard
+            icon="bi-calendar-check-fill"
+            tone="primary"
+            label={t("bo.locatairePaiements.statPaidThisMonth")}
+            value={formatCurrency(stats.moisCourant)}
+          />
+          <StatCard icon="bi-graph-up-arrow" tone="accent" label={t("bo.locatairePaiements.statAverage")} value={formatCurrency(stats.moyenne)} />
         </div>
       </div>
 
@@ -161,10 +168,10 @@ export default function LocatairePaiementsPage() {
         <div>
           <h2 className={styles.sectionTitle}>
             <i className="bi bi-table" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-            Mes paiements
+            {t("bo.locatairePaiements.title")}
           </h2>
           <p className={styles.sectionSubtitle}>
-            {filteredPaiements.length} paiement(s) affiché(s) sur {paiements.length}.
+            {t("bo.locatairePaiements.subtitle", { shown: filteredPaiements.length, total: paiements.length })}
           </p>
         </div>
 
@@ -175,7 +182,7 @@ export default function LocatairePaiementsPage() {
               setModeFilter(v);
               setCurrentPage(1);
             }}
-            options={[{ value: "", label: "Tous les modes" }, ...MODE_OPTIONS]}
+            options={[{ value: "", label: t("bo.locatairePaiements.allModes") }, ...MODE_OPTIONS]}
           />
           <FilterChip
             checked={monthOnly}
@@ -184,7 +191,7 @@ export default function LocatairePaiementsPage() {
               setCurrentPage(1);
             }}
           >
-            Ce mois uniquement
+            {t("bo.locatairePaiements.thisMonthOnly")}
           </FilterChip>
           <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
@@ -193,20 +200,20 @@ export default function LocatairePaiementsPage() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Logement</th>
-                <th>Échéance</th>
-                <th>Montant</th>
-                <th>Mode</th>
-                <th>Date de paiement</th>
-                <th>Statut</th>
-                <th>Quittance</th>
+                <th>{t("bo.locatairePaiements.colHome")}</th>
+                <th>{t("bo.locatairePaiements.colDueDate")}</th>
+                <th>{t("bo.locatairePaiements.colAmount")}</th>
+                <th>{t("bo.locatairePaiements.colMode")}</th>
+                <th>{t("bo.locatairePaiements.colPaymentDate")}</th>
+                <th>{t("bo.locatairePaiements.colStatus")}</th>
+                <th>{t("bo.locatairePaiements.colReceipt")}</th>
               </tr>
             </thead>
             <tbody>
               {filteredPaiements.length === 0 && (
                 <tr>
                   <td colSpan={7} className={styles.empty}>
-                    Aucun paiement enregistré pour le moment.
+                    {t("bo.locatairePaiements.noPayments")}
                   </td>
                 </tr>
               )}
@@ -219,7 +226,10 @@ export default function LocatairePaiementsPage() {
                     <td>
                       {formatCurrency(p.montant)}
                       {p.echeance?.montant_du !== null && p.echeance?.montant_du !== undefined && (
-                        <span className={styles.recentEmail}> / {formatCurrency(p.echeance.montant_du)} dû</span>
+                        <span className={styles.recentEmail}>
+                          {" "}
+                          / {formatCurrency(p.echeance.montant_du)} {t("bo.locatairePaiements.due")}
+                        </span>
                       )}
                     </td>
                     <td>{MODE_PAIEMENT_LABELS[p.mode_paiement] || "—"}</td>
@@ -253,7 +263,7 @@ export default function LocatairePaiementsPage() {
           {filteredPaiements.length > 0 && (
             <div className={styles.paginationRow}>
               <span>
-                Page {safePage} / {totalPages} · {filteredPaiements.length} paiement(s)
+                {t("bo.locatairePaiements.pageOf", { page: safePage, total: totalPages, count: filteredPaiements.length })}
               </span>
               <div className={styles.paginationButtons}>
                 <button
@@ -263,7 +273,7 @@ export default function LocatairePaiementsPage() {
                   disabled={safePage <= 1}
                 >
                   <i className="bi bi-chevron-left" />
-                  Précédent
+                  {t("bo.common.previous")}
                 </button>
                 <button
                   type="button"
@@ -271,7 +281,7 @@ export default function LocatairePaiementsPage() {
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={safePage >= totalPages}
                 >
-                  Suivant
+                  {t("bo.common.next")}
                   <i className="bi bi-chevron-right" />
                 </button>
               </div>

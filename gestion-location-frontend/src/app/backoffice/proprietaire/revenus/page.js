@@ -5,6 +5,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
 import { MODE_PAIEMENT_LABELS } from "@/lib/properties";
 import { fetchRevenueStats } from "@/lib/stats";
 import StatCard from "@/components/StatCard";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../proprietaire.module.css";
 
 function formatCurrency(value, compact = false) {
@@ -48,6 +49,7 @@ const INNER_WIDTH = CHART_WIDTH - PAD_LEFT - PAD_RIGHT;
 const INNER_HEIGHT = CHART_HEIGHT - PAD_TOP - PAD_BOTTOM;
 
 export default function ProprietaireRevenusPage() {
+  const { t } = useLanguage();
   const [revenue, setRevenue] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -155,11 +157,15 @@ export default function ProprietaireRevenusPage() {
   }
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.common.loading")}</p>;
   }
 
   if (loadError || !revenue || !stats) {
-    return <div className={`${styles.banner} ${styles.bannerError}`}>{loadError || "Impossible de charger les statistiques."}</div>;
+    return (
+      <div className={`${styles.banner} ${styles.bannerError}`}>
+        {loadError || t("bo.proprietaireDashboard.unableToLoadStats")}
+      </div>
+    );
   }
 
   const lastPoint = trailing.points[trailing.points.length - 1];
@@ -181,26 +187,26 @@ export default function ProprietaireRevenusPage() {
       {/* ---- Stats ---- */}
       <div className={styles.section}>
         <div className={styles.statsGrid}>
-          <StatCard icon="bi-cash-stack" tone="primary" label="Revenu ce mois" value={formatCurrency(stats.lastMonth)} />
+          <StatCard icon="bi-cash-stack" tone="primary" label={t("bo.proprietaireRevenus.statMonthRevenue")} value={formatCurrency(stats.lastMonth)} />
           <StatCard
             icon={stats.variation === null ? "bi-stars" : stats.variation >= 0 ? "bi-graph-up-arrow" : "bi-graph-down-arrow"}
             tone={stats.variation === null || stats.variation >= 0 ? "accent" : "danger"}
-            label="Variation vs mois dernier"
-            value={stats.variation === null ? "Nouveau" : `${stats.variation >= 0 ? "+" : ""}${stats.variation.toFixed(0)}%`}
+            label={t("bo.proprietaireRevenus.statVariation")}
+            value={stats.variation === null ? t("bo.proprietaireRevenus.statNew") : `${stats.variation >= 0 ? "+" : ""}${stats.variation.toFixed(0)}%`}
           />
           <StatCard
             icon={stats.croissanceYoY !== null && stats.croissanceYoY < 0 ? "bi-graph-down-arrow" : "bi-graph-up-arrow"}
             tone={stats.croissanceYoY === null || stats.croissanceYoY >= 0 ? "primary" : "danger"}
-            label={`Croissance vs ${currentYear - 1}`}
-            value={stats.croissanceYoY === null ? "Nouveau" : `${stats.croissanceYoY >= 0 ? "+" : ""}${stats.croissanceYoY.toFixed(0)}%`}
+            label={t("bo.proprietaireRevenus.statGrowth", { year: currentYear - 1 })}
+            value={stats.croissanceYoY === null ? t("bo.proprietaireRevenus.statNew") : `${stats.croissanceYoY >= 0 ? "+" : ""}${stats.croissanceYoY.toFixed(0)}%`}
           />
           <StatCard
             icon="bi-check2-circle"
             tone={stats.tauxRecouvrement === null || stats.tauxRecouvrement >= 90 ? "accent" : "warning"}
-            label="Taux de recouvrement"
+            label={t("bo.proprietaireRevenus.statCollectionRate")}
             value={stats.tauxRecouvrement === null ? "—" : `${stats.tauxRecouvrement.toFixed(0)}%`}
           />
-          <StatCard icon="bi-bar-chart-line-fill" tone="primary" label="Moyenne mensuelle" value={formatCurrency(stats.moyenne)} />
+          <StatCard icon="bi-bar-chart-line-fill" tone="primary" label={t("bo.proprietaireRevenus.statMonthlyAverage")} value={formatCurrency(stats.moyenne)} />
         </div>
       </div>
 
@@ -210,7 +216,9 @@ export default function ProprietaireRevenusPage() {
           <div className={styles.chartHeader}>
             <h2 className={styles.cardTitle} style={{ marginBottom: 0 }}>
               <i className="bi bi-graph-up" style={{ color: "var(--primary)" }} />
-              {viewMode === "trailing" ? "Revenus encaissés — 12 derniers mois" : `Revenus — ${currentYear} vs ${currentYear - 1}`}
+              {viewMode === "trailing"
+                ? t("bo.proprietaireRevenus.chartTitleTrailing")
+                : t("bo.proprietaireRevenus.chartTitleYoy", { current: currentYear, previous: currentYear - 1 })}
             </h2>
             <div className={styles.chartEndValue}>
               <div className={styles.chartEndLabel}>
@@ -220,7 +228,7 @@ export default function ProprietaireRevenusPage() {
             </div>
           </div>
 
-          <div className={styles.viewToggle} role="tablist" aria-label="Type de vue de la courbe">
+          <div className={styles.viewToggle} role="tablist" aria-label={t("bo.proprietaireRevenus.viewTypeLabel")}>
             <button
               type="button"
               role="tab"
@@ -229,7 +237,7 @@ export default function ProprietaireRevenusPage() {
               onClick={() => switchMode("trailing")}
             >
               <i className="bi bi-graph-up" />
-              12 derniers mois
+              {t("bo.proprietaireRevenus.last12Months")}
             </button>
             <button
               type="button"
@@ -239,7 +247,7 @@ export default function ProprietaireRevenusPage() {
               onClick={() => switchMode("yoy")}
             >
               <i className="bi bi-arrow-left-right" />
-              Comparaison annuelle
+              {t("bo.proprietaireRevenus.yearComparison")}
             </button>
           </div>
 
@@ -247,7 +255,7 @@ export default function ProprietaireRevenusPage() {
             <div className={styles.chartLegend}>
               <span className={styles.chartLegendItem}>
                 <span className={styles.chartLegendSwatch} />
-                {currentYear} (en cours)
+                {t("bo.proprietaireRevenus.currentYearOngoing", { year: currentYear })}
               </span>
               <span className={styles.chartLegendItem}>
                 <span className={`${styles.chartLegendSwatch} ${styles.chartLegendSwatchMuted}`} />
@@ -267,8 +275,8 @@ export default function ProprietaireRevenusPage() {
               role="img"
               aria-label={
                 viewMode === "trailing"
-                  ? "Courbe des revenus mensuels sur les 12 derniers mois"
-                  : `Comparaison des revenus mensuels ${currentYear} vs ${currentYear - 1}`
+                  ? t("bo.proprietaireRevenus.chartAriaTrailing")
+                  : t("bo.proprietaireRevenus.chartAriaYoy", { current: currentYear, previous: currentYear - 1 })
               }
             >
               {/* Gridlines + y ticks */}
@@ -382,10 +390,10 @@ export default function ProprietaireRevenusPage() {
           <div className={styles.card}>
             <h2 className={styles.cardTitle}>
               <i className="bi bi-house-door-fill" style={{ color: "var(--primary)" }} />
-              Revenu par bien ({currentYear})
+              {t("bo.proprietaireRevenus.byBienTitle", { year: currentYear })}
             </h2>
             <div className={styles.distribution}>
-              {revenue.by_bien.length === 0 && <p className={styles.empty}>Aucun paiement enregistré.</p>}
+              {revenue.by_bien.length === 0 && <p className={styles.empty}>{t("bo.proprietaireRevenus.noPayments")}</p>}
               {revenue.by_bien.map((row) => (
                 <div
                   className={styles.distributionRow}
@@ -407,17 +415,17 @@ export default function ProprietaireRevenusPage() {
           <div className={styles.card}>
             <h2 className={styles.cardTitle}>
               <i className="bi bi-credit-card-2-front-fill" style={{ color: "var(--primary)" }} />
-              Par mode de paiement ({currentYear})
+              {t("bo.proprietaireRevenus.byModeTitle", { year: currentYear })}
             </h2>
             <div className={styles.distribution}>
-              {revenue.by_mode.length === 0 && <p className={styles.empty}>Aucun paiement enregistré.</p>}
+              {revenue.by_mode.length === 0 && <p className={styles.empty}>{t("bo.proprietaireRevenus.noPayments")}</p>}
               {revenue.by_mode.map((row) => (
                 <div
                   className={styles.distributionRow}
                   key={row.mode ?? "autre"}
                   style={{ gridTemplateColumns: "110px 1fr 92px" }}
                 >
-                  <span className={styles.distributionName}>{MODE_PAIEMENT_LABELS[row.mode] || "Autre"}</span>
+                  <span className={styles.distributionName}>{MODE_PAIEMENT_LABELS[row.mode] || t("bo.proprietaireRevenus.otherMode")}</span>
                   <div className={styles.distributionTrack}>
                     <div className={styles.distributionFill} style={{ width: `${(row.total / byModeMax) * 100}%` }} />
                   </div>

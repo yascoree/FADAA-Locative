@@ -5,24 +5,29 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api import (
+    agences,
     auth,
     avis,
     baux,
     biens,
     categories,
+    charges,
     contact_messages,
     demandes_demo,
     discussions,
     echeances,
     fcm_tokens,
     historique,
+    invitations_client,
     locataires,
     lots,
+    maintenance,
     mandats,
     notifications,
     paiements,
     partenaires,
     permissions,
+    plan_change_requests,
     profils,
     quittances,
     reclamations,
@@ -45,7 +50,11 @@ app.add_middleware(HistoriqueMiddleware)
 # besoin d'allow_credentials.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -60,16 +69,21 @@ app.include_router(auth.router)
 app.include_router(utilisateurs.router)
 app.include_router(subscription_plans.router)
 app.include_router(subscriptions.router)
+app.include_router(plan_change_requests.router)
 app.include_router(profils.router)
 app.include_router(locataires.router)
 app.include_router(categories.router)
 app.include_router(biens.router)
 app.include_router(lots.router)
+app.include_router(charges.router)
 app.include_router(baux.router)
 app.include_router(echeances.router)
 app.include_router(paiements.router)
 app.include_router(quittances.router)
 app.include_router(mandats.router)
+app.include_router(agences.router)
+app.include_router(invitations_client.router)
+app.include_router(maintenance.router)
 app.include_router(permissions.router)
 app.include_router(notifications.router)
 app.include_router(fcm_tokens.router)

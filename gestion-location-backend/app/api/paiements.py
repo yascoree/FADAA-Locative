@@ -1,12 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.database import get_db
 from app.models.utilisateur import Utilisateur
-from app.schemas.paiement import PaiementAnnulation, PaiementCreate, PaiementRead
+from app.schemas.paiement import PaiementAnnulation, PaiementCreate, PaiementEncaissement, PaiementRead
 from app.services import paiement_service
-from app.services.exceptions import BadRequest, Forbidden, NotFound
+from app.services.exceptions import BadRequest, Forbidden, NotFound, PaymentRequired
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -33,6 +33,23 @@ def create_paiement(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except Forbidden as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except PaymentRequired as exc:
+        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=str(exc))
+    except BadRequest as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+
+@router.post("/justificatifs")
+async def upload_justificatif(
+    file: UploadFile = File(...),
+    current_user: Utilisateur = Depends(get_current_user),
+):
+    """Doit être déclaré avant /{paiement_id} pour ne pas être intercepté par cette route."""
+    content = await file.read()
+    try:
+        return paiement_service.upload_justificatif(current_user, content, file.content_type, file.filename)
+    except BadRequest as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
 @router.get("/{paiement_id}", response_model=PaiementRead)
@@ -75,6 +92,25 @@ def annuler_paiement(
     motif = annulation_in.motif if annulation_in else None
     try:
         return paiement_service.annuler_paiement(db, current_user, paiement_id, motif)
+    except NotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except Forbidden as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except BadRequest as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+
+@router.post("/{paiement_id}/encaisser", response_model=PaiementRead)
+def encaisser_paiement(
+    paiement_id: int,
+    encaissement_in: PaiementEncaissement | None = None,
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(get_current_user),
+):
+    try:
+        return paiement_service.confirmer_encaissement(
+            db, current_user, paiement_id, encaissement_in or PaiementEncaissement()
+        )
     except NotFound as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except Forbidden as exc:

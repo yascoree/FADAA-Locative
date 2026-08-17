@@ -556,6 +556,189 @@
   margin: 0 0 1.25rem;
 }
 
+/* ---------- En-tête de page avec action (ex: "Inviter un client") ---------- */
+
+.pageHeaderRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.inviteButton {
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 650;
+  font-size: 0.86rem;
+  padding: 0.68rem 1.2rem;
+  border-radius: var(--radius-field);
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: fit-content;
+}
+
+.inviteButton:hover {
+  background: var(--primary-dark);
+}
+
+/* ---------- Bascule d'onglets (ex: Mes clients / Invitations) ---------- */
+
+.tabSwitch {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.3rem;
+  background: var(--border);
+  padding: 0.3rem;
+  border-radius: 999px;
+  margin-bottom: 1.25rem;
+}
+
+.tabBtn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  font-weight: 600;
+  padding: 0.6rem 0.9rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.tabBtnActive {
+  background: var(--surface);
+  color: var(--primary-dark);
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+
+.tabBtn:hover:not(.tabBtnActive) {
+  color: var(--secondary);
+}
+
+.tabBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.3rem;
+  height: 1.3rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ---------- Modale "Inviter un client" ---------- */
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  margin-bottom: 1.1rem;
+}
+
+.inviteField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.inviteField label {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--secondary);
+}
+
+.inviteField input {
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field);
+  padding: 0.65rem 0.8rem;
+}
+
+.inviteField input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.inviteLinkBox {
+  margin-top: 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  background: rgba(207, 187, 153, 0.16);
+  border: 1px solid rgba(207, 187, 153, 0.4);
+  border-radius: var(--radius-field);
+  padding: 0.85rem 1rem;
+}
+
+.inviteLinkBox > i {
+  color: var(--primary);
+  font-size: 1.1rem;
+  margin-top: 0.1rem;
+  flex-shrink: 0;
+}
+
+.inviteLinkLabel {
+  font-size: 0.82rem;
+  color: var(--secondary);
+  line-height: 1.45;
+  margin-bottom: 0.55rem;
+}
+
+.inviteLinkRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.inviteLinkRow input {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+.inviteLinkRow button {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.inviteLinkRow button:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
 .banner {
   border-radius: var(--radius-field);
   padding: 0.65rem 0.9rem;
@@ -1105,6 +1288,65 @@
   color: var(--text-muted);
 }
 
+.reclamationList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.reclamationCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card, 14px);
+  padding: 1.1rem 1.3rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.reclamationHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.reclamationMessage {
+  font-size: 0.86rem;
+  color: var(--text);
+  line-height: 1.5;
+  margin-top: 0.35rem;
+  white-space: pre-wrap;
+}
+
+.reclamationMeta {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  margin-top: 0.6rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.reclamationActions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+}
+
+.messageQuoteCard {
+  background: var(--bg);
+  border-left: 4px solid var(--primary);
+  border-radius: 0 var(--radius-field, 10px) var(--radius-field, 10px) 0;
+  padding: 1rem 1.2rem;
+}
+
+.messageQuoteText {
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
 .overdueBtn {
   font-size: 0.73rem;
   font-weight: 650;
@@ -1322,7 +1564,7 @@
 .photoThumb img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 
@@ -1459,6 +1701,15 @@
   gap: 0.4rem;
 }
 
+.transitionalNotice {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0;
+}
+
 .detailLine {
   font-size: 0.87rem;
   color: var(--text);
@@ -1467,6 +1718,159 @@
 
 .detailLine strong {
   color: var(--secondary);
+}
+
+/* ---------- Identité locataire (avatar en anneau + tuiles stat) ---------- */
+
+.tenantAvatarRing {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 50%;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 2px solid var(--border);
+  transition: border-color 0.15s ease;
+}
+
+.tenantAvatarRingActive {
+  border-color: var(--primary);
+}
+
+.tenantAvatarRingOverdue {
+  border-color: var(--danger);
+}
+
+.tenantAvatarRingPending {
+  border-color: var(--warning);
+}
+
+.tenantAvatarRingDisabled {
+  border-color: var(--text-muted);
+  opacity: 0.75;
+}
+
+.tenantAvatarRingLg {
+  width: 3.6rem;
+  height: 3.6rem;
+  border-width: 2.5px;
+  padding: 3px;
+}
+
+.tenantAvatarRingLg .tenantAvatarInner {
+  font-size: 1.1rem;
+}
+
+.tenantAvatarInner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(155deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.78rem;
+  overflow: hidden;
+}
+
+.tenantOverdueTag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--danger);
+  background: var(--danger-soft);
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: fit-content;
+  margin-top: 0.2rem;
+}
+
+.tenantRowOverdue td:first-child {
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+
+.badgeWithIcon {
+  gap: 0.3rem;
+}
+
+.badgeWithIcon::before {
+  display: none;
+}
+
+.badgeWithIcon i {
+  font-size: 0.78rem;
+}
+
+.detailHeaderIdentity {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.detailHeaderMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.tenantStatTiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.8rem;
+  margin: 1.3rem 0 1.6rem;
+}
+
+.tenantStatTile {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  background: var(--bg);
+  border-radius: var(--radius-field);
+  padding: 0.75rem 0.9rem;
+}
+
+.tenantStatTileIcon {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 10px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.tenantStatTileIconDanger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.tenantStatTileLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.tenantStatTileValue {
+  font-size: 1.1rem;
+  font-weight: 750;
+  color: var(--secondary);
+  margin-top: 0.1rem;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---------- Messagerie ---------- */
@@ -2002,4 +2406,188 @@
   background: var(--primary);
   flex-shrink: 0;
   margin-top: 0.42rem;
+}
+
+/* ---------- Page Clients ---------- */
+
+.badgeInfo {
+  background: var(--info-soft);
+  color: var(--info);
+}
+
+.clientRow {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 0.6rem;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.clientRow:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.clientRowBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.clientRowTop {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.mandatRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.mandatRow:last-child {
+  border-bottom: none;
+}
+
+.mandatRowLabel {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.25rem;
+}
+
+/* ---------- Grille de cartes collaborateur ---------- */
+
+.memberGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.memberCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.7rem;
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 1rem 1.1rem;
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.memberCard:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.memberCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+}
+
+.memberCardBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.memberCardName {
+  font-weight: 650;
+  color: var(--secondary);
+  font-size: 0.92rem;
+}
+
+.memberCardBadges {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.memberCardEmail {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+.memberCardCounts {
+  display: flex;
+  gap: 1.1rem;
+  width: 100%;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--border);
+}
+
+.memberCardCount {
+  display: flex;
+  flex-direction: column;
+}
+
+.memberCardCountValue {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--secondary);
+}
+
+.memberCardCountLabel {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.memberAccessHint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.9rem 0 0.5rem;
+}
+
+.memberAccessList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.memberAccessItem {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.86rem;
+  color: var(--text);
+}
+
+.memberAccessItem i.bi-check-circle-fill {
+  color: var(--primary);
+}
+
+.memberAccessItem i.bi-x-circle {
+  color: var(--text-muted);
+}
+
+.memberDrawerActions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1.5rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--border);
 }

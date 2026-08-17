@@ -1,5 +1,9 @@
+import uuid
 from datetime import datetime
+from decimal import Decimal
+from pathlib import Path
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import (
@@ -12,15 +16,20 @@ from app.models.bien import Bien
 from app.models.echeance import Echeance
 from app.models.lot import Lot
 from app.models.notification import NotificationType
-from app.models.paiement import Paiement, PaiementStatus
+from app.models.paiement import ModePaiement, Paiement, PaiementStatus
 from app.models.quittance import Quittance, QuittanceStatus
 from app.models.utilisateur import Utilisateur, UtilisateurRole
-from app.schemas.paiement import PaiementCreate
+from app.schemas.paiement import PaiementCreate, PaiementEncaissement
 from app.services.echeance_service import sync_echeance_statut
 from app.services.exceptions import BadRequest, Forbidden, NotFound
 from app.services.push_service import send_push_to_user
 from app.services.receipt_service import generate_receipt_pdf
 from app.services.usage_service import enforce_limit
+
+# Un chèque ou un virement n'est pas immédiatement liquide : son montant ne
+# rejoint les revenus (stats_service.get_revenue_stats) qu'après confirmation
+# explicite de l'encaissement (voir confirmer_encaissement).
+MODES_ENCAISSEMENT_DIFFERE = {ModePaiement.CHEQUE, ModePaiement.VIREMENT}
 
 
 def _chain_for_paiement(db: Session, echeance_id: int):
@@ -116,6 +125,24 @@ def create_paiement(db: Session, current_user: Utilisateur, paiement_in: Paiemen
     if not is_tenant and not has_permission_for_bien(db, current_user, bien, "CREATE_PAYMENT"):
         raise Forbidden("Not allowed to record this payment")
 
+    echeance = db.get(Echeance, paiement_in.echeance_id)
+    if echeance and echeance.montant_du is not None and paiement_in.montant is not None:
+        deja_paye = (
+            db.query(func.coalesce(func.sum(Paiement.montant), 0))
+            .filter(
+                Paiement.echeance_id == echeance.id,
+                Paiement.deleted_at.is_(None),
+                Paiement.statut == PaiementStatus.VALIDE,
+            )
+            .scalar()
+        ) or Decimal("0")
+        reste = echeance.montant_du - deja_paye
+        if paiement_in.montant > reste:
+            raise BadRequest(
+                f"Le montant saisi ({paiement_in.montant} MAD) dépasse le reste à payer sur cette "
+                f"échéance ({reste} MAD)."
+            )
+
     # Chaque paiement génère systématiquement une quittance (voir plus bas) : la
     # limite mensuelle de quittances du plan gate donc la création du paiement
     # lui-même, avant toute écriture, pour ne jamais laisser un paiement orphelin
@@ -123,7 +150,14 @@ def create_paiement(db: Session, current_user: Utilisateur, paiement_in: Paiemen
     if bien:
         enforce_limit(db, bien.proprietaire_id, "quittances_mois")
 
-    paiement = Paiement(**paiement_in.model_dump(), encaisse_par=current_user.id)
+    paiement_data = paiement_in.model_dump()
+    encaisse = paiement_in.mode_paiement not in MODES_ENCAISSEMENT_DIFFERE
+    paiement = Paiement(
+        **paiement_data,
+        encaisse_par=current_user.id,
+        encaisse=encaisse,
+        date_encaissement=datetime.utcnow() if encaisse else None,
+    )
     db.add(paiement)
     db.commit()
     db.refresh(paiement)
@@ -248,3 +282,66 @@ def annuler_paiement(db: Session, current_user: Utilisateur, paiement_id: int, m
             reference_id=paiement.id,
         )
     return paiement
+
+
+def confirmer_encaissement(
+    db: Session, current_user: Utilisateur, paiement_id: int, data: PaiementEncaissement
+) -> Paiement:
+    """Bascule un paiement chèque/virement en 'encaissé' : c'est seulement à partir de
+    ce moment que son montant rejoint les revenus (voir MODES_ENCAISSEMENT_DIFFERE et
+    stats_service.get_revenue_stats)."""
+    paiement = (
+        db.query(Paiement)
+        .filter(Paiement.id == paiement_id, Paiement.deleted_at.is_(None))
+        .first()
+    )
+    if not paiement:
+        raise NotFound("Payment not found")
+    bail, bien = _chain_for_paiement(db, paiement.echeance_id)
+    if not has_permission_for_bien(db, current_user, bien, "UPDATE_PAYMENT"):
+        raise Forbidden("Not allowed to modify this payment")
+    if paiement.statut != PaiementStatus.VALIDE:
+        raise BadRequest("Impossible de confirmer l'encaissement d'un paiement annulé.")
+    if paiement.encaisse:
+        raise BadRequest("Ce paiement est déjà marqué comme encaissé.")
+
+    paiement.encaisse = True
+    paiement.date_encaissement = data.date_encaissement or datetime.utcnow()
+    if data.agence_bancaire is not None:
+        paiement.agence_bancaire = data.agence_bancaire
+    if data.reference_paiement is not None:
+        paiement.reference_paiement = data.reference_paiement
+    if data.justificatif is not None:
+        paiement.justificatif = data.justificatif
+        paiement.justificatif_nom = data.justificatif_nom
+    db.commit()
+    db.refresh(paiement)
+    return paiement
+
+
+UPLOAD_ROOT = Path(__file__).resolve().parents[2] / "uploads" / "paiements"
+ALLOWED_JUSTIFICATIF_TYPES = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "application/pdf": ".pdf",
+}
+MAX_JUSTIFICATIF_SIZE = 15 * 1024 * 1024  # 15 MB
+
+
+def upload_justificatif(current_user: Utilisateur, file_content: bytes, content_type: str, original_filename: str) -> dict:
+    extension = ALLOWED_JUSTIFICATIF_TYPES.get(content_type)
+    if not extension:
+        raise BadRequest("Type de fichier non pris en charge (PDF ou image uniquement).")
+    if len(file_content) > MAX_JUSTIFICATIF_SIZE:
+        raise BadRequest("Le fichier doit faire moins de 15 Mo.")
+
+    user_dir = UPLOAD_ROOT / str(current_user.id)
+    user_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}{extension}"
+    (user_dir / filename).write_bytes(file_content)
+
+    return {
+        "justificatif": f"/uploads/paiements/{current_user.id}/{filename}",
+        "justificatif_nom": original_filename or filename,
+    }

@@ -6,12 +6,14 @@ export const ROLES = {
   LOCATAIRE: 4,
 };
 
-export const ROLE_LABELS = {
-  1: "Administrateur",
-  2: "Propriétaire",
-  3: "Gestionnaire",
-  4: "Locataire",
-};
+export function roleLabels(t) {
+  return {
+    1: t("bo.roles.administrateur"),
+    2: t("bo.roles.proprietaire"),
+    3: t("bo.roles.gestionnaire"),
+    4: t("bo.roles.locataire"),
+  };
+}
 
 export const ROLE_DASHBOARD_PATH = {
   1: "/backoffice/admin",
@@ -21,7 +23,23 @@ export const ROLE_DASHBOARD_PATH = {
 };
 
 // Rôles utilisables pour l'inscription publique (voir POST /auth/register côté backend).
-export const PUBLIC_REGISTER_ROLES = [
-  { value: ROLES.PROPRIETAIRE, label: "Propriétaire", hint: "Je gère mes propres biens" },
-  { value: ROLES.GESTIONNAIRE, label: "Gestionnaire", hint: "Je gère des biens pour d'autres" },
-];
+// "Gestionnaire" (nom interne du rôle) n'est jamais montré tel quel : côté
+// inscription publique, ce choix se présente comme "Je suis une agence" — le
+// gestionnaire individuel n'existe qu'en tant que collaborateur d'une agence.
+// Fonction (pas un tableau statique) pour rester traduisible, comme roleLabels ci-dessus.
+export function publicRegisterRoles(t) {
+  return [
+    {
+      value: ROLES.PROPRIETAIRE,
+      label: t("login.roleProprietaireLabel"),
+      hint: t("login.roleProprietaireHint"),
+      icon: "bi-house",
+    },
+    {
+      value: ROLES.GESTIONNAIRE,
+      label: t("login.roleAgenceLabel"),
+      hint: t("login.roleAgenceHint"),
+      icon: "bi-building",
+    },
+  ];
+}

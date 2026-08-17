@@ -58,3 +58,8 @@ gestion-location-backend/serviceAccountKey.json
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Coding
+.vscode/
+.claude/
+.codex/

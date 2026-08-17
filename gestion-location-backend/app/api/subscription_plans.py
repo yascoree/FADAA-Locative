@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_admin
+from app.api.deps import get_current_user, require_admin
 from app.crud import plan_permission as plan_permission_crud
 from app.crud import subscription_plan as subscription_plan_crud
 from app.database import get_db
@@ -13,6 +13,18 @@ router = APIRouter(prefix="/subscription-plans", tags=["subscription-plans"])
 
 # Gestion des plans d'abonnement : réservée à l'admin de la plateforme (voir
 # app.services.subscription_service pour la logique d'attribution aux propriétaires).
+
+
+@router.get("/active", response_model=list[SubscriptionPlanRead])
+def list_active_subscription_plans(
+    db: Session = Depends(get_db),
+    _current_user: Utilisateur = Depends(get_current_user),
+):
+    """Plans consultables par n'importe quel compte authentifié (pas seulement
+    l'admin) : alimente la popup de choix de plan côté propriétaire (voir
+    app.api.plan_change_requests). Déclarée avant /{plan_id} par précaution,
+    même si "active" ne matche pas le convertisseur int de /{plan_id}."""
+    return subscription_plan_crud.get_active(db)
 
 
 @router.get("/", response_model=list[SubscriptionPlanRead])

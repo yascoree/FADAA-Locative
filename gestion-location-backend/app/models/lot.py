@@ -31,6 +31,7 @@ class Lot(Base):
     loyer_reference = Column(DECIMAL(10, 2), nullable=True)
     statut = Column(Enum(LotStatus, name="lot_status"), nullable=True)
     attachement = Column(String(255), nullable=True)
+    valorisation = Column(DECIMAL(12, 2), nullable=True)
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(
@@ -48,4 +49,10 @@ class Lot(Base):
         "Bail",
         back_populates="lot",
         cascade="all, delete-orphan"
+    )
+    photos = relationship(
+        "LotPhoto",
+        back_populates="lot",
+        cascade="all, delete-orphan",
+        order_by="LotPhoto.date_ajout"
     )

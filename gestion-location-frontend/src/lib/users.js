@@ -6,11 +6,13 @@ export const ACCOUNT_STATUS = {
   CREE_SANS_ACCES: 3,
 };
 
-export const ACCOUNT_STATUS_LABELS = {
-  1: "Actif",
-  2: "Invité en attente",
-  3: "Désactivé",
-};
+export function accountStatusLabels(t) {
+  return {
+    1: t("bo.accountStatus.actif"),
+    2: t("bo.accountStatus.invitePending"),
+    3: t("bo.accountStatus.disabled"),
+  };
+}
 
 export async function createUser(payload) {
   const { data } = await apiClient.post("/users/", payload);

@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { fetchDashboardStats } from "@/lib/stats";
 import { SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
 import CountUp from "@/components/CountUp";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "./admin.module.css";
 
 function formatCurrency(value, compact = false) {
@@ -95,6 +96,7 @@ function RadialMeter({ percent, label, sublabel, tone }) {
 }
 
 export default function AdminDashboardPage() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -189,16 +191,20 @@ export default function AdminDashboardPage() {
   const today = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.common.loading")}</p>;
   }
 
   if (loadError || !stats) {
-    return <div className={`${styles.banner} ${styles.bannerError}`}>{loadError || "Impossible de charger les statistiques."}</div>;
+    return (
+      <div className={`${styles.banner} ${styles.bannerError}`}>
+        {loadError || t("bo.adminDashboard.unableToLoadStats")}
+      </div>
+    );
   }
 
   const statusLabels = stats.subscriptions_by_status.map((s) => ({
     ...s,
-    label: SUBSCRIPTION_STATUS_LABELS[s.status] || `Statut ${s.status}`,
+    label: SUBSCRIPTION_STATUS_LABELS[s.status] || t("bo.adminDashboard.statusFallback", { status: s.status }),
   }));
   const statusMax = Math.max(1, ...statusLabels.map((s) => s.count));
   const gridLines = [0, 0.5, 1];
@@ -211,8 +217,8 @@ export default function AdminDashboardPage() {
       {/* ---- Header ---- */}
       <div className={styles.dashboardHeader}>
         <div>
-          <h2 className={styles.dashboardGreeting}>Bonjour, {user?.prenom || "Admin"}</h2>
-          <p className={styles.dashboardSubtitle}>Voici l&apos;aperçu global de la plateforme FADAA Locative.</p>
+          <h2 className={styles.dashboardGreeting}>{t("bo.adminDashboard.greeting", { name: user?.prenom || "Admin" })}</h2>
+          <p className={styles.dashboardSubtitle}>{t("bo.adminDashboard.subtitle")}</p>
         </div>
         <span className={styles.dashboardDate}>
           <i className="bi bi-calendar3" />
@@ -229,7 +235,7 @@ export default function AdminDashboardPage() {
             </span>
           </div>
           <div>
-            <div className={styles.heroTileLabel}>Revenu mensuel (MRR)</div>
+            <div className={styles.heroTileLabel}>{t("bo.adminDashboard.tileMrr")}</div>
             <div className={styles.heroTileValue}>
               <CountUp value={stats.mrr} formatter={formatCurrency} />
             </div>
@@ -243,7 +249,7 @@ export default function AdminDashboardPage() {
             </span>
           </div>
           <div>
-            <div className={styles.heroTileLabel}>Utilisateurs totaux</div>
+            <div className={styles.heroTileLabel}>{t("bo.adminDashboard.tileTotalUsers")}</div>
             <div className={styles.heroTileValue}>
               <CountUp value={stats.total_users} />
             </div>
@@ -257,7 +263,7 @@ export default function AdminDashboardPage() {
             </span>
           </div>
           <div>
-            <div className={styles.heroTileLabel}>Abonnements actifs</div>
+            <div className={styles.heroTileLabel}>{t("bo.adminDashboard.tileActiveSubscriptions")}</div>
             <div className={styles.heroTileValue}>
               <CountUp value={stats.active_subscriptions} />
             </div>
@@ -271,7 +277,7 @@ export default function AdminDashboardPage() {
             </span>
           </div>
           <div>
-            <div className={styles.heroTileLabel}>Revenu moyen / compte</div>
+            <div className={styles.heroTileLabel}>{t("bo.adminDashboard.tileArpu")}</div>
             <div className={styles.heroTileValue}>
               <CountUp value={stats.arpu} formatter={formatCurrency} />
             </div>
@@ -286,7 +292,7 @@ export default function AdminDashboardPage() {
             <div className={styles.chartHeader}>
               <h2 className={styles.cardTitle} style={{ marginBottom: 0 }}>
                 <i className="bi bi-graph-up" style={{ color: "var(--primary)" }} />
-                Nouvelles inscriptions — 6 derniers mois
+                {t("bo.adminDashboard.signupsChartTitle")}
               </h2>
               <div className={styles.chartEndValue}>
                 <div className={styles.chartEndLabel}>{lastPoint?.label}</div>
@@ -303,7 +309,7 @@ export default function AdminDashboardPage() {
                 onMouseMove={handlePointerMove}
                 onMouseLeave={() => setHoverIndex(null)}
                 role="img"
-                aria-label="Courbe des nouvelles inscriptions sur les 6 derniers mois"
+                aria-label={t("bo.adminDashboard.signupsChartAriaLabel")}
               >
                 {gridLines.map((frac) => {
                   const y = PAD_TOP + INNER_HEIGHT * (1 - frac);
@@ -344,19 +350,24 @@ export default function AdminDashboardPage() {
                   style={{ left: `${(hoverPoint.x / CHART_WIDTH) * 100}%`, top: `${(hoverPoint.y / CHART_HEIGHT) * 100}%` }}
                 >
                   <div className={styles.chartTooltipLabel}>{hoverPoint.fullLabel}</div>
-                  <div className={styles.chartTooltipValue}>{hoverPoint.total} inscription(s)</div>
+                  <div className={styles.chartTooltipValue}>{hoverPoint.total} {t("bo.adminDashboard.signupsTooltipSuffix")}</div>
                 </div>
               )}
             </div>
           </div>
 
           <div className={styles.metersRow}>
-            <RadialMeter percent={stats.activation_rate} tone="Navy" label="Taux d'activation" sublabel="Comptes actifs / total" />
+            <RadialMeter
+              percent={stats.activation_rate}
+              tone="Navy"
+              label={t("bo.adminDashboard.activationRate")}
+              sublabel={t("bo.adminDashboard.activationSub")}
+            />
             <RadialMeter
               percent={couvertureAbonnements}
               tone={couvertureAbonnements === null || couvertureAbonnements >= 50 ? "Olive" : "Terracotta"}
-              label="Couverture abonnements"
-              sublabel="Abonnés / utilisateurs"
+              label={t("bo.adminDashboard.subscriptionCoverage")}
+              sublabel={t("bo.adminDashboard.subscriptionCoverageSub")}
             />
           </div>
         </div>
@@ -368,7 +379,7 @@ export default function AdminDashboardPage() {
           <div className={styles.card}>
             <h2 className={styles.cardTitle}>
               <i className="bi bi-credit-card-2-front-fill" style={{ color: "var(--primary)" }} />
-              Abonnements par statut
+              {t("bo.adminDashboard.byStatusTitle")}
             </h2>
             <div className={styles.distribution}>
               {statusLabels.map((s) => (
@@ -386,12 +397,12 @@ export default function AdminDashboardPage() {
           <div className={styles.card}>
             <h2 className={styles.cardTitle}>
               <i className="bi bi-pie-chart-fill" style={{ color: "var(--primary)" }} />
-              Répartition des plans
+              {t("bo.adminDashboard.byPlanTitle")}
             </h2>
 
-            {stats.subscriptions_by_plan.length === 0 && <p className={styles.empty}>Aucun plan configuré.</p>}
+            {stats.subscriptions_by_plan.length === 0 && <p className={styles.empty}>{t("bo.adminDashboard.noPlanConfigured")}</p>}
             {stats.subscriptions_by_plan.length > 0 && planDistTotal === 0 && (
-              <p className={styles.empty}>Aucun abonnement pour le moment.</p>
+              <p className={styles.empty}>{t("bo.adminDashboard.noSubscriptionYet")}</p>
             )}
 
             {planDistTotal > 0 && (
@@ -419,7 +430,7 @@ export default function AdminDashboardPage() {
                     <span className={styles.donutCenterValue}>
                       <CountUp value={planDistTotal} />
                     </span>
-                    <span className={styles.donutCenterLabel}>Abonnements</span>
+                    <span className={styles.donutCenterLabel}>{t("bo.adminDashboard.subscriptionsLabel")}</span>
                   </div>
                   {donutSegments.map((seg) => {
                     const rad = (seg.midAngleDeg * Math.PI) / 180;

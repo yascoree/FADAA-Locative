@@ -38,7 +38,11 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         return auth_service.login(db, form_data.username, form_data.password)
     except Forbidden as exc:
         detail = str(exc)
-        if "not active" in detail.lower():
+        # Identifiants corrects mais accès bloqué pour une autre raison (compte
+        # désactivé, gestionnaire révoqué de son agence) : 403, pas 401 — 401 est
+        # réservé au cas "identifiants incorrects" ci-dessous (anti-énumération :
+        # on ne révèle jamais lequel de l'email/mot de passe est faux).
+        if "not active" in detail.lower() or "revoked" in detail.lower():
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

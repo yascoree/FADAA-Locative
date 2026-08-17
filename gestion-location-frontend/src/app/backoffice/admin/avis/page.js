@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { extractErrorMessage } from "@/lib/apiClient";
 import { fetchAvis, updateAvisStatut, deleteAvis, AVIS_STATUS, AVIS_STATUS_LABELS } from "@/lib/avis";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../admin.module.css";
 
 function Banner({ banner }) {
@@ -37,6 +38,7 @@ function formatDate(value) {
 }
 
 export default function AdminAvisPage() {
+  const { t } = useLanguage();
   const [avisList, setAvisList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -89,7 +91,7 @@ export default function AdminAvisPage() {
   }
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.adminAvis.loading")}</p>;
   }
 
   return (
@@ -99,11 +101,10 @@ export default function AdminAvisPage() {
       <div className={styles.section} style={{ marginBottom: 0 }}>
         <h2 className={styles.sectionTitle}>
           <i className="bi bi-chat-square-quote" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-          Modération des avis
+          {t("bo.adminAvis.title")}
         </h2>
         <p className={styles.sectionSubtitle}>
-          Approuvez les avis pour les afficher publiquement, rejetez ceux qui ne doivent pas apparaître, ou
-          supprimez-les définitivement.
+          {t("bo.adminAvis.subtitle")}
         </p>
 
         <Banner banner={avisBanner} />
@@ -112,19 +113,20 @@ export default function AdminAvisPage() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Auteur</th>
-                <th>Note</th>
-                <th>Commentaire</th>
-                <th>Date</th>
-                <th>Statut</th>
-                <th>Actions</th>
+                <th>{t("bo.adminAvis.colAuthor")}</th>
+                <th>{t("bo.adminAvis.colEmail")}</th>
+                <th>{t("bo.adminAvis.colRating")}</th>
+                <th>{t("bo.adminAvis.colComment")}</th>
+                <th>{t("bo.adminAvis.colDate")}</th>
+                <th>{t("bo.adminAvis.colStatus")}</th>
+                <th>{t("bo.adminAvis.colActions")}</th>
               </tr>
             </thead>
             <tbody>
               {avisList.length === 0 && (
                 <tr>
-                  <td colSpan={6} className={styles.empty}>
-                    Aucun avis pour le moment.
+                  <td colSpan={7} className={styles.empty}>
+                    {t("bo.adminAvis.noReviews")}
                   </td>
                 </tr>
               )}
@@ -136,8 +138,8 @@ export default function AdminAvisPage() {
                       <span className={styles.userName}>
                         {avis.user ? `${avis.user.prenom} ${avis.user.nom}` : `${avis.prenom} ${avis.nom}`}
                       </span>
-                      {avis.user?.email && <div className={styles.tableSubtext}>{avis.user.email}</div>}
                     </td>
+                    <td>{avis.user?.email || "—"}</td>
                     <td>
                       <Stars note={avis.note} />
                     </td>
@@ -156,7 +158,7 @@ export default function AdminAvisPage() {
                             className={styles.iconBtn}
                             onClick={() => handleAvisStatut(avis, AVIS_STATUS.PUBLIE)}
                             disabled={busy}
-                            title="Approuver (afficher publiquement)"
+                            title={t("bo.adminAvis.approveTitle")}
                           >
                             <i className="bi bi-check-lg" />
                           </button>
@@ -167,7 +169,7 @@ export default function AdminAvisPage() {
                             className={styles.iconBtn}
                             onClick={() => handleAvisStatut(avis, AVIS_STATUS.REJETE)}
                             disabled={busy}
-                            title="Rejeter (masquer)"
+                            title={t("bo.adminAvis.rejectTitle")}
                           >
                             <i className="bi bi-eye-slash" />
                           </button>
@@ -176,7 +178,7 @@ export default function AdminAvisPage() {
                           type="button"
                           className={styles.iconBtn}
                           onClick={() => setAvisDeleteTarget(avis)}
-                          title="Supprimer définitivement"
+                          title={t("bo.adminAvis.deleteTitle")}
                         >
                           <i className="bi bi-trash" />
                         </button>
@@ -194,9 +196,9 @@ export default function AdminAvisPage() {
         isOpen={!!avisDeleteTarget}
         onClose={() => setAvisDeleteTarget(null)}
         onConfirm={handleConfirmDeleteAvis}
-        title="Supprimer l'avis"
-        message="Supprimer définitivement cet avis ? Cette action est irréversible."
-        confirmLabel="Supprimer"
+        title={t("bo.adminAvis.deleteReviewTitle")}
+        message={t("bo.adminAvis.deleteReviewMessage")}
+        confirmLabel={t("bo.adminAvis.delete")}
         danger
         isBusy={avisDeleteBusy}
       />

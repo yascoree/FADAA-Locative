@@ -2,7 +2,7 @@ import enum
 
 from datetime import datetime
 
-from sqlalchemy import Column, Enum, Float, ForeignKey, Integer, String, DateTime, Text
+from sqlalchemy import DECIMAL, Column, Enum, Float, ForeignKey, Integer, String, DateTime, Text
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -45,6 +45,7 @@ class Bien(Base):
 
     statut = Column(Enum(BienStatus, name="bien_status"), nullable=True)
     attachement = Column(String(255), nullable=True)
+    valorisation = Column(DECIMAL(12, 2), nullable=True)
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(

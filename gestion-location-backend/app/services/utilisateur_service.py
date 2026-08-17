@@ -1,12 +1,22 @@
+import secrets
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from app.core.security import hash_password
+from app.core.config import settings
+from app.core.security import create_password_reset_token, hash_password
+from app.models.agence import Agence
+from app.models.agence_membre import AgenceMembre, AgenceMembreStatus, RoleAgence
+from app.models.mandat import Mandat, MandatStatus
 from app.models.utilisateur import StatutCompte, Utilisateur, UtilisateurRole
+from app.schemas.gestionnaire_invite import GestionnaireInviteCreate
+from app.schemas.mandat import MandatCreate
 from app.schemas.utilisateur import UtilisateurCreate, UtilisateurUpdate
-from app.services import subscription_service
+from app.services import mandat_service, subscription_service
+from app.services.email_service import send_email
 from app.services.exceptions import BadRequest, Forbidden, NotFound
+from app.services.usage_service import enforce_limit
 
 LOOKUP_ROLES = {
     "GESTIONNAIRE": UtilisateurRole.GESTIONNAIRE,
@@ -32,6 +42,84 @@ def list_gestionnaires(db: Session, skip: int = 0, limit: int = 100) -> list[Uti
         .limit(limit)
         .all()
     )
+
+
+def create_gestionnaire_invite(
+    db: Session, proprietaire: Utilisateur, payload: GestionnaireInviteCreate
+) -> tuple[Utilisateur, Mandat, Optional[str]]:
+    """Proprietaire-only: invites a Gestionnaire who doesn't already have an
+    account (a Gestionnaire can also self-register directly, see
+    auth_service.PUBLIC_REGISTER_ROLES) — created by the proprietaire they'll work
+    for, with access granted in the same step. The account starts
+    INVITE_EN_ATTENTE with a random, unusable password; a set-password email
+    (reset-password flow) is sent, or its link is returned directly in test mode
+    (see email_service.send_email).
+
+    A Mandat belongs to an Agence, not to an individual user (see app.models.mandat)
+    — so this also creates a single-member Agence for the new gestionnaire, who
+    becomes its ADMIN and can later grow it via agence_service.invite_agence_member."""
+    existing = db.query(Utilisateur).filter(Utilisateur.email == payload.email).first()
+    if existing:
+        raise BadRequest("Email already registered")
+
+    # Vérifié avant toute création pour ne jamais laisser un compte utilisateur
+    # orphelin (sans mandat) si la limite du plan est atteinte.
+    enforce_limit(db, proprietaire.id, "gestionnaires")
+
+    utilisateur = Utilisateur(
+        nom=payload.nom,
+        prenom=payload.prenom,
+        email=payload.email,
+        mot_de_passe=hash_password(secrets.token_urlsafe(24)),
+        role=UtilisateurRole.GESTIONNAIRE,
+        statut_compte=StatutCompte.INVITE_EN_ATTENTE,
+        cree_par_id=proprietaire.id,
+    )
+    db.add(utilisateur)
+    db.commit()
+    db.refresh(utilisateur)
+
+    agence = Agence(nom=f"{payload.prenom} {payload.nom}")
+    db.add(agence)
+    db.commit()
+    db.refresh(agence)
+
+    db.add(
+        AgenceMembre(
+            agence_id=agence.id,
+            utilisateur_id=utilisateur.id,
+            role_agence=RoleAgence.ADMIN,
+            statut=AgenceMembreStatus.ACTIF,
+            date_debut=datetime.utcnow().date(),
+        )
+    )
+    db.commit()
+
+    mandat = mandat_service.create_mandat(
+        db,
+        proprietaire,
+        MandatCreate(
+            agence_id=agence.id,
+            proprietaire_id=proprietaire.id,
+            bien_id=payload.bien_id,
+            statut=MandatStatus.ACTIF,
+            date_debut=datetime.utcnow().date(),
+        ),
+    )
+
+    token = create_password_reset_token(utilisateur.id, utilisateur.mot_de_passe)
+    invite_link = f"{settings.frontend_base_url}/front/reset-password?token={token}"
+    html_body = f"""
+    <p>Bonjour {utilisateur.prenom},</p>
+    <p>{proprietaire.prenom} {proprietaire.nom} vous a créé un accès gestionnaire sur
+    FADAA Locative.</p>
+    <p>Choisissez votre mot de passe pour activer votre compte (lien valable
+    {settings.password_reset_token_expire_minutes} minutes) :</p>
+    <p><a href="{invite_link}">{invite_link}</a></p>
+    """
+    sent = send_email(utilisateur.email, "Votre accès gestionnaire — FADAA Locative", html_body)
+
+    return utilisateur, mandat, (None if sent else invite_link)
 
 
 def get_utilisateur(db: Session, current_user: Utilisateur, utilisateur_id: int) -> Utilisateur:
@@ -142,8 +230,8 @@ def activate_utilisateur(db: Session, utilisateur_id: int) -> Utilisateur:
     return utilisateur
 
 
-def deactivate_utilisateur(db: Session, admin: Utilisateur, utilisateur_id: int) -> Utilisateur:
-    if utilisateur_id == admin.id:
+def deactivate_utilisateur(db: Session, current_user: Utilisateur, utilisateur_id: int) -> Utilisateur:
+    if utilisateur_id == current_user.id:
         raise BadRequest("Cannot deactivate your own account")
     utilisateur = (
         db.query(Utilisateur)

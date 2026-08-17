@@ -5,6 +5,7 @@ import Link from "next/link";
 import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import { fetchBaux, fetchBiens, fetchCategories, BAIL_STATUS, BAIL_STATUS_LABELS } from "@/lib/properties";
 import MapPicker from "@/components/MapPicker";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../locataire.module.css";
 
 function formatCurrency(value) {
@@ -31,6 +32,7 @@ function heroStatusClass(statut) {
 /** Anneau de progression SVG (durée écoulée du bail) — le pourcentage est
     affiché au centre, superposé au cercle via un positionnement absolu. */
 function ProgressRing({ percent }) {
+  const { t } = useLanguage();
   const size = 128;
   const stroke = 10;
   const r = (size - stroke) / 2;
@@ -56,7 +58,7 @@ function ProgressRing({ percent }) {
       </svg>
       <div className={styles.leaseProgressRingCenter}>
         <span className={styles.leaseProgressPercent}>{clamped.toFixed(0)}%</span>
-        <span className={styles.leaseProgressPercentLabel}>écoulé</span>
+        <span className={styles.leaseProgressPercentLabel}>{t("bo.locataireBail.elapsed")}</span>
       </div>
     </div>
   );
@@ -77,6 +79,7 @@ function daysRemaining(bail) {
 }
 
 export default function LocataireBailPage() {
+  const { t } = useLanguage();
   const [baux, setBaux] = useState([]);
   const [biens, setBiens] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -117,7 +120,7 @@ export default function LocataireBailPage() {
   }
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.common.loading")}</p>;
   }
 
   if (loadError) {
@@ -129,7 +132,7 @@ export default function LocataireBailPage() {
       <div className={styles.card}>
         <div className={styles.emptyState}>
           <i className="bi bi-house-slash" />
-          <p>Vous n&apos;avez pas encore de bail enregistré.</p>
+          <p>{t("bo.locataireBail.noLease")}</p>
         </div>
       </div>
     );
@@ -217,7 +220,7 @@ export default function LocataireBailPage() {
                 <i className="bi bi-cash-stack" />
               </span>
               <div>
-                <div className={styles.leaseStatLabel}>Loyer mensuel</div>
+                <div className={styles.leaseStatLabel}>{t("bo.locataireBail.monthlyRent")}</div>
                 <div className={styles.leaseStatValue}>{formatCurrency(selectedBail.loyer)}</div>
               </div>
             </div>
@@ -226,7 +229,7 @@ export default function LocataireBailPage() {
                 <i className="bi bi-receipt" />
               </span>
               <div>
-                <div className={styles.leaseStatLabel}>Charges</div>
+                <div className={styles.leaseStatLabel}>{t("bo.locataireBail.charges")}</div>
                 <div className={styles.leaseStatValue}>{formatCurrency(selectedBail.charges)}</div>
               </div>
             </div>
@@ -235,7 +238,7 @@ export default function LocataireBailPage() {
                 <i className="bi bi-shield-check" />
               </span>
               <div>
-                <div className={styles.leaseStatLabel}>Dépôt de garantie</div>
+                <div className={styles.leaseStatLabel}>{t("bo.locataireBail.deposit")}</div>
                 <div className={styles.leaseStatValue}>{formatCurrency(selectedBail.depot)}</div>
               </div>
             </div>
@@ -244,7 +247,7 @@ export default function LocataireBailPage() {
                 <i className="bi bi-calendar-event" />
               </span>
               <div>
-                <div className={styles.leaseStatLabel}>Début du bail</div>
+                <div className={styles.leaseStatLabel}>{t("bo.locataireBail.leaseStart")}</div>
                 <div className={styles.leaseStatValue}>{formatDate(selectedBail.date_debut)}</div>
               </div>
             </div>
@@ -253,7 +256,7 @@ export default function LocataireBailPage() {
                 <i className="bi bi-calendar-x" />
               </span>
               <div>
-                <div className={styles.leaseStatLabel}>Fin du bail</div>
+                <div className={styles.leaseStatLabel}>{t("bo.locataireBail.leaseEnd")}</div>
                 <div className={styles.leaseStatValue}>{formatDate(selectedBail.date_fin)}</div>
               </div>
             </div>
@@ -263,7 +266,7 @@ export default function LocataireBailPage() {
             <div className={styles.leaseProgressCard}>
               <ProgressRing percent={progress} />
               <div className={styles.leaseProgressInfo}>
-                <div className={styles.leaseProgressInfoTitle}>Durée du bail</div>
+                <div className={styles.leaseProgressInfoTitle}>{t("bo.locataireBail.leaseDuration")}</div>
                 <div className={styles.leaseTimelineRow}>
                   <span>{formatDate(selectedBail.date_debut)}</span>
                   <span className={styles.leaseTimelineTrack}>
@@ -272,7 +275,11 @@ export default function LocataireBailPage() {
                   <span>{formatDate(selectedBail.date_fin)}</span>
                 </div>
                 <div className={styles.leaseProgressRemaining}>
-                  {remaining === null ? "—" : remaining >= 0 ? `${remaining} jour(s) restant(s)` : "Bail échu"}
+                  {remaining === null
+                    ? "—"
+                    : remaining >= 0
+                      ? t("bo.locataireBail.daysRemaining", { count: remaining })
+                      : t("bo.locataireBail.leaseExpired")}
                 </div>
               </div>
             </div>
@@ -284,18 +291,25 @@ export default function LocataireBailPage() {
                 <i className="bi bi-calendar-check" />
               </span>
               <span className={styles.leaseActionText}>
-                <span className={styles.leaseActionTitle}>Mes échéances</span>
-                <span className={styles.leaseActionSub}>Voir le calendrier de paiement</span>
+                <span className={styles.leaseActionTitle}>{t("bo.locataireBail.myDueDatesTitle")}</span>
+                <span className={styles.leaseActionSub}>{t("bo.locataireBail.myDueDatesSub")}</span>
               </span>
               <i className={`bi bi-chevron-right ${styles.leaseActionChevron}`} />
             </Link>
-            <Link href="/backoffice/locataire/discussions" className={styles.leaseActionCard}>
+            <Link
+              href={
+                bien?.proprietaire_id
+                  ? `/backoffice/locataire/discussions?contact=${bien.proprietaire_id}`
+                  : "/backoffice/locataire/discussions"
+              }
+              className={styles.leaseActionCard}
+            >
               <span className={styles.leaseActionIcon}>
                 <i className="bi bi-chat-dots" />
               </span>
               <span className={styles.leaseActionText}>
-                <span className={styles.leaseActionTitle}>Contacter le propriétaire</span>
-                <span className={styles.leaseActionSub}>Ouvrir la discussion</span>
+                <span className={styles.leaseActionTitle}>{t("bo.locataireBail.contactOwnerTitle")}</span>
+                <span className={styles.leaseActionSub}>{t("bo.locataireBail.contactOwnerSub")}</span>
               </span>
               <i className={`bi bi-chevron-right ${styles.leaseActionChevron}`} />
             </Link>
@@ -309,7 +323,7 @@ export default function LocataireBailPage() {
           <div className={styles.card}>
             <h3 className={styles.cardTitle}>
               <i className="bi bi-geo-alt-fill" style={{ color: "var(--primary)" }} />
-              Localisation
+              {t("bo.locataireBail.location")}
             </h3>
             <MapPicker readOnly label="" latitude={bien.latitude} longitude={bien.longitude} adresse={bien.adresse} />
           </div>

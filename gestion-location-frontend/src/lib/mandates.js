@@ -26,14 +26,29 @@ export async function fetchGestionnaires() {
   return data;
 }
 
+/** Crée un tout nouveau compte gestionnaire et lui donne l'accès (mandat) en une
+    seule étape — un gestionnaire ne pouvant plus s'inscrire lui-même, c'est
+    désormais le seul moyen pour lui d'obtenir un compte. Retourne aussi
+    invite_link quand aucun email n'a pu être envoyé (mode test, SMTP non
+    configuré) pour que le propriétaire puisse le transmettre manuellement. */
+export async function createGestionnaireInvite({ nom, prenom, email, bienId }) {
+  const { data } = await apiClient.post("/users/gestionnaires", {
+    nom,
+    prenom,
+    email,
+    bien_id: bienId || null,
+  });
+  return data;
+}
+
 export async function lookupLocataireByEmail(email) {
   const { data } = await apiClient.get("/users/lookup", { params: { email, role: "LOCATAIRE" } });
   return data;
 }
 
-export async function createMandate({ gestionnaireId, proprietaireId, bienId }) {
+export async function createMandate({ agenceId, proprietaireId, bienId }) {
   const { data } = await apiClient.post("/mandates/", {
-    gestionnaire_id: gestionnaireId,
+    agence_id: agenceId,
     proprietaire_id: proprietaireId,
     bien_id: bienId || null,
     statut: MANDAT_STATUS.ACTIF,
@@ -70,14 +85,9 @@ export async function saveMandatePermissions(mandatId, permissionCodes) {
 
 // Regroupe le catalogue plat (CREATE_PROPERTY, UPDATE_PROPERTY, ...) par ressource,
 // pour l'affichage en tableau (une section par ressource, une case par action).
-const RESOURCE_LABELS = {
-  PROPERTY: "Biens",
-  LOT: "Lots",
-  LEASE: "Baux",
-  DUE_DATE: "Échéances",
-  PAYMENT: "Paiements",
-};
-
+// Le libellé venant du backend (permission.libelle) n'est pas traduit ; on garde
+// seulement la clé de ressource/action ici, l'affichage traduit label/action côté
+// composant via `_action` et `resource`.
 const ACTION_ORDER = { VIEW: 0, CREATE: 1, UPDATE: 2, DELETE: 3 };
 
 export function groupPermissionCatalog(catalog) {
@@ -86,7 +96,7 @@ export function groupPermissionCatalog(catalog) {
     const [action, ...rest] = permission.code.split("_");
     const resource = rest.join("_");
     if (!groups.has(resource)) {
-      groups.set(resource, { resource, label: RESOURCE_LABELS[resource] || resource, permissions: [] });
+      groups.set(resource, { resource, permissions: [] });
     }
     groups.get(resource).permissions.push({ ...permission, _action: action });
   });
@@ -98,6 +108,34 @@ export function groupPermissionCatalog(catalog) {
 
 export function isGestionnaire(user) {
   return user?.role === ROLES.GESTIONNAIRE;
+}
+
+/** Portée d'un mandat, en texte : soit un bien précis, soit "tout le portefeuille"
+    — le libellé de ce dernier cas diffère selon qui regarde (le propriétaire dit
+    "mes" biens, l'agence dit "ses" biens en parlant de son client), d'où le
+    paramètre plutôt qu'une clé de traduction fixe ici. */
+export function mandatScopeLabel(mandat, allBiensLabel) {
+  if (!mandat.bien_id) return allBiensLabel;
+  return mandat.bien?.designation || `Bien #${mandat.bien_id}`;
+}
+
+/** Libellé lisible d'un niveau d'accès (voir summarizeAccessLevel) — même texte
+    qu'on regarde depuis le côté propriétaire ou le côté agence. */
+export function accessLevelLabel(level, t) {
+  if (level === "full") return t("bo.common.accessFull");
+  if (level === "readonly") return t("bo.common.accessReadOnly");
+  if (level === "custom") return t("bo.common.accessCustom");
+  return t("bo.common.accessNone");
+}
+
+/** Résume un ensemble de permissions accordées en un niveau lisible plutôt que
+    d'obliger à lire la matrice : "full" si tout le catalogue est accordé,
+    "readonly" si seuls des droits VIEW_* le sont, "custom" sinon. */
+export function summarizeAccessLevel(grantedCodes, catalog) {
+  if (!grantedCodes || grantedCodes.size === 0) return "none";
+  if (catalog.length > 0 && grantedCodes.size >= catalog.length) return "full";
+  const onlyView = [...grantedCodes].every((code) => code.startsWith("VIEW_"));
+  return onlyView ? "readonly" : "custom";
 }
 
 /** Construit un vérificateur de droits pour le gestionnaire connecté, à partir de

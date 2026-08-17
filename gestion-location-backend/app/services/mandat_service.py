@@ -2,6 +2,8 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+from app.api.deps import active_agence_id
+from app.models.agence import Agence
 from app.models.bien import Bien
 from app.models.manager_permission import ManagerPermission
 from app.models.mandat import Mandat, MandatStatus
@@ -23,11 +25,11 @@ DEFAULT_VIEW_PERMISSIONS = ["VIEW_PROPERTY", "VIEW_LOT", "VIEW_LEASE", "VIEW_DUE
 RESOURCE_HIERARCHY = ["PROPERTY", "LOT", "LEASE", "DUE_DATE", "PAYMENT"]
 
 
-def _can_view_mandat(current_user: Utilisateur, mandat: Mandat) -> bool:
+def _can_view_mandat(db: Session, current_user: Utilisateur, mandat: Mandat) -> bool:
     return (
         current_user.role == UtilisateurRole.ADMINISTRATEUR
         or current_user.id == mandat.proprietaire_id
-        or current_user.id == mandat.gestionnaire_id
+        or active_agence_id(db, current_user.id) == mandat.agence_id
     )
 
 
@@ -36,7 +38,10 @@ def list_mandats(db: Session, current_user: Utilisateur, skip: int = 0, limit: i
     if current_user.role == UtilisateurRole.PROPRIETAIRE:
         query = query.filter(Mandat.proprietaire_id == current_user.id)
     elif current_user.role == UtilisateurRole.GESTIONNAIRE:
-        query = query.filter(Mandat.gestionnaire_id == current_user.id)
+        agence_id = active_agence_id(db, current_user.id)
+        if agence_id is None:
+            return []
+        query = query.filter(Mandat.agence_id == agence_id)
     elif current_user.role != UtilisateurRole.ADMINISTRATEUR:
         return []
     return query.offset(skip).limit(limit).all()
@@ -50,7 +55,7 @@ def get_mandat(db: Session, current_user: Utilisateur, mandat_id: int) -> Mandat
     )
     if not mandat:
         raise NotFound("Mandate not found")
-    if not _can_view_mandat(current_user, mandat):
+    if not _can_view_mandat(db, current_user, mandat):
         raise Forbidden("Not allowed to access this mandate")
     return mandat
 
@@ -62,12 +67,18 @@ def create_mandat(db: Session, current_user: Utilisateur, mandat_in: MandatCreat
     ):
         raise Forbidden("A proprietaire can only create a mandate for themself")
 
-    gestionnaire = db.get(Utilisateur, mandat_in.gestionnaire_id)
+    agence = db.get(Agence, mandat_in.agence_id)
     proprietaire = db.get(Utilisateur, mandat_in.proprietaire_id)
-    if not gestionnaire or gestionnaire.role != UtilisateurRole.GESTIONNAIRE:
-        raise BadRequest("gestionnaire_id must reference a gestionnaire")
+    if not agence or agence.deleted_at is not None:
+        raise BadRequest("agence_id must reference an agence")
     if not proprietaire or proprietaire.role != UtilisateurRole.PROPRIETAIRE:
         raise BadRequest("proprietaire_id must reference a proprietaire")
+
+    if (
+        current_user.role == UtilisateurRole.GESTIONNAIRE
+        and active_agence_id(db, current_user.id) != mandat_in.agence_id
+    ):
+        raise Forbidden("A gestionnaire can only create a mandate for their own agence")
 
     if mandat_in.bien_id is not None:
         bien = (
@@ -81,7 +92,7 @@ def create_mandat(db: Session, current_user: Utilisateur, mandat_in: MandatCreat
     duplicate = (
         db.query(Mandat)
         .filter(
-            Mandat.gestionnaire_id == mandat_in.gestionnaire_id,
+            Mandat.agence_id == mandat_in.agence_id,
             Mandat.proprietaire_id == mandat_in.proprietaire_id,
             Mandat.bien_id == mandat_in.bien_id,
             Mandat.statut == MandatStatus.ACTIF,
@@ -90,12 +101,12 @@ def create_mandat(db: Session, current_user: Utilisateur, mandat_in: MandatCreat
         .first()
     )
     if duplicate:
-        raise BadRequest("An active mandate already exists for this gestionnaire on this scope")
+        raise BadRequest("An active mandate already exists for this agence on this scope")
 
     if mandat_in.statut == MandatStatus.ACTIF:
         enforce_limit(db, mandat_in.proprietaire_id, "gestionnaires")
 
-    mandat = Mandat(**mandat_in.model_dump())
+    mandat = Mandat(**mandat_in.model_dump(), created_by=current_user.id)
     db.add(mandat)
     db.commit()
     db.refresh(mandat)
@@ -115,9 +126,18 @@ def update_mandat(db: Session, current_user: Utilisateur, mandat_id: int, mandat
     )
     if not mandat:
         raise NotFound("Mandate not found")
-    if not _can_view_mandat(current_user, mandat):
+    if not _can_view_mandat(db, current_user, mandat):
         raise Forbidden("Not allowed to modify this mandate")
-    for field, value in mandat_in.model_dump(exclude_unset=True).items():
+
+    update_data = mandat_in.model_dump(exclude_unset=True)
+    prospective_statut = update_data.get("statut", mandat.statut)
+    if prospective_statut == MandatStatus.ACTIF and mandat.statut != MandatStatus.ACTIF:
+        # Réactiver un mandat révoqué remet un gestionnaire actif dans le quota du
+        # plan, exactement comme en créer un nouveau (voir create_mandat) — même
+        # garde-fou qu'un bail qu'on repasse à ACTIF (bail_service.update_bail).
+        enforce_limit(db, mandat.proprietaire_id, "gestionnaires")
+
+    for field, value in update_data.items():
         setattr(mandat, field, value)
     db.commit()
     db.refresh(mandat)
@@ -146,7 +166,7 @@ def list_mandat_permissions(db: Session, current_user: Utilisateur, mandat_id: i
     )
     if not mandat:
         raise NotFound("Mandate not found")
-    if not _can_view_mandat(current_user, mandat):
+    if not _can_view_mandat(db, current_user, mandat):
         raise Forbidden("Not allowed to access this mandate")
     return db.query(ManagerPermission).filter(ManagerPermission.mandat_id == mandat_id).all()
 

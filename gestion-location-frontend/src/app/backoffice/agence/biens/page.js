@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
+import { extractErrorMessage, isPlanLimitError, API_BASE_URL } from "@/lib/apiClient";
 import {
   fetchBiens,
+  fetchLots,
   createBien,
   updateBien,
   deleteBien,
@@ -24,6 +25,10 @@ import SelectField from "@/components/SelectField";
 import FilterSelect from "@/components/FilterSelect";
 import MapPicker from "@/components/MapPicker";
 import BienDetailsModal from "@/components/BienDetailsModal";
+import PlanLimitPopup from "@/components/PlanLimitPopup";
+import LoadingState from "@/components/LoadingState";
+import EmptyState from "@/components/EmptyState";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -58,10 +63,13 @@ const EMPTY_FORM = {
   longitude: null,
   type: String(TYPE_BIEN.IMMOBILIER),
   statut: String(BIEN_STATUS.ACTIF),
+  valorisation: "",
 };
 
 export default function AgenceBiensPage() {
+  const { t } = useLanguage();
   const [biens, setBiens] = useState([]);
+  const [lots, setLots] = useState([]);
   const [proprietaires, setProprietaires] = useState([]);
   const [permIndex, setPermIndex] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -78,6 +86,7 @@ export default function AgenceBiensPage() {
   const [formDraft, setFormDraft] = useState(EMPTY_FORM);
   const [formBusy, setFormBusy] = useState(false);
   const [formBanner, setFormBanner] = useState(null);
+  const [planLimitMessage, setPlanLimitMessage] = useState(null);
 
   const [editingPhotos, setEditingPhotos] = useState([]);
   const [stagedFiles, setStagedFiles] = useState([]);
@@ -93,12 +102,14 @@ export default function AgenceBiensPage() {
     async function init() {
       setIsLoading(true);
       try {
-        const [biensList, mandatesList, permissionIndex] = await Promise.all([
+        const [biensList, lotsList, mandatesList, permissionIndex] = await Promise.all([
           fetchBiens(),
+          fetchLots(),
           fetchMandates(),
           fetchGestionnairePermissionIndex(),
         ]);
         setBiens(biensList);
+        setLots(lotsList);
         const proprietairesById = new Map();
         mandatesList
           .filter((m) => m.statut === MANDAT_STATUS.ACTIF && m.proprietaire)
@@ -176,6 +187,7 @@ export default function AgenceBiensPage() {
       longitude: bien.longitude ?? null,
       type: String(bien.type),
       statut: String(bien.statut),
+      valorisation: bien.valorisation ?? "",
     });
     setEditingPhotos(bien.photos || []);
     setStagedFiles([]);
@@ -261,6 +273,7 @@ export default function AgenceBiensPage() {
           latitude: formDraft.latitude,
           longitude: formDraft.longitude,
           statut: Number(formDraft.statut),
+          valorisation: formDraft.valorisation,
         });
         const photos = [];
         if (stagedFiles.length > 0) {
@@ -280,12 +293,17 @@ export default function AgenceBiensPage() {
           latitude: formDraft.latitude,
           longitude: formDraft.longitude,
           statut: Number(formDraft.statut),
+          valorisation: formDraft.valorisation === "" ? null : Number(formDraft.valorisation),
         });
         setBiens((prev) => prev.map((b) => (b.id === updated.id ? { ...b, ...updated } : b)));
       }
       setFormOpen(false);
     } catch (err) {
-      setFormBanner({ type: "error", message: extractErrorMessage(err) });
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setFormBanner({ type: "error", message: extractErrorMessage(err) });
+      }
     } finally {
       setFormBusy(false);
     }
@@ -307,7 +325,7 @@ export default function AgenceBiensPage() {
   }
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <LoadingState label={t("bo.common.loading")} />;
   }
 
   return (
@@ -317,18 +335,17 @@ export default function AgenceBiensPage() {
       {proprietaires.length === 0 && (
         <div className={`${styles.banner} ${styles.bannerSuccess}`}>
           <i className="bi bi-hourglass-split" style={{ marginRight: "0.4rem" }} />
-          Aucun mandat actif pour l&apos;instant. Un propriétaire doit vous inviter pour que ses biens apparaissent
-          ici.
+          {t("bo.agenceBiens.noMandateBanner")}
         </div>
       )}
 
       {/* ---- Stats ---- */}
       <div className={styles.section}>
         <div className={styles.statsGrid}>
-          <StatCard icon="bi-house-door-fill" tone="primary" label="Biens gérés" value={stats.total} />
-          <StatCard icon="bi-check-circle-fill" tone="accent" label="Actifs" value={stats.actifs} />
-          <StatCard icon="bi-pause-circle" tone="warning" label="Inactifs" value={stats.inactifs} />
-          <StatCard icon="bi-archive-fill" tone="danger" label="Archivés" value={stats.archives} />
+          <StatCard icon="bi-house-door-fill" tone="primary" label={t("bo.agenceBiens.statTotal")} value={stats.total} />
+          <StatCard icon="bi-check-circle-fill" tone="accent" label={t("bo.proprietaireBiens.statActive")} value={stats.actifs} />
+          <StatCard icon="bi-pause-circle" tone="warning" label={t("bo.proprietaireBiens.statInactive")} value={stats.inactifs} />
+          <StatCard icon="bi-archive-fill" tone="danger" label={t("bo.proprietaireBiens.statArchived")} value={stats.archives} />
         </div>
       </div>
 
@@ -338,16 +355,16 @@ export default function AgenceBiensPage() {
           <div>
             <h2 className={styles.sectionTitle}>
               <i className="bi bi-table" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-              Biens gérés
+              {t("bo.agenceBiens.title")}
             </h2>
             <p className={styles.sectionSubtitle}>
-              {filteredBiens.length} bien(s) affiché(s) sur {biens.length}, tous propriétaires confondus.
+              {t("bo.agenceBiens.subtitle", { shown: filteredBiens.length, total: biens.length })}
             </p>
           </div>
           {creatableProprietaires.length > 0 && (
             <button type="button" className={styles.btn} onClick={openCreate}>
               <i className="bi bi-plus-lg" />
-              Nouveau bien
+              {t("bo.proprietaireBiens.newBien")}
             </button>
           )}
         </div>
@@ -355,7 +372,7 @@ export default function AgenceBiensPage() {
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher par désignation, propriétaire, type, description..."
+            placeholder={t("bo.agenceBiens.searchPlaceholder")}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -368,7 +385,7 @@ export default function AgenceBiensPage() {
               setStatusFilter(v);
               setCurrentPage(1);
             }}
-            options={[{ value: "", label: "Tous les statuts" }, ...STATUS_OPTIONS]}
+            options={[{ value: "", label: t("bo.common.allStatuses") }, ...STATUS_OPTIONS]}
           />
           <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
@@ -377,19 +394,19 @@ export default function AgenceBiensPage() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Bien</th>
-                <th>Propriétaire</th>
-                <th>Type</th>
-                <th>Statut</th>
-                <th>Photos</th>
-                <th>Actions</th>
+                <th>{t("bo.agenceBiens.colBien")}</th>
+                <th>{t("bo.agenceBiens.colProprietaire")}</th>
+                <th>{t("bo.proprietaireBiens.colType")}</th>
+                <th>{t("bo.proprietaireBiens.colStatus")}</th>
+                <th>{t("bo.proprietaireBiens.colPhotos")}</th>
+                <th>{t("bo.proprietaireBiens.colActions")}</th>
               </tr>
             </thead>
             <tbody>
               {filteredBiens.length === 0 && (
                 <tr>
                   <td colSpan={6} className={styles.empty}>
-                    Aucun bien ne correspond à ces critères.
+                    <EmptyState icon="bi-house-door" title={t("bo.common.noMatch")} />
                   </td>
                 </tr>
               )}
@@ -436,12 +453,12 @@ export default function AgenceBiensPage() {
                               type="button"
                               className={styles.iconBtn}
                               onClick={() => setDetailsTarget(b)}
-                              title="Voir les détails"
+                              title={t("bo.common.seeDetails")}
                             >
                               <i className="bi bi-eye" />
                             </button>
                             {canUpdate && (
-                              <button type="button" className={styles.iconBtn} onClick={() => openEdit(b)} title="Modifier">
+                              <button type="button" className={styles.iconBtn} onClick={() => openEdit(b)} title={t("bo.common.edit")}>
                                 <i className="bi bi-pencil" />
                               </button>
                             )}
@@ -453,7 +470,7 @@ export default function AgenceBiensPage() {
                                   setDeleteTarget(b);
                                   setDeleteError(null);
                                 }}
-                                title="Supprimer"
+                                title={t("bo.common.delete")}
                               >
                                 <i className="bi bi-trash" />
                               </button>
@@ -471,7 +488,7 @@ export default function AgenceBiensPage() {
           {filteredBiens.length > 0 && (
             <div className={styles.paginationRow}>
               <span>
-                Page {safePage} / {totalPages} · {filteredBiens.length} bien(s)
+                {t("bo.proprietaireBiens.pageOf", { page: safePage, total: totalPages, count: filteredBiens.length })}
               </span>
               <div className={styles.paginationButtons}>
                 <button
@@ -481,7 +498,7 @@ export default function AgenceBiensPage() {
                   disabled={safePage <= 1}
                 >
                   <i className="bi bi-chevron-left" />
-                  Précédent
+                  {t("bo.common.previous")}
                 </button>
                 <button
                   type="button"
@@ -489,7 +506,7 @@ export default function AgenceBiensPage() {
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={safePage >= totalPages}
                 >
-                  Suivant
+                  {t("bo.common.next")}
                   <i className="bi bi-chevron-right" />
                 </button>
               </div>
@@ -499,12 +516,12 @@ export default function AgenceBiensPage() {
       </div>
 
       {/* ---- Créer / modifier un bien ---- */}
-      <Modal isOpen={formOpen} onClose={closeForm} title={formMode === "create" ? "Nouveau bien" : "Modifier le bien"}>
+      <Modal isOpen={formOpen} onClose={closeForm} title={formMode === "create" ? t("bo.proprietaireBiens.createTitle") : t("bo.proprietaireBiens.editTitle")}>
         <form onSubmit={handleSubmitForm}>
           <Banner banner={formBanner} />
           {formMode === "create" && (
             <SelectField
-              label="Propriétaire"
+              label={t("bo.agenceBiens.proprietaireLabel")}
               name="proprietaire_id"
               options={creatableProprietaires.map((p) => ({ value: p.id, label: `${p.prenom} ${p.nom}` }))}
               value={formDraft.proprietaire_id}
@@ -513,32 +530,32 @@ export default function AgenceBiensPage() {
             />
           )}
           <TextField
-            label="Désignation"
+            label={t("bo.proprietaireBiens.designationLabel")}
             name="designation"
             value={formDraft.designation}
             onChange={(e) => setFormDraft((d) => ({ ...d, designation: e.target.value }))}
-            placeholder="Ex : Villa Anfa, Immeuble 12..."
+            placeholder={t("bo.proprietaireBiens.designationPlaceholder")}
           />
           <MapPicker
-            label="Localisation"
+            label={t("bo.proprietaireBiens.locationLabel")}
             adresse={formDraft.adresse}
             latitude={formDraft.latitude}
             longitude={formDraft.longitude}
             onChange={({ adresse, latitude, longitude }) => setFormDraft((d) => ({ ...d, adresse, latitude, longitude }))}
-            hint="Optionnel — recherchez une adresse ou placez le marqueur directement sur la carte."
+            hint={t("bo.proprietaireBiens.locationHint")}
           />
           <TextField
-            label="Description"
+            label={t("bo.proprietaireBiens.descriptionLabel")}
             name="description"
             as="textarea"
             rows={3}
             value={formDraft.description}
             onChange={(e) => setFormDraft((d) => ({ ...d, description: e.target.value }))}
-            placeholder="Détails, particularités, informations utiles..."
-            hint="Optionnel"
+            placeholder={t("bo.proprietaireBiens.descriptionPlaceholder")}
+            hint={t("bo.proprietaireBiens.optionalHint")}
           />
           <SelectField
-            label="Type"
+            label={t("bo.proprietaireBiens.typeLabel")}
             name="type"
             options={TYPE_OPTIONS}
             value={formDraft.type}
@@ -546,15 +563,26 @@ export default function AgenceBiensPage() {
             required
           />
           <SelectField
-            label="Statut"
+            label={t("bo.proprietaireBiens.statusLabel")}
             name="statut"
             options={STATUS_OPTIONS}
             value={formDraft.statut}
             onChange={(e) => setFormDraft((d) => ({ ...d, statut: e.target.value }))}
           />
+          <TextField
+            label={t("bo.proprietaireBiens.valorisationLabel")}
+            name="valorisation"
+            type="number"
+            step="0.01"
+            min="0"
+            value={formDraft.valorisation}
+            onChange={(e) => setFormDraft((d) => ({ ...d, valorisation: e.target.value }))}
+            placeholder={t("bo.proprietaireBiens.valorisationPlaceholder")}
+            hint={t("bo.proprietaireBiens.optionalHint")}
+          />
 
           <label className={styles.field} style={{ display: "block", marginTop: "0.9rem" }}>
-            Photos
+            {t("bo.proprietaireBiens.photosLabel")}
             <div className={styles.photoGrid}>
               {formMode === "edit" &&
                 editingPhotos.map((photo) => (
@@ -566,7 +594,7 @@ export default function AgenceBiensPage() {
                       className={styles.photoRemoveBtn}
                       onClick={() => handleRemoveExistingPhoto(photo)}
                       disabled={photoBusy}
-                      title="Supprimer cette photo"
+                      title={t("bo.proprietaireBiens.removePhotoTitle")}
                     >
                       <i className="bi bi-x" />
                     </button>
@@ -581,7 +609,7 @@ export default function AgenceBiensPage() {
                       type="button"
                       className={styles.photoRemoveBtn}
                       onClick={() => removeStagedFile(index)}
-                      title="Retirer cette photo"
+                      title={t("bo.proprietaireBiens.removeStagedTitle")}
                     >
                       <i className="bi bi-x" />
                     </button>
@@ -590,7 +618,7 @@ export default function AgenceBiensPage() {
             </div>
             <label className={styles.photoUpload}>
               <i className="bi bi-camera-fill" />
-              {photoBusy ? "Envoi..." : "Ajouter des photos"}
+              {photoBusy ? t("bo.proprietaireBiens.uploading") : t("bo.proprietaireBiens.addPhotos")}
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
@@ -604,11 +632,11 @@ export default function AgenceBiensPage() {
           <div className={styles.editActions} style={{ marginTop: "1.2rem" }}>
             <button type="submit" className={styles.btn} disabled={formBusy}>
               <i className="bi bi-check-lg" />
-              {formBusy ? "Enregistrement..." : "Enregistrer"}
+              {formBusy ? t("bo.common.saving") : t("bo.common.save")}
             </button>
             <button type="button" className={styles.btnOutline} onClick={closeForm} disabled={formBusy}>
               <i className="bi bi-x-lg" />
-              Annuler
+              {t("bo.common.cancel")}
             </button>
           </div>
         </form>
@@ -622,20 +650,29 @@ export default function AgenceBiensPage() {
           setDeleteError(null);
         }}
         onConfirm={handleConfirmDelete}
-        title="Masquer le bien"
+        title={t("bo.proprietaireBiens.deleteConfirmTitle")}
         message={
           deleteTarget
-            ? `Masquer "${deleteTarget.designation || `Bien #${deleteTarget.id}`}" ? Il ne sera plus visible dans vos listes (ses lots et baux restent conservés).`
+            ? t("bo.proprietaireBiens.deleteConfirmMessage", {
+                name: deleteTarget.designation || `Bien #${deleteTarget.id}`,
+              })
             : ""
         }
-        confirmLabel="Masquer"
+        confirmLabel={t("bo.proprietaireBiens.deleteConfirmLabel")}
         danger
         isBusy={deleteBusy}
         error={deleteError}
       />
 
       {/* ---- Détails d'un bien ---- */}
-      <BienDetailsModal bien={detailsTarget} onClose={() => setDetailsTarget(null)} />
+      <BienDetailsModal
+        bien={detailsTarget}
+        onClose={() => setDetailsTarget(null)}
+        ownerName={detailsTarget ? proprietaireName(detailsTarget.proprietaire_id) : null}
+        lots={detailsTarget ? lots.filter((l) => l.bien_id === detailsTarget.id) : null}
+      />
+
+      <PlanLimitPopup message={planLimitMessage} onClose={() => setPlanLimitMessage(null)} />
     </div>
   );
 }

@@ -6,7 +6,7 @@ from typing import Optional
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.api.deps import managed_proprietaire_ids
+from app.api.deps import active_agence_id, managed_proprietaire_ids
 from app.models.bail import Bail
 from app.models.bien import Bien
 from app.models.discussion import Discussion
@@ -107,11 +107,14 @@ def _is_legitimate_contact(db: Session, current_user: Utilisateur, destinataire:
                 is not None
             )
         if destinataire.role == UtilisateurRole.GESTIONNAIRE:
+            agence_id = active_agence_id(db, destinataire.id)
+            if agence_id is None:
+                return False
             return (
                 db.query(Mandat)
                 .filter(
                     Mandat.proprietaire_id == current_user.id,
-                    Mandat.gestionnaire_id == destinataire.id,
+                    Mandat.agence_id == agence_id,
                     Mandat.statut == MandatStatus.ACTIF,
                 )
                 .first()
@@ -133,10 +136,13 @@ def _is_legitimate_contact(db: Session, current_user: Utilisateur, destinataire:
 
     if current_user.role == UtilisateurRole.GESTIONNAIRE:
         if destinataire.role == UtilisateurRole.PROPRIETAIRE:
+            agence_id = active_agence_id(db, current_user.id)
+            if agence_id is None:
+                return False
             return (
                 db.query(Mandat)
                 .filter(
-                    Mandat.gestionnaire_id == current_user.id,
+                    Mandat.agence_id == agence_id,
                     Mandat.proprietaire_id == destinataire.id,
                     Mandat.statut == MandatStatus.ACTIF,
                 )

@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.notification import NotificationType
@@ -18,9 +19,26 @@ def list_reclamations(db: Session, current_user: Utilisateur) -> list[Reclamatio
 
 
 def create_reclamation(db: Session, current_user: Utilisateur, reclamation_in: ReclamationCreate) -> Reclamation:
+    sujet = reclamation_in.sujet.strip()
+
+    # Empêche de rouvrir un sujet déjà tranché : une fois une réclamation acceptée
+    # sur ce sujet précis, seul un sujet différent peut donner lieu à une nouvelle
+    # réclamation (les réclamations en attente ou rejetées ne bloquent rien).
+    already_accepted = (
+        db.query(Reclamation)
+        .filter(
+            Reclamation.proprietaire_id == current_user.id,
+            Reclamation.statut == ReclamationStatus.ACCEPTEE,
+            func.lower(Reclamation.sujet) == sujet.lower(),
+        )
+        .first()
+    )
+    if already_accepted:
+        raise BadRequest("A reclamation with this subject has already been accepted")
+
     reclamation = Reclamation(
         proprietaire_id=current_user.id,
-        sujet=reclamation_in.sujet,
+        sujet=sujet,
         message=reclamation_in.message,
     )
     db.add(reclamation)

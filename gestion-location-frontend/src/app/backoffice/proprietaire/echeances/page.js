@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { extractErrorMessage } from "@/lib/apiClient";
+import { extractErrorMessage, isPlanLimitError } from "@/lib/apiClient";
 import {
   fetchBiens,
   fetchBaux,
@@ -25,6 +25,10 @@ import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
 import FilterChip from "@/components/FilterChip";
 import FilterSelect from "@/components/FilterSelect";
+import PlanLimitPopup from "@/components/PlanLimitPopup";
+import ToggleSwitch from "@/components/ToggleSwitch";
+import { usePlanGate } from "@/hooks/usePlanGate";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../proprietaire.module.css";
 
 function Banner({ banner }) {
@@ -62,6 +66,7 @@ const MODE_OPTIONS = Object.entries(MODE_PAIEMENT_LABELS).map(([value, label]) =
 const PAGE_SIZE = 10;
 
 export default function ProprietaireEcheancesPage() {
+  const { t } = useLanguage();
   const [echeances, setEcheances] = useState([]);
   const [baux, setBaux] = useState([]);
   const [biens, setBiens] = useState([]);
@@ -89,6 +94,8 @@ export default function ProprietaireEcheancesPage() {
   const [payDraft, setPayDraft] = useState(null);
   const [payBusy, setPayBusy] = useState(false);
   const [payBanner, setPayBanner] = useState(null);
+  const [planLimitMessage, setPlanLimitMessage] = useState(null);
+  const { checkBeforeOpen } = usePlanGate("quittances_mois");
 
   const [relanceBusyId, setRelanceBusyId] = useState(null);
   const [relanceBanner, setRelanceBanner] = useState(null);
@@ -180,8 +187,35 @@ export default function ProprietaireEcheancesPage() {
     setEditDraft({
       date_echeance: echeance.date_echeance || "",
       montant_du: echeance.montant_du ?? "",
+      charges: echeance.charges ?? echeance.bail?.charges ?? "",
+      charges_incluses: echeance.charges_incluses ?? true,
     });
     setEditBanner(null);
+  }
+
+  // Recalcule le montant dû à partir du loyer du bail + charges (si incluses),
+  // pour que la modification des charges se répercute automatiquement — sans
+  // empêcher l'utilisateur de forcer manuellement le montant dû ensuite.
+  function recomputeMontantDu(charges, chargesIncluses, bail) {
+    const loyer = Number(bail?.loyer || 0);
+    const chargesNum = charges === "" ? 0 : Number(charges);
+    return chargesIncluses ? loyer + chargesNum : loyer;
+  }
+
+  function handleChargesChange(value) {
+    setEditDraft((d) => ({
+      ...d,
+      charges: value,
+      montant_du: recomputeMontantDu(value, d.charges_incluses, editTarget?.bail),
+    }));
+  }
+
+  function handleChargesInclusesChange(checked) {
+    setEditDraft((d) => ({
+      ...d,
+      charges_incluses: checked,
+      montant_du: recomputeMontantDu(d.charges, checked, editTarget?.bail),
+    }));
   }
 
   function closeEdit() {
@@ -199,6 +233,8 @@ export default function ProprietaireEcheancesPage() {
       const updated = await updateEcheance(editTarget.id, {
         date_echeance: editDraft.date_echeance || null,
         montant_du: editDraft.montant_du === "" ? null : Number(editDraft.montant_du),
+        charges: editDraft.charges === "" ? null : Number(editDraft.charges),
+        charges_incluses: editDraft.charges_incluses,
       });
       setEcheances((prev) => prev.map((e) => (e.id === updated.id ? { ...e, ...updated } : e)));
       setEditTarget(null);
@@ -243,6 +279,11 @@ export default function ProprietaireEcheancesPage() {
   }
 
   function openPay(echeance) {
+    const blockMessage = checkBeforeOpen();
+    if (blockMessage) {
+      setPlanLimitMessage(blockMessage);
+      return;
+    }
     const reste = Number(echeance.montant_du || 0) - paidSoFar(echeance.id);
     setPayTarget(echeance);
     setPayDraft({
@@ -274,7 +315,11 @@ export default function ProprietaireEcheancesPage() {
       setPayTarget(null);
       setPayDraft(null);
     } catch (err) {
-      setPayBanner({ type: "error", message: extractErrorMessage(err) });
+      if (isPlanLimitError(err)) {
+        setPlanLimitMessage(extractErrorMessage(err));
+      } else {
+        setPayBanner({ type: "error", message: extractErrorMessage(err) });
+      }
     } finally {
       setPayBusy(false);
     }
@@ -288,7 +333,9 @@ export default function ProprietaireEcheancesPage() {
       const locataire = echeance.bail?.locataire;
       setRelanceBanner({
         type: "success",
-        message: `Rappel de paiement envoyé${locataire ? ` à ${locataire.prenom} ${locataire.nom}` : ""}.`,
+        message: t("bo.proprietaireEcheances.reminderSent", {
+          to: locataire ? t("bo.proprietaireEcheances.reminderSentTo", { name: `${locataire.prenom} ${locataire.nom}` }) : "",
+        }),
       });
     } catch (err) {
       setRelanceBanner({ type: "error", message: extractErrorMessage(err) });
@@ -298,20 +345,21 @@ export default function ProprietaireEcheancesPage() {
   }
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.common.loading")}</p>;
   }
 
   return (
     <div>
+      <PlanLimitPopup message={planLimitMessage} onClose={() => setPlanLimitMessage(null)} />
       <Banner banner={loadError ? { type: "error", message: loadError } : null} />
 
       {/* ---- Stats ---- */}
       <div className={styles.section}>
         <div className={styles.statsGrid}>
-          <StatCard icon="bi-calendar-check-fill" tone="primary" label="Échéances" value={stats.total} />
-          <StatCard icon="bi-check-circle-fill" tone="accent" label="Payées" value={stats.payees} />
-          <StatCard icon="bi-hourglass-split" tone="warning" label="Partielles" value={stats.partielles} />
-          <StatCard icon="bi-exclamation-octagon-fill" tone="danger" label="Impayées" value={stats.impayees} />
+          <StatCard icon="bi-calendar-check-fill" tone="primary" label={t("bo.proprietaireEcheances.statTotal")} value={stats.total} />
+          <StatCard icon="bi-check-circle-fill" tone="accent" label={t("bo.proprietaireEcheances.statPaid")} value={stats.payees} />
+          <StatCard icon="bi-hourglass-split" tone="warning" label={t("bo.proprietaireEcheances.statPartial")} value={stats.partielles} />
+          <StatCard icon="bi-exclamation-octagon-fill" tone="danger" label={t("bo.proprietaireEcheances.statUnpaid")} value={stats.impayees} />
         </div>
       </div>
 
@@ -321,11 +369,10 @@ export default function ProprietaireEcheancesPage() {
           <div>
             <h2 className={styles.sectionTitle}>
               <i className="bi bi-table" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-              Échéances
+              {t("bo.proprietaireEcheances.title")}
             </h2>
             <p className={styles.sectionSubtitle}>
-              {filteredEcheances.length} échéance(s) affichée(s) sur {echeances.length}. Générées automatiquement à la
-              création de chaque bail.
+              {t("bo.proprietaireEcheances.subtitle", { shown: filteredEcheances.length, total: echeances.length })}
             </p>
           </div>
         </div>
@@ -335,7 +382,7 @@ export default function ProprietaireEcheancesPage() {
         <div className={styles.filtersRow}>
           <input
             type="text"
-            placeholder="Rechercher (référence, locataire, bien, montant, date...)"
+            placeholder={t("bo.proprietaireEcheances.searchPlaceholder")}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -348,7 +395,7 @@ export default function ProprietaireEcheancesPage() {
               setBailFilter(v);
               setCurrentPage(1);
             }}
-            options={[{ value: "", label: "Tous les baux" }, ...baux.map((b) => ({ value: b.id, label: bailLabel(b) }))]}
+            options={[{ value: "", label: t("bo.proprietaireEcheances.allLeases") }, ...baux.map((b) => ({ value: b.id, label: bailLabel(b) }))]}
           />
           <FilterSelect
             value={statusFilter}
@@ -356,8 +403,9 @@ export default function ProprietaireEcheancesPage() {
               setStatusFilter(v);
               setCurrentPage(1);
             }}
-            options={[{ value: "", label: "Tous les statuts" }, ...STATUS_OPTIONS]}
+            options={[{ value: "", label: t("bo.common.allStatuses") }, ...STATUS_OPTIONS]}
           />
+          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
           <FilterChip
             checked={overdueOnly}
             onChange={(checked) => {
@@ -365,29 +413,28 @@ export default function ProprietaireEcheancesPage() {
               setCurrentPage(1);
             }}
           >
-            En retard uniquement
+            {t("bo.proprietaireEcheances.overdueOnly")}
           </FilterChip>
-          <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
         </div>
 
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Référence</th>
-                <th>Locataire</th>
-                <th>Bien / Lot</th>
-                <th>Date d&apos;échéance</th>
-                <th>Montant dû</th>
-                <th>Statut</th>
-                <th>Actions</th>
+                <th>{t("bo.proprietaireEcheances.colReference")}</th>
+                <th>{t("bo.proprietaireEcheances.colTenant")}</th>
+                <th>{t("bo.proprietaireEcheances.colBienLot")}</th>
+                <th>{t("bo.proprietaireEcheances.colDueDate")}</th>
+                <th>{t("bo.proprietaireEcheances.colAmountDue")}</th>
+                <th>{t("bo.proprietaireEcheances.colStatus")}</th>
+                <th>{t("bo.proprietaireEcheances.colActions")}</th>
               </tr>
             </thead>
             <tbody>
               {filteredEcheances.length === 0 && (
                 <tr>
                   <td colSpan={7} className={styles.empty}>
-                    Aucune échéance ne correspond à ces critères.
+                    {t("bo.common.noMatch")}
                   </td>
                 </tr>
               )}
@@ -417,10 +464,10 @@ export default function ProprietaireEcheancesPage() {
                           className={styles.overdueBtn}
                           onClick={() => handleSendRelance(e)}
                           disabled={relanceBusyId === e.id}
-                          title="Envoyer un rappel de paiement au locataire"
+                          title={t("bo.proprietaireEcheances.sendReminderTitle")}
                         >
                           <i className={`bi ${relanceBusyId === e.id ? "bi-arrow-repeat" : "bi-bell"}`} />
-                          {relanceBusyId === e.id ? "Envoi..." : "En retard"}
+                          {relanceBusyId === e.id ? t("bo.proprietaireEcheances.sending") : t("bo.proprietaireEcheances.overdueBadge")}
                         </button>
                       )}
                     </td>
@@ -437,7 +484,7 @@ export default function ProprietaireEcheancesPage() {
                             type="button"
                             className={styles.iconBtn}
                             onClick={() => openPay(e)}
-                            title="Payer"
+                            title={t("bo.proprietaireEcheances.pay")}
                           >
                             <i className="bi bi-cash-coin" />
                           </button>
@@ -447,7 +494,7 @@ export default function ProprietaireEcheancesPage() {
                             type="button"
                             className={styles.iconBtn}
                             onClick={() => openEdit(e)}
-                            title="Modifier"
+                            title={t("bo.proprietaireEcheances.edit")}
                           >
                             <i className="bi bi-pencil" />
                           </button>
@@ -459,7 +506,7 @@ export default function ProprietaireEcheancesPage() {
                             setDeleteTarget(e);
                             setDeleteError(null);
                           }}
-                          title="Supprimer"
+                          title={t("bo.proprietaireEcheances.delete")}
                         >
                           <i className="bi bi-trash" />
                         </button>
@@ -474,7 +521,7 @@ export default function ProprietaireEcheancesPage() {
           {filteredEcheances.length > 0 && (
             <div className={styles.paginationRow}>
               <span>
-                Page {safePage} / {totalPages} · {filteredEcheances.length} échéance(s)
+                {t("bo.proprietaireEcheances.pageOf", { page: safePage, total: totalPages, count: filteredEcheances.length })}
               </span>
               <div className={styles.paginationButtons}>
                 <button
@@ -484,7 +531,7 @@ export default function ProprietaireEcheancesPage() {
                   disabled={safePage <= 1}
                 >
                   <i className="bi bi-chevron-left" />
-                  Précédent
+                  {t("bo.common.previous")}
                 </button>
                 <button
                   type="button"
@@ -492,7 +539,7 @@ export default function ProprietaireEcheancesPage() {
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={safePage >= totalPages}
                 >
-                  Suivant
+                  {t("bo.common.next")}
                   <i className="bi bi-chevron-right" />
                 </button>
               </div>
@@ -502,7 +549,7 @@ export default function ProprietaireEcheancesPage() {
       </div>
 
       {/* ---- Modifier une échéance ---- */}
-      <Modal isOpen={!!editTarget} onClose={closeEdit} title="Modifier l'échéance">
+      <Modal isOpen={!!editTarget} onClose={closeEdit} title={t("bo.proprietaireEcheances.editTitle")}>
         {editTarget && editDraft && (
           <form onSubmit={handleSubmitEdit}>
             <Banner banner={editBanner} />
@@ -510,30 +557,46 @@ export default function ProprietaireEcheancesPage() {
               {bailLabel(editTarget.bail)}
             </p>
             <TextField
-              label="Date d'échéance"
+              label={t("bo.proprietaireEcheances.dueDateLabel")}
               name="date_echeance"
               type="date"
               value={editDraft.date_echeance}
               onChange={(e) => setEditDraft((d) => ({ ...d, date_echeance: e.target.value }))}
             />
             <TextField
-              label="Montant dû (MAD)"
+              label={t("bo.proprietaireEcheances.chargesLabel")}
+              name="charges"
+              type="number"
+              step="0.01"
+              min="0"
+              value={editDraft.charges}
+              onChange={(e) => handleChargesChange(e.target.value)}
+              hint={t("bo.proprietaireEcheances.chargesHint")}
+            />
+            <ToggleSwitch
+              checked={editDraft.charges_incluses}
+              onChange={handleChargesInclusesChange}
+              label={t("bo.proprietaireEcheances.chargesInclusesLabel")}
+            />
+            <TextField
+              label={t("bo.proprietaireEcheances.amountDueLabel")}
               name="montant_du"
               type="number"
               step="0.01"
               min="0"
               value={editDraft.montant_du}
               onChange={(e) => setEditDraft((d) => ({ ...d, montant_du: e.target.value }))}
+              hint={t("bo.proprietaireEcheances.amountDueAutoHint")}
             />
 
             <div className={styles.editActions} style={{ marginTop: "1.2rem" }}>
               <button type="submit" className={styles.btn} disabled={editBusy}>
                 <i className="bi bi-check-lg" />
-                {editBusy ? "Enregistrement..." : "Enregistrer"}
+                {editBusy ? t("bo.common.saving") : t("bo.common.save")}
               </button>
               <button type="button" className={styles.btnOutline} onClick={closeEdit} disabled={editBusy}>
                 <i className="bi bi-x-lg" />
-                Annuler
+                {t("bo.common.cancel")}
               </button>
             </div>
           </form>
@@ -541,7 +604,7 @@ export default function ProprietaireEcheancesPage() {
       </Modal>
 
       {/* ---- Payer une échéance ---- */}
-      <Modal isOpen={!!payTarget} onClose={closePay} title="Payer l'échéance">
+      <Modal isOpen={!!payTarget} onClose={closePay} title={t("bo.proprietaireEcheances.payTitle")}>
         {payTarget && payDraft && (
           <form onSubmit={handleSubmitPay}>
             <Banner banner={payBanner} />
@@ -549,11 +612,13 @@ export default function ProprietaireEcheancesPage() {
               {bailLabel(payTarget.bail)}
             </p>
             <p className={styles.sectionSubtitle} style={{ marginBottom: "1rem" }}>
-              Montant dû : {formatCurrency(payTarget.montant_du)}
-              {" · "}Reste à payer : {formatCurrency(Math.max(0, Number(payTarget.montant_du || 0) - paidSoFar(payTarget.id)))}
+              {t("bo.proprietaireEcheances.amountDueSummary", {
+                due: formatCurrency(payTarget.montant_du),
+                remaining: formatCurrency(Math.max(0, Number(payTarget.montant_du || 0) - paidSoFar(payTarget.id))),
+              })}
             </p>
             <TextField
-              label="Montant payé (MAD)"
+              label={t("bo.proprietaireEcheances.amountPaidLabel")}
               name="montant"
               type="number"
               step="0.01"
@@ -563,7 +628,7 @@ export default function ProprietaireEcheancesPage() {
               required
             />
             <SelectField
-              label="Mode de paiement"
+              label={t("bo.proprietaireEcheances.modeLabel")}
               name="mode_paiement"
               options={MODE_OPTIONS}
               value={payDraft.mode_paiement}
@@ -573,11 +638,11 @@ export default function ProprietaireEcheancesPage() {
             <div className={styles.editActions} style={{ marginTop: "1.2rem" }}>
               <button type="submit" className={styles.btn} disabled={payBusy}>
                 <i className="bi bi-check-lg" />
-                {payBusy ? "Enregistrement..." : "Enregistrer le paiement"}
+                {payBusy ? t("bo.proprietaireEcheances.recordingPayment") : t("bo.proprietaireEcheances.recordPayment")}
               </button>
               <button type="button" className={styles.btnOutline} onClick={closePay} disabled={payBusy}>
                 <i className="bi bi-x-lg" />
-                Annuler
+                {t("bo.common.cancel")}
               </button>
             </div>
           </form>
@@ -591,9 +656,13 @@ export default function ProprietaireEcheancesPage() {
           setDeleteError(null);
         }}
         onConfirm={handleConfirmDelete}
-        title="Masquer l'échéance"
-        message={deleteTarget ? `Masquer l'échéance du ${formatDate(deleteTarget.date_echeance)} ?` : ""}
-        confirmLabel="Masquer"
+        title={t("bo.proprietaireEcheances.deleteConfirmTitle")}
+        message={
+          deleteTarget
+            ? t("bo.proprietaireEcheances.deleteConfirmMessage", { date: formatDate(deleteTarget.date_echeance) })
+            : ""
+        }
+        confirmLabel={t("bo.proprietaireEcheances.deleteConfirmLabel")}
         danger
         isBusy={deleteBusy}
         error={deleteError}

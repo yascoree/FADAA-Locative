@@ -65,17 +65,53 @@
   }
 }
 
-html {
-  height: 100%;
+/* ---------------------------------------------------------------------------
+   Mode sombre — bascule manuelle uniquement (voir ThemeContext.jsx), pas liée
+   à prefers-color-scheme. Redéfinit uniquement les tokens --brand-* : comme
+   les 4 espaces backoffice aliasent leurs variables locales sur ces tokens
+   (`.shell { --primary: var(--brand-primary); ... }`), toute l'interface
+   applicative bascule automatiquement, sans toucher un seul .module.css.
+   La landing page et l'écran de connexion codent leurs couleurs en dur (identité
+   de marque fixe) : ils ignorent cet attribut et restent inchangés. */
+html[data-theme="dark"] {
+  --brand-primary: #9caf75;
+  --brand-primary-dark: #889063;
+  --brand-primary-soft: rgba(156, 175, 117, 0.16);
+  --brand-accent: #d9c9a8;
+  --brand-accent-soft: rgba(217, 201, 168, 0.16);
+  /* Noir profond à sous-ton chaud-neutre (pas de bleu) : s'accorde avec le
+     vert mousse / tan de marque des cartes plutôt que d'y trancher froidement. */
+  --brand-secondary: #f1efe8;
+  --brand-bg: #0c0d0a;
+  --brand-border: #29281f;
+  --brand-surface: #17170f;
+  --brand-text: #ece9dd;
+  --brand-text-muted: #8f8c7a;
+  --brand-danger: #e0725a;
+  --brand-danger-soft: rgba(224, 114, 90, 0.16);
+  --brand-warning: #dba75a;
+  --brand-warning-soft: rgba(219, 167, 90, 0.16);
+  --brand-info: #6fa8bd;
+  --brand-info-soft: rgba(111, 168, 189, 0.16);
+  --brand-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45), 0 1px 1px rgba(0, 0, 0, 0.35);
+  --brand-shadow-md: 0 6px 20px -8px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
+  --brand-shadow-lift: 0 10px 28px -10px rgba(0, 0, 0, 0.65), 0 3px 8px rgba(0, 0, 0, 0.42);
+
+  color-scheme: dark;
 }
 
-html,
-body {
+html {
+  height: 100%;
   max-width: 100vw;
   overflow-x: hidden;
 }
 
 body {
+  /* Pas d'overflow-x ici : un overflow non-"visible" sur <body> en ferait un
+     scroll container distinct du viewport et casserait tout position: sticky
+     à l'intérieur (ex. le header de la landing page) — le clipping horizontal
+     de <html> ci-dessus suffit déjà à empêcher toute barre de défilement. */
+  max-width: 100vw;
   min-height: 100%;
   display: flex;
   flex-direction: column;
@@ -95,6 +131,19 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* Sans ceci, les <button>/<input>/<select>/<textarea> sans "color" explicite
+   prennent le texte blanc par défaut du user-agent dès que le navigateur/OS est
+   en color-scheme: dark (voir la règle plus bas) — même quand le thème de
+   l'app reste "light" (data-theme, bascule manuelle) et que le fond du bouton
+   est resté clair : texte blanc sur fond blanc, invisible. */
+button,
+input,
+select,
+textarea {
+  color: inherit;
+  font: inherit;
 }
 
 @media (prefers-color-scheme: dark) {

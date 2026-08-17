@@ -385,6 +385,12 @@
   border: 1px solid rgba(181, 83, 62, 0.3);
 }
 
+.bannerError a {
+  color: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+}
+
 .empty {
   font-size: 0.84rem;
   color: var(--text-muted);
@@ -548,6 +554,65 @@
 .badgeNeutral {
   background: var(--bg);
   color: var(--text-muted);
+}
+
+.reclamationList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.reclamationCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card, 14px);
+  padding: 1.1rem 1.3rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.reclamationHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.reclamationMessage {
+  font-size: 0.86rem;
+  color: var(--text);
+  line-height: 1.5;
+  margin-top: 0.35rem;
+  white-space: pre-wrap;
+}
+
+.reclamationMeta {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  margin-top: 0.6rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.reclamationActions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+}
+
+.messageQuoteCard {
+  background: var(--bg);
+  border-left: 4px solid var(--primary);
+  border-radius: 0 var(--radius-field, 10px) var(--radius-field, 10px) 0;
+  padding: 1rem 1.2rem;
+}
+
+.messageQuoteText {
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre-wrap;
 }
 
 .overdueBtn {
@@ -1971,7 +2036,7 @@
 .photoThumb img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 
@@ -2245,7 +2310,10 @@
   position: relative;
   display: inline-flex;
   gap: 0.25rem;
-  background: #ebfadc;
+  /* var() plutôt que les teintes fixes d'origine : ce toggle vivait avec des
+     couleurs codées en dur, illisibles une fois le mode sombre activé (texte
+     var(--secondary) clair sur fond resté clair). */
+  background: var(--bg);
   border-radius: 999px;
   padding: 0.3rem;
   margin-bottom: 1rem;
@@ -2257,7 +2325,7 @@
   bottom: 0.3rem;
   left: 0;
   border-radius: 999px;
-  background: #b9e88a;
+  background: var(--primary);
   box-shadow: var(--shadow-sm);
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   z-index: 0;
@@ -2271,18 +2339,25 @@
   gap: 0.45rem;
   border: none;
   background: none;
-  color: var(--secondary);
-  opacity: 0.6;
+  color: var(--text-muted);
   font-size: 0.85rem;
   font-weight: 650;
   padding: 0.55rem 1.2rem;
   border-radius: 999px;
   cursor: pointer;
-  transition: opacity 0.25s ease;
+  transition: color 0.25s ease;
 }
 
 .discussionToggleBtn:hover {
-  opacity: 0.85;
+  color: var(--secondary);
+}
+
+.discussionToggleBtnActive {
+  color: #fff;
+}
+
+.discussionToggleBtnActive:hover {
+  color: #fff;
 }
 
 .discussionToggleBtnActive {

@@ -3,8 +3,10 @@ from datetime import date, datetime, timedelta
 from sqlalchemy import extract, func
 from sqlalchemy.orm import Session
 
+from app.api.deps import active_agence_id
 from app.models.bail import Bail, BailStatus
 from app.models.bien import Bien
+from app.models.charge import Charge
 from app.models.echeance import Echeance, EcheanceStatus
 from app.models.lot import Lot, LotStatus
 from app.models.mandat import Mandat, MandatStatus
@@ -51,6 +53,17 @@ def _fill_month_counts(rows, months: list[tuple[int, int]]) -> list[MonthCount]:
 def _fill_month_amounts(rows, months: list[tuple[int, int]]) -> list[MonthAmount]:
     totals = {(int(r.year), int(r.month)): float(r.total or 0) for r in rows}
     return [MonthAmount(year=y, month=m, total=totals.get((y, m), 0.0)) for y, m in months]
+
+
+def _fill_month_amounts_net(revenue_rows, charges_rows, months: list[tuple[int, int]]) -> list[MonthAmount]:
+    """Same as _fill_month_amounts, but each month's total has that month's
+    Charge amounts (see charge_service) deducted — never below zero."""
+    revenue_totals = {(int(r.year), int(r.month)): float(r.total or 0) for r in revenue_rows}
+    charges_totals = {(int(r.year), int(r.month)): float(r.total or 0) for r in charges_rows}
+    return [
+        MonthAmount(year=y, month=m, total=max(0.0, revenue_totals.get((y, m), 0.0) - charges_totals.get((y, m), 0.0)))
+        for y, m in months
+    ]
 
 
 # ---------- Admin ----------
@@ -172,7 +185,7 @@ def _proprietaire_counts(db: Session, owner_ids: list[int]):
     )
 
     month_start = today.replace(day=1)
-    revenu_mois = (
+    revenu_mois_brut = (
         db.query(func.coalesce(func.sum(Paiement.montant), 0))
         .join(Echeance, Echeance.id == Paiement.echeance_id)
         .join(Bail, Bail.id == Echeance.bail_id)
@@ -182,11 +195,27 @@ def _proprietaire_counts(db: Session, owner_ids: list[int]):
             Bien.proprietaire_id.in_(owner_ids),
             Paiement.date_paiement >= month_start,
             Paiement.statut == PaiementStatus.VALIDE,
+            Paiement.encaisse.is_(True),
             Paiement.deleted_at.is_(None),
         )
         .scalar()
         or 0
     )
+    # Une charge liée à un bien OU à un lot (jamais les deux, voir
+    # charge_service._resolve_bien) est déduite du revenu du mois correspondant.
+    charges_mois = (
+        db.query(func.coalesce(func.sum(Charge.montant), 0))
+        .outerjoin(Lot, Lot.id == Charge.lot_id)
+        .join(Bien, Bien.id == func.coalesce(Charge.bien_id, Lot.bien_id))
+        .filter(
+            Bien.proprietaire_id.in_(owner_ids),
+            Charge.date_charge >= month_start,
+            Charge.deleted_at.is_(None),
+        )
+        .scalar()
+        or 0
+    )
+    revenu_mois = max(0, revenu_mois_brut - charges_mois)
 
     return {
         "total_biens": total_biens,
@@ -211,10 +240,13 @@ def get_proprietaire_dashboard_stats(db: Session, owner_id: int) -> Proprietaire
 
 
 def get_gestionnaire_dashboard_stats(db: Session, gestionnaire_id: int) -> GestionnaireDashboardStats:
+    agence_id = active_agence_id(db, gestionnaire_id)
     owner_ids = (
         db.query(Mandat.proprietaire_id)
-        .filter(Mandat.gestionnaire_id == gestionnaire_id, Mandat.statut == MandatStatus.ACTIF)
+        .filter(Mandat.agence_id == agence_id, Mandat.statut == MandatStatus.ACTIF)
         .all()
+        if agence_id is not None
+        else []
     )
     owner_ids = [row[0] for row in owner_ids]
     if not owner_ids:
@@ -332,8 +364,20 @@ def get_revenue_stats(db: Session, owner_ids: list[int]) -> RevenueStats:
             .filter(
                 Bien.proprietaire_id.in_(owner_ids),
                 Paiement.statut == PaiementStatus.VALIDE,
+                Paiement.encaisse.is_(True),
                 Paiement.deleted_at.is_(None),
             )
+        )
+
+    def _charges_query():
+        # Une charge est liée à un bien OU à un lot (jamais les deux, voir
+        # charge_service._resolve_bien) : la jointure combine les deux chemins
+        # vers Bien pour couvrir les deux cas dans une seule requête.
+        return (
+            db.query(Charge)
+            .outerjoin(Lot, Lot.id == Charge.lot_id)
+            .join(Bien, Bien.id == func.coalesce(Charge.bien_id, Lot.bien_id))
+            .filter(Bien.proprietaire_id.in_(owner_ids), Charge.deleted_at.is_(None))
         )
 
     def _monthly_rows(start: datetime, end: datetime):
@@ -349,31 +393,70 @@ def get_revenue_stats(db: Session, owner_ids: list[int]) -> RevenueStats:
             .all()
         )
 
+    def _monthly_charges(start: datetime, end: datetime):
+        return (
+            _charges_query()
+            .with_entities(
+                extract("year", Charge.date_charge).label("year"),
+                extract("month", Charge.date_charge).label("month"),
+                func.sum(Charge.montant).label("total"),
+            )
+            .filter(Charge.date_charge >= start, Charge.date_charge < end)
+            .group_by("year", "month")
+            .all()
+        )
+
     trailing_months = _last_n_months(12)
-    trailing_rows = _monthly_rows(datetime(trailing_months[0][0], trailing_months[0][1], 1), datetime(today.year, today.month, 1) + timedelta(days=32))
-    trailing_12_months = _fill_month_amounts(trailing_rows, trailing_months)
+    trailing_start = datetime(trailing_months[0][0], trailing_months[0][1], 1)
+    trailing_end = datetime(today.year, today.month, 1) + timedelta(days=32)
+    trailing_rows = _monthly_rows(trailing_start, trailing_end)
+    trailing_charges_rows = _monthly_charges(trailing_start, trailing_end)
+    trailing_12_months = _fill_month_amounts_net(trailing_rows, trailing_charges_rows, trailing_months)
 
     current_year_months = [(current_year, m) for m in range(1, 13)]
     current_year_rows = _monthly_rows(datetime(current_year, 1, 1), datetime(current_year + 1, 1, 1))
-    current_year_by_month = _fill_month_amounts(current_year_rows, current_year_months)
+    current_year_charges_rows = _monthly_charges(datetime(current_year, 1, 1), datetime(current_year + 1, 1, 1))
+    current_year_by_month = _fill_month_amounts_net(current_year_rows, current_year_charges_rows, current_year_months)
 
     previous_year_months = [(current_year - 1, m) for m in range(1, 13)]
     previous_year_rows = _monthly_rows(datetime(current_year - 1, 1, 1), datetime(current_year, 1, 1))
-    previous_year_by_month = _fill_month_amounts(previous_year_rows, previous_year_months)
+    previous_year_charges_rows = _monthly_charges(datetime(current_year - 1, 1, 1), datetime(current_year, 1, 1))
+    previous_year_by_month = _fill_month_amounts_net(previous_year_rows, previous_year_charges_rows, previous_year_months)
 
     year_start = datetime(current_year, 1, 1)
-    by_bien_rows = (
+    by_bien_revenue_rows = (
         _paiements_query()
         .with_entities(Bien.id.label("bien_id"), Bien.designation.label("designation"), func.sum(Paiement.montant).label("total"))
         .filter(Paiement.date_paiement >= year_start)
         .group_by(Bien.id, Bien.designation)
-        .order_by(func.sum(Paiement.montant).desc())
         .all()
     )
-    by_bien = [
-        BienRevenue(bien_id=r.bien_id, designation=r.designation or f"Bien #{r.bien_id}", total=float(r.total or 0))
-        for r in by_bien_rows
-    ]
+    by_bien_charges_rows = (
+        _charges_query()
+        .with_entities(
+            func.coalesce(Charge.bien_id, Lot.bien_id).label("bien_id"),
+            func.sum(Charge.montant).label("total"),
+        )
+        .filter(Charge.date_charge >= year_start.date())
+        .group_by(func.coalesce(Charge.bien_id, Lot.bien_id))
+        .all()
+    )
+    charges_by_bien = {r.bien_id: float(r.total or 0) for r in by_bien_charges_rows}
+    designation_by_bien = {r.bien_id: r.designation for r in by_bien_revenue_rows}
+    revenue_by_bien = {r.bien_id: float(r.total or 0) for r in by_bien_revenue_rows}
+    all_bien_ids = set(revenue_by_bien) | set(charges_by_bien)
+    by_bien = sorted(
+        (
+            BienRevenue(
+                bien_id=bid,
+                designation=designation_by_bien.get(bid) or f"Bien #{bid}",
+                total=max(0.0, revenue_by_bien.get(bid, 0.0) - charges_by_bien.get(bid, 0.0)),
+            )
+            for bid in all_bien_ids
+        ),
+        key=lambda b: b.total,
+        reverse=True,
+    )
 
     by_mode_rows = (
         _paiements_query()

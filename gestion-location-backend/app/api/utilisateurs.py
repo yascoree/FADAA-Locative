@@ -3,14 +3,17 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 
-from app.api.deps import get_current_user, require_admin, require_gestion
+from app.api.deps import get_current_user, require_admin, require_gestion, require_roles
 from app.database import get_db
-from app.models.utilisateur import Utilisateur
+from app.models.utilisateur import Utilisateur, UtilisateurRole
+from app.schemas.gestionnaire_invite import GestionnaireInviteCreate, GestionnaireInviteRead
 from app.schemas.utilisateur import UtilisateurCreate, UtilisateurRead, UtilisateurUpdate
 from app.services import utilisateur_service
-from app.services.exceptions import BadRequest, Forbidden, NotFound
+from app.services.exceptions import BadRequest, Forbidden, NotFound, PaymentRequired
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+require_proprietaire = require_roles(UtilisateurRole.PROPRIETAIRE)
 
 
 @router.get("/", response_model=list[UtilisateurRead])
@@ -47,6 +50,24 @@ def list_gestionnaires(
     """List GESTIONNAIRE accounts for the searchable invite dropdown on the
     proprietaire Permissions page. Must be declared before /{utilisateur_id}."""
     return utilisateur_service.list_gestionnaires(db, skip, limit)
+
+
+@router.post("/gestionnaires", response_model=GestionnaireInviteRead, status_code=status.HTTP_201_CREATED)
+def create_gestionnaire(
+    payload: GestionnaireInviteCreate,
+    db: Session = Depends(get_db),
+    proprietaire: Utilisateur = Depends(require_proprietaire),
+):
+    """Creates a brand-new GESTIONNAIRE account and grants it a Mandat in the same
+    step — the only way a gestionnaire gets an account now that public self-signup
+    for that role is disabled (see auth_service.PUBLIC_REGISTER_ROLES)."""
+    try:
+        utilisateur, mandat, invite_link = utilisateur_service.create_gestionnaire_invite(db, proprietaire, payload)
+    except BadRequest as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except PaymentRequired as exc:
+        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=str(exc))
+    return {"utilisateur": utilisateur, "mandat": mandat, "invite_link": invite_link}
 
 
 @router.get("/lookup", response_model=UtilisateurRead)

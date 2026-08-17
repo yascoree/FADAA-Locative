@@ -5,6 +5,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.lot import LotStatus
+from app.schemas.lot_photo import LotPhotoRead
 
 
 class LotBase(BaseModel):
@@ -15,6 +16,7 @@ class LotBase(BaseModel):
     loyer_reference: Optional[Decimal] = Field(default=None, ge=0, max_digits=10, decimal_places=2)
     statut: Optional[LotStatus] = None
     attachement: Optional[str] = Field(default=None, max_length=255)
+    valorisation: Optional[Decimal] = Field(default=None, ge=0, max_digits=12, decimal_places=2)
 
 
 class LotCreate(LotBase):
@@ -28,10 +30,12 @@ class LotUpdate(BaseModel):
     loyer_reference: Optional[Decimal] = Field(default=None, ge=0, max_digits=10, decimal_places=2)
     statut: Optional[LotStatus] = None
     attachement: Optional[str] = Field(default=None, max_length=255)
+    valorisation: Optional[Decimal] = Field(default=None, ge=0, max_digits=12, decimal_places=2)
 
 
 class LotRead(LotBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    photos: list[LotPhotoRead] = []
     created_at: datetime

@@ -14,6 +14,7 @@ import {
 import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../admin.module.css";
 
 function Banner({ banner }) {
@@ -41,6 +42,7 @@ const EMPTY_PARTNER_FORM = {
 };
 
 export default function AdminPartenairesPage() {
+  const { t } = useLanguage();
   const [partenaires, setPartenaires] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -207,7 +209,7 @@ export default function AdminPartenairesPage() {
   }
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.adminPartenaires.loading")}</p>;
   }
 
   return (
@@ -219,21 +221,21 @@ export default function AdminPartenairesPage() {
           <div>
             <h2 className={styles.sectionTitle}>
               <i className="bi bi-buildings" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-              Partenaires
+              {t("bo.adminPartenaires.title")}
             </h2>
             <p className={styles.sectionSubtitle}>
-              Choisissez les partenaires mis en avant et gérez leur logo, affichés côté vitrine publique.
+              {t("bo.adminPartenaires.subtitle")}
             </p>
           </div>
           <button type="button" className={styles.btn} onClick={openCreatePartner}>
             <i className="bi bi-plus-lg" />
-            Nouveau partenaire
+            {t("bo.adminPartenaires.newPartner")}
           </button>
         </div>
 
         <Banner banner={partnerBanner} />
 
-        {partenaires.length === 0 && <p className={styles.empty}>Aucun partenaire pour le moment.</p>}
+        {partenaires.length === 0 && <p className={styles.empty}>{t("bo.adminPartenaires.noPartners")}</p>}
 
         <div className={styles.partnerGrid}>
           {partenaires.map((p) => {
@@ -254,6 +256,24 @@ export default function AdminPartenairesPage() {
                   <div className={styles.partnerName}>{p.nom}</div>
                   {p.description && <div className={styles.partnerMeta}>{p.description}</div>}
                   {p.site_web && <div className={styles.partnerMeta}>{p.site_web}</div>}
+                  {p.email && (
+                    <div className={styles.partnerMeta}>
+                      <i className="bi bi-envelope" style={{ marginRight: "0.35rem" }} />
+                      {p.email}
+                    </div>
+                  )}
+                  {p.telephone && (
+                    <div className={styles.partnerMeta}>
+                      <i className="bi bi-telephone" style={{ marginRight: "0.35rem" }} />
+                      {p.telephone}
+                    </div>
+                  )}
+                  {p.adresse && (
+                    <div className={styles.partnerMeta}>
+                      <i className="bi bi-geo-alt" style={{ marginRight: "0.35rem" }} />
+                      {p.adresse}
+                    </div>
+                  )}
                 </div>
 
                 <span
@@ -280,16 +300,21 @@ export default function AdminPartenairesPage() {
                     disabled={uploading}
                   >
                     <i className="bi bi-image" />
-                    {uploading ? "Envoi..." : "Logo"}
+                    {uploading ? t("bo.adminPartenaires.uploading") : t("bo.adminPartenaires.logo")}
                   </button>
-                  <button type="button" className={styles.iconBtn} onClick={() => openEditPartner(p)} title="Modifier">
+                  <button
+                    type="button"
+                    className={styles.iconBtn}
+                    onClick={() => openEditPartner(p)}
+                    title={t("bo.adminPartenaires.edit")}
+                  >
                     <i className="bi bi-pencil" />
                   </button>
                   <button
                     type="button"
                     className={styles.iconBtn}
                     onClick={() => handleToggleActive(p)}
-                    title={p.statut === PARTENAIRE_STATUS.ACTIF ? "Désactiver" : "Activer"}
+                    title={p.statut === PARTENAIRE_STATUS.ACTIF ? t("bo.adminPartenaires.deactivate") : t("bo.adminPartenaires.activate")}
                   >
                     <i className={`bi ${p.statut === PARTENAIRE_STATUS.ACTIF ? "bi-pause-circle" : "bi-play-circle"}`} />
                   </button>
@@ -297,7 +322,7 @@ export default function AdminPartenairesPage() {
                     type="button"
                     className={styles.iconBtn}
                     onClick={() => setPartnerDeleteTarget(p)}
-                    title="Supprimer"
+                    title={t("bo.adminPartenaires.delete")}
                   >
                     <i className="bi bi-trash" />
                   </button>
@@ -311,12 +336,12 @@ export default function AdminPartenairesPage() {
       <Modal
         isOpen={partnerFormOpen}
         onClose={closePartnerForm}
-        title={partnerFormMode === "create" ? "Nouveau partenaire" : "Modifier le partenaire"}
+        title={partnerFormMode === "create" ? t("bo.adminPartenaires.createTitle") : t("bo.adminPartenaires.editTitle")}
       >
         <form onSubmit={handleSubmitPartnerForm}>
           <Banner banner={partnerFormBanner} />
           <TextField
-            label="Nom"
+            label={t("bo.adminPartenaires.nameLabel")}
             name="nom"
             value={partnerFormDraft.nom}
             onChange={(e) => setPartnerFormDraft((d) => ({ ...d, nom: e.target.value }))}
@@ -324,7 +349,7 @@ export default function AdminPartenairesPage() {
           />
 
           <label className={styles.field} style={{ marginBottom: "0.9rem" }}>
-            Logo (optionnel)
+            {t("bo.adminPartenaires.logoLabel")}
             <div className={styles.logoPickWrap}>
               <div className={styles.logoPickPreview}>
                 {logoStaged ? (
@@ -341,7 +366,7 @@ export default function AdminPartenairesPage() {
                     type="button"
                     className={styles.logoPickRemoveBtn}
                     onClick={clearStagedLogo}
-                    title="Retirer ce logo"
+                    title={t("bo.adminPartenaires.removeLogoTitle")}
                   >
                     <i className="bi bi-x" />
                   </button>
@@ -349,40 +374,40 @@ export default function AdminPartenairesPage() {
               </div>
               <label className={styles.logoPickUpload}>
                 <i className="bi bi-image" />
-                {logoCurrentUrl || logoStaged ? "Changer le logo" : "Choisir un logo"}
+                {logoCurrentUrl || logoStaged ? t("bo.adminPartenaires.changeLogo") : t("bo.adminPartenaires.chooseLogo")}
                 <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleStageLogo} />
               </label>
             </div>
           </label>
 
           <TextField
-            label="Description (optionnel)"
+            label={t("bo.adminPartenaires.descriptionLabel")}
             name="description"
             value={partnerFormDraft.description}
             onChange={(e) => setPartnerFormDraft((d) => ({ ...d, description: e.target.value }))}
           />
           <TextField
-            label="Site web (optionnel)"
+            label={t("bo.adminPartenaires.websiteLabel")}
             name="site_web"
             value={partnerFormDraft.site_web}
             onChange={(e) => setPartnerFormDraft((d) => ({ ...d, site_web: e.target.value }))}
             placeholder="https://..."
           />
           <TextField
-            label="Email (optionnel)"
+            label={t("bo.adminPartenaires.emailLabel")}
             name="email"
             type="email"
             value={partnerFormDraft.email}
             onChange={(e) => setPartnerFormDraft((d) => ({ ...d, email: e.target.value }))}
           />
           <TextField
-            label="Téléphone (optionnel)"
+            label={t("bo.adminPartenaires.phoneLabel")}
             name="telephone"
             value={partnerFormDraft.telephone}
             onChange={(e) => setPartnerFormDraft((d) => ({ ...d, telephone: e.target.value }))}
           />
           <TextField
-            label="Adresse (optionnel)"
+            label={t("bo.adminPartenaires.addressLabel")}
             name="adresse"
             value={partnerFormDraft.adresse}
             onChange={(e) => setPartnerFormDraft((d) => ({ ...d, adresse: e.target.value }))}
@@ -391,11 +416,11 @@ export default function AdminPartenairesPage() {
           <div className={styles.editActions} style={{ marginTop: "1.2rem" }}>
             <button type="submit" className={styles.btn} disabled={partnerFormBusy}>
               <i className="bi bi-check-lg" />
-              {partnerFormBusy ? "Enregistrement..." : "Enregistrer"}
+              {partnerFormBusy ? t("bo.adminPartenaires.saving") : t("bo.adminPartenaires.save")}
             </button>
             <button type="button" className={styles.btnOutline} onClick={closePartnerForm} disabled={partnerFormBusy}>
               <i className="bi bi-x-lg" />
-              Annuler
+              {t("bo.adminPartenaires.cancel")}
             </button>
           </div>
         </form>
@@ -405,9 +430,9 @@ export default function AdminPartenairesPage() {
         isOpen={!!partnerDeleteTarget}
         onClose={() => setPartnerDeleteTarget(null)}
         onConfirm={handleConfirmDeletePartner}
-        title="Supprimer le partenaire"
-        message={partnerDeleteTarget ? `Supprimer définitivement "${partnerDeleteTarget.nom}" ?` : ""}
-        confirmLabel="Supprimer"
+        title={t("bo.adminPartenaires.deletePartnerTitle")}
+        message={partnerDeleteTarget ? t("bo.adminPartenaires.deletePartnerConfirm", { name: partnerDeleteTarget.nom }) : ""}
+        confirmLabel={t("bo.adminPartenaires.delete")}
         danger
         isBusy={partnerDeleteBusy}
       />

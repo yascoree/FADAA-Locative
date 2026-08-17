@@ -3,34 +3,40 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { ROLES } from "@/lib/roles";
 import NotificationBell from "@/components/NotificationBell";
+import TopbarLanguageMenu from "@/components/TopbarLanguageMenu";
 import PageTransition from "@/components/PageTransition";
 import RouteProgressBar from "@/components/RouteProgressBar";
+import SubscriptionStatusBanner from "@/components/SubscriptionStatusBanner";
 import ProprietaireSidebar from "./ProprietaireSidebar";
 import styles from "./proprietaire.module.css";
-
-const PAGE_TITLES = {
-  "/backoffice/proprietaire": "Dashboard",
-  "/backoffice/proprietaire/biens": "Biens",
-  "/backoffice/proprietaire/lots": "Lots",
-  "/backoffice/proprietaire/baux": "Baux",
-  "/backoffice/proprietaire/echeances": "Échéances",
-  "/backoffice/proprietaire/paiements": "Paiements",
-  "/backoffice/proprietaire/revenus": "Revenus",
-  "/backoffice/proprietaire/permissions": "Gestionnaires",
-  "/backoffice/proprietaire/locataires": "Locataires",
-  "/backoffice/proprietaire/messagerie": "Discussions",
-  "/backoffice/proprietaire/notifications": "Notifications",
-  "/backoffice/proprietaire/parametres": "Paramètres",
-};
 
 export default function ProprietaireLayout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useLanguage();
   const { user, isLoading, logout } = useAuth();
   const isAuthorized = !isLoading && user && user.role === ROLES.PROPRIETAIRE;
   const [isScrolled, setIsScrolled] = useState(false);
+
+  const PAGE_TITLES = {
+    "/backoffice/proprietaire": t("bo.proprietaireSidebar.dashboard"),
+    "/backoffice/proprietaire/biens": t("bo.proprietaireSidebar.biens"),
+    "/backoffice/proprietaire/lots": t("bo.proprietaireSidebar.lots"),
+    "/backoffice/proprietaire/baux": t("bo.proprietaireSidebar.baux"),
+    "/backoffice/proprietaire/echeances": t("bo.proprietaireSidebar.echeances"),
+    "/backoffice/proprietaire/paiements": t("bo.proprietaireSidebar.paiements"),
+    "/backoffice/proprietaire/revenus": t("bo.proprietaireSidebar.revenus"),
+    "/backoffice/proprietaire/permissions": t("bo.proprietaireSidebar.managers"),
+    "/backoffice/proprietaire/locataires": t("bo.proprietaireSidebar.locataires"),
+    "/backoffice/proprietaire/maintenance": t("bo.proprietaireSidebar.maintenance"),
+    "/backoffice/proprietaire/messagerie": t("bo.proprietaireSidebar.discussions"),
+    "/backoffice/proprietaire/notifications": t("bo.proprietaireSidebar.notifications"),
+    "/backoffice/proprietaire/abonnement": t("bo.proprietaireSidebar.subscription"),
+    "/backoffice/proprietaire/parametres": t("bo.proprietaireSidebar.settings"),
+  };
 
   function handleContentScroll(e) {
     setIsScrolled(e.currentTarget.scrollTop > 4);
@@ -45,7 +51,7 @@ export default function ProprietaireLayout({ children }) {
   if (!isAuthorized) {
     return (
       <div className={styles.loadingScreen}>
-        <p>Chargement...</p>
+        <p>{t("bo.common.loading")}</p>
       </div>
     );
   }
@@ -61,9 +67,13 @@ export default function ProprietaireLayout({ children }) {
       <ProprietaireSidebar user={user} onLogout={handleLogout} />
       <div className={styles.main}>
         <header className={`${styles.topbar} ${isScrolled ? styles.topbarScrolled : ""}`}>
-          <h1 className={styles.pageTitle}>{PAGE_TITLES[pathname] || "FADAA Locative"}</h1>
-          <NotificationBell href="/backoffice/proprietaire/notifications" />
+          <h1 className={styles.pageTitle}>{PAGE_TITLES[pathname] || t("bo.common.brand")}</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+            <TopbarLanguageMenu />
+            <NotificationBell href="/backoffice/proprietaire/notifications" />
+          </div>
         </header>
+        <SubscriptionStatusBanner />
         <main className={styles.content} onScroll={handleContentScroll}>
           <PageTransition>{children}</PageTransition>
         </main>

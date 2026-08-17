@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DECIMAL, Column, DateTime, Enum, ForeignKey, Integer, String
+from sqlalchemy import DECIMAL, Boolean, Column, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -38,6 +38,16 @@ class Paiement(Base):
     annule_par = Column(Integer, ForeignKey("utilisateurs.id"), nullable=True)
     date_annulation = Column(DateTime, nullable=True)
     motif_annulation = Column(String(255), nullable=True)
+
+    # Pour chèque/virement : le montant n'est reconnu comme revenu (voir
+    # stats_service.get_revenue_stats) qu'une fois l'encaissement confirmé —
+    # espèces/carte/mobile money sont considérés encaissés dès l'enregistrement.
+    encaisse = Column(Boolean, nullable=False, default=True, server_default="true")
+    date_encaissement = Column(DateTime, nullable=True)
+    agence_bancaire = Column(String(255), nullable=True)
+    reference_paiement = Column(String(255), nullable=True)
+    justificatif = Column(String(500), nullable=True)
+    justificatif_nom = Column(String(255), nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted_at = Column(DateTime, nullable=True)

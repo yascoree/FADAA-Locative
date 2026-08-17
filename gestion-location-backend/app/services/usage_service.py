@@ -2,6 +2,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+from app.api.deps import gestionnaire_ids_for_proprietaire
 from app.crud import subscription as subscription_crud
 from app.models.bail import Bail, BailStatus
 from app.models.bien import Bien
@@ -10,7 +11,9 @@ from app.models.lot import Lot
 from app.models.mandat import Mandat, MandatStatus
 from app.models.paiement import Paiement
 from app.models.quittance import Quittance
-from app.services.exceptions import BadRequest
+from app.models.utilisateur import Utilisateur, UtilisateurRole
+from app.services import subscription_service
+from app.services.exceptions import PaymentRequired
 
 
 def compute_owner_usage(db: Session, owner_id: int) -> dict:
@@ -55,8 +58,17 @@ def compute_owner_usage(db: Session, owner_id: int) -> dict:
         .count()
     )
 
-    locataires = (
-        db.query(Bail.locataire_id)
+    # Compte à la fois les locataires déjà rattachés à un bail actif sur un bien de
+    # ce propriétaire ET les comptes locataire qu'il (ou l'un de ses gestionnaires)
+    # a créés mais pas encore rattachés à un bail — même périmètre que "mes
+    # locataires" côté locataire_service.list_locataires. Sans ce deuxième
+    # ensemble, la limite du plan ne mordait jamais à la création du compte (un
+    # locataire tout juste créé n'a par définition encore aucun bail), seulement
+    # bien plus tard au moment du bail — trop tard pour empêcher d'onboarder plus
+    # de locataires que le plan n'en autorise.
+    bail_linked_locataire_ids = {
+        row[0]
+        for row in db.query(Bail.locataire_id)
         .join(Lot, Lot.id == Bail.lot_id)
         .join(Bien, Bien.id == Lot.bien_id)
         .filter(
@@ -66,8 +78,18 @@ def compute_owner_usage(db: Session, owner_id: int) -> dict:
             Bail.deleted_at.is_(None),
         )
         .distinct()
-        .count()
-    )
+        .all()
+    }
+    creator_ids = [owner_id, *gestionnaire_ids_for_proprietaire(db, owner_id)]
+    created_locataire_ids = {
+        row[0]
+        for row in db.query(Utilisateur.id).filter(
+            Utilisateur.role == UtilisateurRole.LOCATAIRE,
+            Utilisateur.deleted_at.is_(None),
+            Utilisateur.cree_par_id.in_(creator_ids),
+        )
+    }
+    locataires = len(bail_linked_locataire_ids | created_locataire_ids)
 
     month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     quittances_mois = (
@@ -123,13 +145,18 @@ def enforce_limit(db: Session, owner_id: int, resource: str) -> None:
     plan = subscription.plan if subscription else None
     if plan is None:
         return
+    if not subscription_service.is_active(subscription):
+        raise PaymentRequired(
+            f"Votre abonnement « {plan.name} » a expiré ou est suspendu. "
+            "Renouvelez-le ou passez à un plan supérieur pour continuer."
+        )
     field_name, label = _LIMIT_FIELDS[resource]
     limit = getattr(plan, field_name)
     if limit is None or limit < 0:
         return
     usage = compute_owner_usage(db, owner_id)
     if usage[resource] >= limit:
-        raise BadRequest(
+        raise PaymentRequired(
             f"Limite du plan « {plan.name} » atteinte pour {label} ({limit}). "
             "Passez à un plan supérieur pour continuer."
         )

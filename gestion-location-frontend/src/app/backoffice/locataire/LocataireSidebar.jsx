@@ -4,39 +4,56 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { API_BASE_URL } from "@/lib/apiClient";
-import { fetchNotifications, NOTIFICATION_STATUS, NOTIFICATION_TYPE } from "@/lib/notifications";
+import { fetchNotifications, NOTIFICATION_STATUS, NOTIFICATION_TYPE, NOTIFICATIONS_CHANGED_EVENT } from "@/lib/notifications";
 import LogoIcon from "@/components/LogoIcon";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "./locataire.module.css";
 
-const NAV_SECTIONS = [
-  {
-    label: "Général",
-    items: [
-      { href: "/backoffice/locataire", label: "Dashboard", icon: "bi-grid", exact: true },
-      { href: "/backoffice/locataire/bail", label: "Mon bail", icon: "bi-file-earmark-text" },
-    ],
-  },
-  {
-    label: "Finances",
-    items: [
-      { href: "/backoffice/locataire/echeances", label: "Mes échéances", icon: "bi-calendar-event" },
-      { href: "/backoffice/locataire/paiements", label: "Mes paiements", icon: "bi-cash-stack" },
-    ],
-  },
-  {
-    label: "Échanges",
-    items: [
-      { href: "/backoffice/locataire/discussions", label: "Discussions", icon: "bi-chat-dots", badgeKey: "discussions" },
-      { href: "/backoffice/locataire/notifications", label: "Notifications", icon: "bi-bell", badgeKey: "notifications" },
-    ],
-  },
-  {
-    label: "Compte",
-    items: [{ href: "/backoffice/locataire/parametres", label: "Paramètres", icon: "bi-gear" }],
-  },
-];
+function useNavSections() {
+  const { t } = useLanguage();
+  return [
+    {
+      label: t("bo.locataireSidebar.general"),
+      items: [
+        { href: "/backoffice/locataire", label: t("bo.locataireSidebar.dashboard"), icon: "bi-grid", exact: true },
+        { href: "/backoffice/locataire/bail", label: t("bo.locataireSidebar.myLease"), icon: "bi-file-earmark-text" },
+        { href: "/backoffice/locataire/maintenance", label: t("bo.locataireSidebar.maintenance"), icon: "bi-tools" },
+      ],
+    },
+    {
+      label: t("bo.locataireSidebar.finances"),
+      items: [
+        { href: "/backoffice/locataire/echeances", label: t("bo.locataireSidebar.myDueDates"), icon: "bi-calendar-event" },
+        { href: "/backoffice/locataire/paiements", label: t("bo.locataireSidebar.myPayments"), icon: "bi-cash-stack" },
+      ],
+    },
+    {
+      label: t("bo.locataireSidebar.communication"),
+      items: [
+        {
+          href: "/backoffice/locataire/discussions",
+          label: t("bo.locataireSidebar.discussions"),
+          icon: "bi-chat-dots",
+          badgeKey: "discussions",
+        },
+        {
+          href: "/backoffice/locataire/notifications",
+          label: t("bo.locataireSidebar.notifications"),
+          icon: "bi-bell",
+          badgeKey: "notifications",
+        },
+      ],
+    },
+    {
+      label: t("bo.locataireSidebar.account"),
+      items: [{ href: "/backoffice/locataire/parametres", label: t("bo.locataireSidebar.settings"), icon: "bi-gear" }],
+    },
+  ];
+}
 
 export default function LocataireSidebar({ user, onLogout }) {
+  const { t } = useLanguage();
+  const NAV_SECTIONS = useNavSections();
   const pathname = usePathname();
   const initial = `${user?.prenom?.[0] || ""}${user?.nom?.[0] || ""}`.toUpperCase();
   const itemRefs = useRef({});
@@ -59,10 +76,12 @@ export default function LocataireSidebar({ user, onLogout }) {
       }
     }
     load();
-    const interval = setInterval(load, 15000);
+    const interval = setInterval(load, 8000);
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, load);
     return () => {
       cancelled = true;
       clearInterval(interval);
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, load);
     };
   }, []);
 
@@ -75,7 +94,7 @@ export default function LocataireSidebar({ user, onLogout }) {
       });
     });
     return found;
-  }, [pathname]);
+  }, [pathname, NAV_SECTIONS]);
 
   useEffect(() => {
     const el = activeHref ? itemRefs.current[activeHref] : null;
@@ -132,9 +151,9 @@ export default function LocataireSidebar({ user, onLogout }) {
           <span className={styles.userName}>
             {user?.prenom} {user?.nom}
           </span>
-          <span className={styles.userRole}>Locataire</span>
+          <span className={styles.userRole}>{t("bo.locataireSidebar.role")}</span>
         </div>
-        <button type="button" className={styles.logoutButton} onClick={onLogout} title="Se déconnecter">
+        <button type="button" className={styles.logoutButton} onClick={onLogout} title={t("bo.common.logout")}>
           <i className="bi bi-box-arrow-right" />
         </button>
       </div>

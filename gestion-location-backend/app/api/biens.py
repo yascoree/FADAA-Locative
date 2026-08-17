@@ -8,7 +8,7 @@ from app.models.utilisateur import Utilisateur
 from app.schemas.bien import BienCreate, BienRead, BienUpdate
 from app.schemas.bien_photo import BienPhotoRead
 from app.services import bien_service
-from app.services.exceptions import BadRequest, Forbidden, NotFound
+from app.services.exceptions import BadRequest, Forbidden, NotFound, PaymentRequired
 
 router = APIRouter(prefix="/properties", tags=["properties"])
 
@@ -33,6 +33,8 @@ def create_bien(
         return bien_service.create_bien(db, current_user, bien_in)
     except Forbidden as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except PaymentRequired as exc:
+        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=str(exc))
 
 
 @router.get("/{bien_id}", response_model=BienRead)

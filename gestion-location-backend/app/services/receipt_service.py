@@ -201,6 +201,7 @@ def generate_receipt_pdf(db: Session, quittance: Quittance) -> str:
     bien = db.get(Bien, lot.bien_id)
     locataire = db.get(Utilisateur, bail.locataire_id)
     proprietaire = db.get(Utilisateur, bien.proprietaire_id)
+    encaisseur = db.get(Utilisateur, paiement.encaisse_par)
 
     RECEIPTS_DIR.mkdir(parents=True, exist_ok=True)
     file_path = RECEIPTS_DIR / f"quittance_{quittance.id}.pdf"
@@ -220,7 +221,6 @@ def generate_receipt_pdf(db: Session, quittance: Quittance) -> str:
         "Bailleur",
         [
             ("Nom :", f"{proprietaire.prenom} {proprietaire.nom}" if proprietaire else "—"),
-            ("Email :", proprietaire.email if proprietaire else "—"),
         ],
     )
     y = _section(
@@ -229,7 +229,6 @@ def generate_receipt_pdf(db: Session, quittance: Quittance) -> str:
         "Locataire",
         [
             ("Nom :", f"{locataire.prenom} {locataire.nom}" if locataire else "—"),
-            ("Email :", locataire.email if locataire else "—"),
         ],
     )
     y = _section(
@@ -250,6 +249,7 @@ def generate_receipt_pdf(db: Session, quittance: Quittance) -> str:
             ("Montant payé :", _format_amount(paiement.montant)),
             ("Mode de paiement :", MODE_PAIEMENT_LABELS.get(paiement.mode_paiement, "—")),
             ("Date de paiement :", _format_date(paiement.date_paiement)),
+            ("Encaissé par :", f"{encaisseur.prenom} {encaisseur.nom}" if encaisseur else "—"),
         ],
     )
 

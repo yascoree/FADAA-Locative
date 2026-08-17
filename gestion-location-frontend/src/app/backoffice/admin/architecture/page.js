@@ -15,6 +15,7 @@ import Modal from "@/components/Modal";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
 import SelectField from "@/components/SelectField";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../admin.module.css";
 
 function Banner({ banner }) {
@@ -30,6 +31,7 @@ const TYPE_OPTIONS = Object.entries(TYPE_BIEN_LABELS).map(([value, label]) => ({
 const EMPTY_CATEGORY_FORM = { libelle: "", type_bien: String(TYPE_BIEN.IMMOBILIER), description: "" };
 
 export default function AdminCategoriesPage() {
+  const { t } = useLanguage();
   const [categories, setCategories] = useState([]);
   const [lots, setLots] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -138,7 +140,7 @@ export default function AdminCategoriesPage() {
   }
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.adminArchitecture.loading")}</p>;
   }
 
   return (
@@ -150,17 +152,15 @@ export default function AdminCategoriesPage() {
           <div>
             <h2 className={styles.sectionTitle}>
               <i className="bi bi-diagram-3" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-              Catégories de biens
+              {t("bo.adminArchitecture.title")}
             </h2>
             <p className={styles.sectionSubtitle}>
-              Référentiel partagé utilisé par tous les propriétaires/gestionnaires pour classer leurs lots
-              (Appartement, Villa, Studio... pour un bien Immobilier, Voiture, Moto... pour un Véhicule). Lecture
-              libre, création/modification/suppression réservées aux admins.
+              {t("bo.adminArchitecture.subtitle")}
             </p>
           </div>
           <button type="button" className={styles.btn} onClick={openCreateCategory}>
             <i className="bi bi-plus-lg" />
-            Nouvelle catégorie
+            {t("bo.adminArchitecture.newCategory")}
           </button>
         </div>
 
@@ -170,18 +170,18 @@ export default function AdminCategoriesPage() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Libellé</th>
-                <th>Type</th>
-                <th>Description</th>
-                <th>Lots</th>
-                <th>Actions</th>
+                <th>{t("bo.adminArchitecture.colLibelle")}</th>
+                <th>{t("bo.adminArchitecture.colType")}</th>
+                <th>{t("bo.adminArchitecture.colDescription")}</th>
+                <th>{t("bo.adminArchitecture.colLots")}</th>
+                <th>{t("bo.adminArchitecture.colActions")}</th>
               </tr>
             </thead>
             <tbody>
               {categories.length === 0 && (
                 <tr>
                   <td colSpan={5} className={styles.empty}>
-                    Aucune catégorie. Créez-en une pour que les propriétaires puissent classer leurs lots.
+                    {t("bo.adminArchitecture.noCategories")}
                   </td>
                 </tr>
               )}
@@ -201,7 +201,7 @@ export default function AdminCategoriesPage() {
                           type="button"
                           className={styles.iconBtn}
                           onClick={() => openEditCategory(cat)}
-                          title="Modifier"
+                          title={t("bo.adminArchitecture.edit")}
                         >
                           <i className="bi bi-pencil" />
                         </button>
@@ -212,7 +212,7 @@ export default function AdminCategoriesPage() {
                             setCatDeleteError(null);
                             setCatDeleteTarget(cat);
                           }}
-                          title={count > 0 ? "Utilisée par des lots existants" : "Supprimer"}
+                          title={count > 0 ? t("bo.adminArchitecture.deleteUsed") : t("bo.adminArchitecture.delete")}
                         >
                           <i className="bi bi-trash" />
                         </button>
@@ -229,22 +229,22 @@ export default function AdminCategoriesPage() {
       <Modal
         isOpen={catFormOpen}
         onClose={closeCategoryForm}
-        title={catFormMode === "create" ? "Nouvelle catégorie" : "Modifier la catégorie"}
+        title={catFormMode === "create" ? t("bo.adminArchitecture.createTitle") : t("bo.adminArchitecture.editTitle")}
       >
         <form onSubmit={handleSubmitCategoryForm}>
           <Banner banner={catFormBanner} />
           <TextField
-            label="Libellé"
+            label={t("bo.adminArchitecture.libelleLabel")}
             name="libelle"
             value={catFormDraft.libelle}
             onChange={(e) => setCatFormDraft((d) => ({ ...d, libelle: e.target.value }))}
-            placeholder="Ex : Appartement, Villa, Studio..."
+            placeholder={t("bo.adminArchitecture.libellePlaceholder")}
             required
             disabled={libelleLocked}
-            hint={libelleLocked ? "Utilisée par des lots existants : le libellé ne peut plus être modifié." : undefined}
+            hint={libelleLocked ? t("bo.adminArchitecture.libelleLockedHint") : undefined}
           />
           <SelectField
-            label="Type"
+            label={t("bo.adminArchitecture.typeLabel")}
             name="type_bien"
             options={TYPE_OPTIONS}
             value={catFormDraft.type_bien}
@@ -252,7 +252,7 @@ export default function AdminCategoriesPage() {
             required
           />
           <TextField
-            label="Description (optionnel)"
+            label={t("bo.adminArchitecture.descriptionLabel")}
             name="description"
             value={catFormDraft.description}
             onChange={(e) => setCatFormDraft((d) => ({ ...d, description: e.target.value }))}
@@ -261,11 +261,11 @@ export default function AdminCategoriesPage() {
           <div className={styles.editActions} style={{ marginTop: "1.2rem" }}>
             <button type="submit" className={styles.btn} disabled={catFormBusy}>
               <i className="bi bi-check-lg" />
-              {catFormBusy ? "Enregistrement..." : "Enregistrer"}
+              {catFormBusy ? t("bo.adminArchitecture.saving") : t("bo.adminArchitecture.save")}
             </button>
             <button type="button" className={styles.btnOutline} onClick={closeCategoryForm} disabled={catFormBusy}>
               <i className="bi bi-x-lg" />
-              Annuler
+              {t("bo.adminArchitecture.cancel")}
             </button>
           </div>
         </form>
@@ -275,15 +275,15 @@ export default function AdminCategoriesPage() {
         isOpen={!!catDeleteTarget}
         onClose={() => setCatDeleteTarget(null)}
         onConfirm={handleConfirmDeleteCategory}
-        title="Supprimer la catégorie"
+        title={t("bo.adminArchitecture.deleteCategoryTitle")}
         message={
           catDeleteTarget
             ? catDeleteTargetCount > 0
-              ? `Impossible de supprimer "${catDeleteTarget.libelle}" : cette catégorie est liée à ${catDeleteTargetCount} lot${catDeleteTargetCount > 1 ? "s" : ""} existant${catDeleteTargetCount > 1 ? "s" : ""}.`
-              : `Supprimer définitivement la catégorie "${catDeleteTarget.libelle}" ?`
+              ? t("bo.adminArchitecture.deleteCategoryBlocked", { name: catDeleteTarget.libelle, count: catDeleteTargetCount })
+              : t("bo.adminArchitecture.deleteCategoryConfirm", { name: catDeleteTarget.libelle })
             : ""
         }
-        confirmLabel="Supprimer"
+        confirmLabel={t("bo.adminArchitecture.delete")}
         danger
         isBusy={catDeleteBusy}
         hideConfirm={catDeleteTargetCount > 0}

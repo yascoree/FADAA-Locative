@@ -448,6 +448,57 @@
   color: var(--text-muted);
 }
 
+.reclamationList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.reclamationCard {
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card, 14px);
+  padding: 1.1rem 1.3rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.reclamationHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.reclamationMessage {
+  font-size: 0.86rem;
+  color: var(--text);
+  line-height: 1.5;
+  margin-top: 0.35rem;
+  white-space: pre-wrap;
+}
+
+.reclamationMeta {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  margin-top: 0.6rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.messageQuoteCard {
+  background: var(--bg);
+  border-left: 4px solid var(--primary);
+  border-radius: 0 var(--radius-field, 10px) var(--radius-field, 10px) 0;
+  padding: 1rem 1.2rem;
+}
+
+.messageQuoteText {
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
 .empty {
   font-size: 0.84rem;
   color: var(--text-muted);

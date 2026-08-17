@@ -17,7 +17,21 @@ class PaiementBase(BaseModel):
 
 
 class PaiementCreate(PaiementBase):
-    pass
+    # Renseignables dès la création pour un chèque/virement, ou complétés plus
+    # tard via /payments/{id}/encaisser — dans les deux cas le montant ne
+    # compte dans les revenus qu'une fois l'encaissement confirmé.
+    agence_bancaire: Optional[str] = Field(default=None, max_length=255)
+    reference_paiement: Optional[str] = Field(default=None, max_length=255)
+    justificatif: Optional[str] = Field(default=None, max_length=500)
+    justificatif_nom: Optional[str] = Field(default=None, max_length=255)
+
+
+class PaiementEncaissement(BaseModel):
+    date_encaissement: Optional[datetime] = None
+    agence_bancaire: Optional[str] = Field(default=None, max_length=255)
+    reference_paiement: Optional[str] = Field(default=None, max_length=255)
+    justificatif: Optional[str] = Field(default=None, max_length=500)
+    justificatif_nom: Optional[str] = Field(default=None, max_length=255)
 
 
 class PaiementAnnulation(BaseModel):
@@ -49,3 +63,9 @@ class PaiementRead(PaiementBase):
     motif_annulation: Optional[str] = None
     echeance: Optional[EcheanceRead] = None
     quittance: Optional[QuittanceMini] = None
+    encaisse: bool = True
+    date_encaissement: Optional[datetime] = None
+    agence_bancaire: Optional[str] = None
+    reference_paiement: Optional[str] = None
+    justificatif: Optional[str] = None
+    justificatif_nom: Optional[str] = None

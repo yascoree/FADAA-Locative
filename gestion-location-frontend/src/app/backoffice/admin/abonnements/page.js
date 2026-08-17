@@ -1,15 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import {
   SUBSCRIPTION_STATUS,
   SUBSCRIPTION_STATUS_LABELS,
+  PLAN_CHANGE_REQUEST_STATUS,
   UNLIMITED,
   LIMIT_FIELDS,
   LIMIT_TO_USAGE_KEY,
   PLAN_COLOR_OPTIONS,
   formatLimit,
+  capitalizeTone,
+  billingLabel,
+  priceUnit,
+  planIcon,
   fetchUsers,
   fetchPlans,
   fetchSubscriptions,
@@ -22,12 +28,16 @@ import {
   updatePlan,
   deletePlan,
   setPlanActive,
+  fetchPlanChangeRequests,
+  trialInfo,
 } from "@/lib/subscriptions";
 import StatCard from "@/components/StatCard";
 import CountUp from "@/components/CountUp";
+import Drawer from "@/components/Drawer";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import FilterChip from "@/components/FilterChip";
 import FilterSelect from "@/components/FilterSelect";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../admin.module.css";
 
 function Banner({ banner }) {
@@ -39,9 +49,9 @@ function Banner({ banner }) {
   );
 }
 
-function PlanColorPicker({ value, onChange }) {
+function PlanColorPicker({ value, onChange, t }) {
   return (
-    <div className={styles.colorSwatchGroup} role="radiogroup" aria-label="Couleur du plan">
+    <div className={styles.colorSwatchGroup} role="radiogroup" aria-label={t("bo.adminAbonnements.planColorAriaLabel")}>
       {PLAN_COLOR_OPTIONS.map((opt) => (
         <button
           type="button"
@@ -74,40 +84,18 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-function capitalizeTone(color) {
-  return color ? color[0].toUpperCase() + color.slice(1) : "Olive";
+function usersLine(impactCount, plan, t) {
+  const word = impactCount > 1 ? t("bo.adminAbonnements.usersWord") : t("bo.adminAbonnements.userWord");
+  return `${impactCount} ${word}${plan.is_trial ? t("bo.adminAbonnements.trialSuffix") : ""}`;
 }
 
-function planIcon(plan, isPopular) {
-  if (plan.is_trial) return "bi-clock-history";
-  if (isPopular) return "bi-lightning-charge-fill";
-  return "bi-building-fill";
+function accountStatusLabels(t) {
+  return {
+    1: t("bo.adminAbonnements.accountActive"),
+    2: t("bo.adminAbonnements.accountInvitePending"),
+    3: t("bo.adminAbonnements.accountDisabled"),
+  };
 }
-
-function billingLabel(plan) {
-  if (plan.is_trial) return `${plan.duration_days} jour${plan.duration_days > 1 ? "s" : ""} d'essai`;
-  if (plan.duration_days >= 28 && plan.duration_days <= 31) return "Facturation mensuelle";
-  if (plan.duration_days >= 360 && plan.duration_days <= 370) return "Facturation annuelle";
-  return `Cycle de ${plan.duration_days} jours`;
-}
-
-function priceUnit(plan) {
-  if (plan.is_trial) return null;
-  if (plan.duration_days >= 28 && plan.duration_days <= 31) return "/ mois";
-  if (plan.duration_days >= 360 && plan.duration_days <= 370) return "/ an";
-  return null;
-}
-
-function usersLine(impactCount, plan) {
-  const word = impactCount > 1 ? "utilisateurs" : "utilisateur";
-  return `${impactCount} ${word}${plan.is_trial ? " en essai" : ""}`;
-}
-
-const ACCOUNT_STATUS_LABELS = {
-  1: "Actif",
-  2: "Invité en attente",
-  3: "Désactivé",
-};
 
 function emptyLimits(fill) {
   return Object.fromEntries(LIMIT_FIELDS.map((f) => [f.key, fill]));
@@ -125,21 +113,21 @@ function planToDraft(plan) {
   };
 }
 
-function diffEntries(plan, draft) {
+function diffEntries(plan, draft, t) {
   const entries = [];
-  if (draft.name !== plan.name) entries.push({ label: "Nom", before: plan.name, after: draft.name });
+  if (draft.name !== plan.name) entries.push({ label: t("bo.adminAbonnements.diffName"), before: plan.name, after: draft.name });
   if ((draft.description || "") !== (plan.description || "")) {
-    entries.push({ label: "Description", before: plan.description || "—", after: draft.description || "—" });
+    entries.push({ label: t("bo.adminAbonnements.diffDescription"), before: plan.description || "—", after: draft.description || "—" });
   }
   if (Number(draft.price) !== Number(plan.price)) {
-    entries.push({ label: "Prix", before: `${plan.price} MAD`, after: `${draft.price} MAD` });
+    entries.push({ label: t("bo.adminAbonnements.diffPrice"), before: `${plan.price} MAD`, after: `${draft.price} MAD` });
   }
   if (Number(draft.duration_days) !== Number(plan.duration_days)) {
-    entries.push({ label: "Durée", before: `${plan.duration_days} j`, after: `${draft.duration_days} j` });
+    entries.push({ label: t("bo.adminAbonnements.diffDuration"), before: `${plan.duration_days} j`, after: `${draft.duration_days} j` });
   }
   if (draft.color !== (plan.color || "olive")) {
     const colorLabel = (value) => PLAN_COLOR_OPTIONS.find((c) => c.value === value)?.label || value;
-    entries.push({ label: "Couleur", before: colorLabel(plan.color || "olive"), after: colorLabel(draft.color) });
+    entries.push({ label: t("bo.adminAbonnements.diffColor"), before: colorLabel(plan.color || "olive"), after: colorLabel(draft.color) });
   }
   LIMIT_FIELDS.forEach((f) => {
     const newVal = draft.unlimited[f.key] ? UNLIMITED : Number(draft.limits[f.key] || 0);
@@ -151,14 +139,6 @@ function diffEntries(plan, draft) {
 }
 
 const PAGE_SIZE = 10;
-
-function trialInfo(subscription) {
-  if (!subscription.plan?.is_trial || !subscription.trial_end) return null;
-  const daysRemaining = Math.ceil((new Date(subscription.trial_end) - new Date()) / 86400000);
-  if (daysRemaining < 0) return { state: "expired", daysRemaining: 0 };
-  if (daysRemaining <= 3) return { state: "warning", daysRemaining };
-  return { state: "active", daysRemaining };
-}
 
 function trialPillClass(state) {
   if (state === "expired") return styles.trialPillExpired;
@@ -174,9 +154,14 @@ function usageFillClass(percent) {
 }
 
 export default function AdminAbonnementsPage() {
+  const { t } = useLanguage();
+  const ACCOUNT_STATUS_LABELS = useMemo(() => accountStatusLabels(t), [t]);
   const [users, setUsers] = useState([]);
   const [plans, setPlans] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
+  // Juste le compte pour le badge du bouton vers /abonnements/demandes — le
+  // détail (approuver/rejeter) vit sur cette page dédiée, pas ici.
+  const [planChangeRequests, setPlanChangeRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
@@ -201,6 +186,7 @@ export default function AdminAbonnementsPage() {
   });
   const [createBusy, setCreateBusy] = useState(false);
   const [createBanner, setCreateBanner] = useState(null);
+  const [createPlanOpen, setCreatePlanOpen] = useState(false);
 
   const [search, setSearch] = useState("");
   const [planFilter, setPlanFilter] = useState("");
@@ -214,6 +200,16 @@ export default function AdminAbonnementsPage() {
   const [usageLoading, setUsageLoading] = useState(false);
   const [detailBanner, setDetailBanner] = useState(null);
 
+  const plansScrollRef = useRef(null);
+
+  function scrollPlans(direction) {
+    const node = plansScrollRef.current;
+    if (!node) return;
+    const card = node.querySelector(`.${styles.planCard}`);
+    const amount = (card?.offsetWidth || 300) + 18; // largeur carte + gap
+    node.scrollBy({ left: direction * amount, behavior: "smooth" });
+  }
+
   const [changePlanOpen, setChangePlanOpen] = useState(false);
   const [changePlanTargetId, setChangePlanTargetId] = useState("");
   const [changePlanBusy, setChangePlanBusy] = useState(false);
@@ -223,10 +219,16 @@ export default function AdminAbonnementsPage() {
     async function init() {
       setIsLoading(true);
       try {
-        const [userList, planList, subList] = await Promise.all([fetchUsers(), fetchPlans(), fetchSubscriptions()]);
+        const [userList, planList, subList, requestList] = await Promise.all([
+          fetchUsers(),
+          fetchPlans(),
+          fetchSubscriptions(),
+          fetchPlanChangeRequests(),
+        ]);
         setUsers(userList);
         setPlans(planList);
         setSubscriptions(subList);
+        setPlanChangeRequests(requestList);
       } catch (err) {
         setLoadError(extractErrorMessage(err));
       } finally {
@@ -263,6 +265,11 @@ export default function AdminAbonnementsPage() {
     const expiredSubs = subscriptions.filter((s) => s.status === SUBSCRIPTION_STATUS.EXPIRE).length;
     return { totalUsers: users.length, activeSubs, trialActive, expiredSubs };
   }, [users, subscriptions]);
+
+  const pendingRequestsCount = useMemo(
+    () => planChangeRequests.filter((r) => r.statut === PLAN_CHANGE_REQUEST_STATUS.EN_ATTENTE).length,
+    [planChangeRequests]
+  );
 
   const planTones = useMemo(() => {
     const map = {};
@@ -326,6 +333,16 @@ export default function AdminAbonnementsPage() {
     setChangePlanTargetId(row ? String(row.subscription.plan_id) : "");
   }
 
+  function openCreatePlan() {
+    setCreateBanner(null);
+    setCreatePlanOpen(true);
+  }
+
+  function closeCreatePlan() {
+    if (createBusy) return;
+    setCreatePlanOpen(false);
+  }
+
   function startEdit(plan) {
     setEditingPlanId(plan.id);
     setEditDraft(planToDraft(plan));
@@ -356,7 +373,7 @@ export default function AdminAbonnementsPage() {
       setSubscriptions((prev) => prev.map((s) => (s.plan_id === plan.id ? { ...s, plan: updated } : s)));
       setEditingPlanId(null);
       setEditDraft(null);
-      setPlanBanner({ type: "success", message: `Plan "${updated.name}" mis à jour.` });
+      setPlanBanner({ type: "success", message: t("bo.adminAbonnements.planUpdated", { name: updated.name }) });
     } catch (err) {
       setPlanBanner({ type: "error", message: extractErrorMessage(err) });
     } finally {
@@ -417,24 +434,12 @@ export default function AdminAbonnementsPage() {
         limits: emptyLimits("0"),
         unlimited: emptyLimits(true),
       });
-      setCreateBanner({ type: "success", message: `Plan "${plan.name}" créé.` });
+      setCreatePlanOpen(false);
+      setPlanBanner({ type: "success", message: t("bo.adminAbonnements.planCreated", { name: plan.name }) });
     } catch (err) {
       setCreateBanner({ type: "error", message: extractErrorMessage(err) });
     } finally {
       setCreateBusy(false);
-    }
-  }
-
-  async function handleQuickSuspendToggle(subscription) {
-    setLoadError(null);
-    try {
-      const updated =
-        subscription.status === SUBSCRIPTION_STATUS.SUSPENDU
-          ? await reactivateSubscription(subscription.id)
-          : await suspendSubscription(subscription.id);
-      setSubscriptions((prev) => prev.map((s) => (s.id === subscription.id ? updated : s)));
-    } catch (err) {
-      setLoadError(extractErrorMessage(err));
     }
   }
 
@@ -446,7 +451,10 @@ export default function AdminAbonnementsPage() {
       const wasSuspended = sub.status === SUBSCRIPTION_STATUS.SUSPENDU;
       const updated = wasSuspended ? await reactivateSubscription(sub.id) : await suspendSubscription(sub.id);
       setSubscriptions((prev) => prev.map((s) => (s.id === sub.id ? updated : s)));
-      setDetailBanner({ type: "success", message: wasSuspended ? "Abonnement réactivé." : "Abonnement suspendu." });
+      setDetailBanner({
+        type: "success",
+        message: wasSuspended ? t("bo.adminAbonnements.subscriptionReactivated") : t("bo.adminAbonnements.subscriptionSuspended"),
+      });
     } catch (err) {
       setDetailBanner({ type: "error", message: extractErrorMessage(err) });
     }
@@ -458,7 +466,7 @@ export default function AdminAbonnementsPage() {
     try {
       const updated = await cancelSubscription(selectedRow.subscription.id);
       setSubscriptions((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
-      setDetailBanner({ type: "success", message: "Abonnement résilié." });
+      setDetailBanner({ type: "success", message: t("bo.adminAbonnements.subscriptionCancelled") });
     } catch (err) {
       setDetailBanner({ type: "error", message: extractErrorMessage(err) });
     }
@@ -472,7 +480,7 @@ export default function AdminAbonnementsPage() {
       const updated = await assignSubscription(selectedRow.user.id, Number(changePlanTargetId));
       setSubscriptions((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
       setChangePlanOpen(false);
-      setDetailBanner({ type: "success", message: `Plan changé pour ${updated.plan.name}.` });
+      setDetailBanner({ type: "success", message: t("bo.adminAbonnements.planChanged", { name: updated.plan.name }) });
     } catch (err) {
       setChangePlanBanner({ type: "error", message: extractErrorMessage(err) });
     } finally {
@@ -487,7 +495,7 @@ export default function AdminAbonnementsPage() {
     : 0;
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.adminAbonnements.loading")}</p>;
   }
 
   return (
@@ -497,41 +505,75 @@ export default function AdminAbonnementsPage() {
       {/* ---- Stats ---- */}
       <div className={styles.section}>
         <div className={styles.statsGrid}>
-          <StatCard icon="bi-people-fill" tone="primary" label="Utilisateurs" value={<CountUp value={stats.totalUsers} />} />
+          <StatCard icon="bi-people-fill" tone="primary" label={t("bo.adminAbonnements.statUsers")} value={<CountUp value={stats.totalUsers} />} />
           <StatCard
             icon="bi-credit-card-fill"
             tone="accent"
-            label="Abonnements actifs"
+            label={t("bo.adminAbonnements.statActiveSubs")}
             value={<CountUp value={stats.activeSubs} />}
           />
           <StatCard
             icon="bi-hourglass-split"
             tone="warning"
-            label="Free Trial actifs"
+            label={t("bo.adminAbonnements.statTrialActive")}
             value={<CountUp value={stats.trialActive} />}
           />
           <StatCard
             icon="bi-exclamation-octagon-fill"
             tone="danger"
-            label="Abonnements expirés"
+            label={t("bo.adminAbonnements.statExpiredSubs")}
             value={<CountUp value={stats.expiredSubs} />}
           />
         </div>
       </div>
 
+      {/* ---- Demandes de changement de plan ---- */}
+      <div className={styles.section}>
+        <Link
+          href="/backoffice/admin/abonnements/demandes"
+          className={`${styles.requestsCta} ${pendingRequestsCount > 0 ? styles.requestsCtaActive : ""}`}
+        >
+          <span className={styles.requestsCtaOrb} aria-hidden="true" />
+          <span className={styles.requestsCtaIcon}>
+            <i className="bi bi-inbox-fill" />
+            {pendingRequestsCount > 0 && <span className={styles.requestsCtaPing} aria-hidden="true" />}
+          </span>
+          <span className={styles.requestsCtaBody}>
+            <span className={styles.requestsCtaTitle}>{t("bo.adminAbonnements.requestsCtaTitle")}</span>
+            <span className={styles.requestsCtaSubtitle}>
+              {pendingRequestsCount > 0
+                ? t("bo.adminAbonnements.requestsCtaPending", { count: pendingRequestsCount })
+                : t("bo.adminAbonnements.requestsCtaNone")}
+            </span>
+          </span>
+          {pendingRequestsCount > 0 && <span className={styles.requestsCtaCount}>{pendingRequestsCount}</span>}
+          <span className={styles.requestsCtaArrow}>
+            <i className="bi bi-arrow-right" />
+          </span>
+        </Link>
+      </div>
+
       {/* ---- Plans d'abonnement ---- */}
       <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>Plans d&apos;abonnement</h2>
-        <p className={styles.sectionSubtitle}>
-          Chaque plan définit des limites d&apos;usage (biens, lots, baux actifs, gestionnaires, locataires,
-          quittances/mois). -1 signifie illimité.
-        </p>
+        <h2 className={styles.sectionTitle}>{t("bo.adminAbonnements.plansSectionTitle")}</h2>
+        <p className={styles.sectionSubtitle}>{t("bo.adminAbonnements.plansSectionSubtitle")}</p>
         <Banner banner={planBanner} />
 
-        <div className={styles.plansGrid}>
+        <div className={styles.plansCarouselWrap}>
+          {sortedPlans.length > 1 && (
+            <button
+              type="button"
+              className={`${styles.plansNavBtn} ${styles.plansNavBtnPrev}`}
+              onClick={() => scrollPlans(-1)}
+              aria-label={t("bo.adminAbonnements.prevPlans")}
+            >
+              <i className="bi bi-chevron-left" />
+            </button>
+          )}
+          <div className={styles.plansGrid} ref={plansScrollRef}>
           {(() => {
             const cheapestPaid = sortedPlans.find((p) => !p.is_trial);
-            return sortedPlans.map((plan) => {
+            return sortedPlans.map((plan, index) => {
               const isEditing = editingPlanId === plan.id;
               const impactCount = subscriptions.filter((s) => s.plan_id === plan.id).length;
               const tone = isEditing && editDraft ? capitalizeTone(editDraft.color) : planTones[plan.id];
@@ -539,12 +581,13 @@ export default function AdminAbonnementsPage() {
               return (
                 <div
                   key={plan.id}
+                  style={{ "--i": index }}
                   className={`${styles.planCard} ${styles[`planCard${tone}`]} ${
                     plan.is_active ? "" : styles.planCardInactive
                   } ${isEditing ? styles.planCardEditing : ""}`}
                 >
                 <div className={styles.planCardHeader}>
-                  {isPopular && <span className={styles.planRibbon}>Populaire</span>}
+                  {isPopular && <span className={styles.planRibbon}>{t("bo.adminAbonnements.popular")}</span>}
 
                   <span className={styles.planIcon}>
                     <i className={`bi ${planIcon(plan, isPopular)}`} />
@@ -577,11 +620,11 @@ export default function AdminAbonnementsPage() {
                         onClick={() => handleTogglePlanActive(plan)}
                       >
                         <span className={styles.planStatusDot} />
-                        {plan.is_active ? "Actif" : "Inactif"}
+                        {plan.is_active ? t("bo.adminAbonnements.active") : t("bo.adminAbonnements.inactive")}
                       </button>
                       <div className={styles.planFooterActions}>
                         <button type="button" className={styles.planModifyLink} onClick={() => startEdit(plan)}>
-                          Modifier
+                          {t("bo.adminAbonnements.modify")}
                         </button>
                         <button
                           type="button"
@@ -590,13 +633,13 @@ export default function AdminAbonnementsPage() {
                             setPlanDeleteError(null);
                             setPlanDeleteTarget(plan);
                           }}
-                          title={impactCount > 0 ? "Utilisé par des abonnements existants" : "Supprimer"}
+                          title={impactCount > 0 ? t("bo.adminAbonnements.deleteUsedTitle") : t("bo.adminAbonnements.deleteTitle")}
                         >
                           <i className="bi bi-trash" />
                         </button>
                       </div>
                     </div>
-                    <div className={styles.planUsersLine}>{usersLine(impactCount, plan)}</div>
+                    <div className={styles.planUsersLine}>{usersLine(impactCount, plan, t)}</div>
                   </>
                 )}
 
@@ -605,16 +648,16 @@ export default function AdminAbonnementsPage() {
                     <div className={styles.editFormHeader}>
                       <span className={styles.editFormTitle}>
                         <i className="bi bi-sliders" />
-                        Modifier le plan
+                        {t("bo.adminAbonnements.editPlanTitle")}
                       </span>
-                      <button type="button" className={styles.editFormClose} onClick={cancelEdit} aria-label="Fermer">
+                      <button type="button" className={styles.editFormClose} onClick={cancelEdit} aria-label={t("bo.adminAbonnements.close")}>
                         <i className="bi bi-x-lg" />
                       </button>
                     </div>
 
                     <div className={styles.editRow}>
                       <label className={styles.field}>
-                        Nom
+                        {t("bo.adminAbonnements.nameLabel")}
                         <input
                           type="text"
                           value={editDraft.name}
@@ -622,7 +665,7 @@ export default function AdminAbonnementsPage() {
                         />
                       </label>
                       <label className={styles.field}>
-                        Description
+                        {t("bo.adminAbonnements.descriptionLabel")}
                         <input
                           type="text"
                           value={editDraft.description}
@@ -633,16 +676,17 @@ export default function AdminAbonnementsPage() {
 
                     <div className={styles.editSectionDivider}>
                       <i className="bi bi-palette" />
-                      Apparence
+                      {t("bo.adminAbonnements.appearance")}
                     </div>
                     <PlanColorPicker
                       value={editDraft.color}
                       onChange={(color) => setEditDraft((d) => ({ ...d, color }))}
+                      t={t}
                     />
 
                     <div className={styles.editRow}>
                       <label className={styles.field}>
-                        Prix (MAD)
+                        {t("bo.adminAbonnements.priceLabel")}
                         <input
                           type="number"
                           step="0.01"
@@ -651,7 +695,7 @@ export default function AdminAbonnementsPage() {
                         />
                       </label>
                       <label className={styles.field}>
-                        Durée (jours)
+                        {t("bo.adminAbonnements.durationLabel")}
                         <input
                           type="number"
                           value={editDraft.duration_days}
@@ -662,7 +706,7 @@ export default function AdminAbonnementsPage() {
 
                     <div className={styles.editSectionDivider}>
                       <i className="bi bi-speedometer2" />
-                      Limites d&apos;usage
+                      {t("bo.adminAbonnements.usageLimits")}
                     </div>
 
                     <div className={styles.limitEditList}>
@@ -696,20 +740,20 @@ export default function AdminAbonnementsPage() {
                             <span className={styles.toggleTrack}>
                               <span className={styles.toggleThumb} />
                             </span>
-                            <span className={styles.toggleLabel}>∞ Illimité</span>
+                            <span className={styles.toggleLabel}>{t("bo.adminAbonnements.unlimited")}</span>
                           </label>
                         </div>
                       ))}
                     </div>
 
                     {(() => {
-                      const entries = diffEntries(plan, editDraft);
+                      const entries = diffEntries(plan, editDraft, t);
                       if (entries.length === 0) return null;
                       return (
                         <div className={styles.diffBox}>
                           <div className={styles.diffTitle}>
                             <i className="bi bi-arrow-left-right" />
-                            Changements
+                            {t("bo.adminAbonnements.changesTitle")}
                           </div>
                           {entries.map((entry) => (
                             <div className={styles.diffRow} key={entry.label}>
@@ -721,8 +765,8 @@ export default function AdminAbonnementsPage() {
                           ))}
                           <div className={styles.diffImpact}>
                             {impactCount === 0
-                              ? "Aucun compte n'est actuellement sur ce plan."
-                              : `${impactCount} compte(s) sont actuellement sur ce plan : les nouvelles limites s'appliqueront immédiatement.`}
+                              ? t("bo.adminAbonnements.diffImpactNone")
+                              : t("bo.adminAbonnements.diffImpactSome", { count: impactCount })}
                           </div>
                         </div>
                       );
@@ -736,11 +780,11 @@ export default function AdminAbonnementsPage() {
                         disabled={planSaving}
                       >
                         <i className="bi bi-check-lg" />
-                        {planSaving ? "Enregistrement..." : "Enregistrer"}
+                        {planSaving ? t("bo.adminAbonnements.saving") : t("bo.adminAbonnements.save")}
                       </button>
                       <button type="button" className={styles.btnOutline} onClick={cancelEdit} disabled={planSaving}>
                         <i className="bi bi-x-lg" />
-                        Annuler
+                        {t("bo.adminAbonnements.cancel")}
                       </button>
                     </div>
                   </div>
@@ -750,32 +794,53 @@ export default function AdminAbonnementsPage() {
               );
             });
           })()}
+          <button type="button" className={styles.planCardAdd} onClick={openCreatePlan} style={{ "--i": sortedPlans.length }}>
+            <span className={styles.planCardAddIcon}>
+              <i className="bi bi-plus-lg" />
+            </span>
+            <span className={styles.planCardAddLabel}>{t("bo.adminAbonnements.createPlanTitle")}</span>
+          </button>
+          </div>
+          {sortedPlans.length > 1 && (
+            <button
+              type="button"
+              className={`${styles.plansNavBtn} ${styles.plansNavBtnNext}`}
+              onClick={() => scrollPlans(1)}
+              aria-label={t("bo.adminAbonnements.nextPlans")}
+            >
+              <i className="bi bi-chevron-right" />
+            </button>
+          )}
         </div>
 
         {/* ---- Créer un plan ---- */}
-        <div className={styles.newPlanCard}>
-          <div className={styles.newPlanHeader}>
-            <span className={styles.newPlanHeaderIcon}>
-              <i className="bi bi-stars" />
-            </span>
-            <div>
-              <h3 className={styles.newPlanTitle}>Créer un plan</h3>
-              <p className={styles.newPlanSubtitle}>
-                Tarification et limites d&apos;usage — l&apos;aperçu se met à jour en direct.
-              </p>
+        <Drawer
+          isOpen={createPlanOpen}
+          onClose={closeCreatePlan}
+          wide
+          title={
+            <div className={styles.newPlanHeader}>
+              <span className={styles.newPlanHeaderIcon}>
+                <i className="bi bi-stars" />
+              </span>
+              <div>
+                <h3 className={styles.newPlanTitle}>{t("bo.adminAbonnements.createPlanTitle")}</h3>
+                <p className={styles.newPlanSubtitle}>{t("bo.adminAbonnements.createPlanSubtitle")}</p>
+              </div>
             </div>
-          </div>
+          }
+        >
           <Banner banner={createBanner} />
 
           <div className={styles.newPlanLayout}>
             <form className={styles.newPlanForm} onSubmit={handleCreatePlan}>
               <div className={`${styles.editSectionDivider} ${styles.editSectionDividerFirst}`}>
                 <i className="bi bi-card-text" />
-                Informations générales
+                {t("bo.adminAbonnements.generalInfo")}
               </div>
               <div className={styles.editRow}>
                 <label className={styles.field}>
-                  Nom
+                  {t("bo.adminAbonnements.nameLabel")}
                   <input
                     type="text"
                     value={newPlan.name}
@@ -784,7 +849,7 @@ export default function AdminAbonnementsPage() {
                   />
                 </label>
                 <label className={styles.field}>
-                  Description
+                  {t("bo.adminAbonnements.descriptionLabel")}
                   <input
                     type="text"
                     value={newPlan.description}
@@ -795,17 +860,17 @@ export default function AdminAbonnementsPage() {
 
               <div className={styles.editSectionDivider}>
                 <i className="bi bi-palette" />
-                Apparence
+                {t("bo.adminAbonnements.appearance")}
               </div>
-              <PlanColorPicker value={newPlan.color} onChange={(color) => setNewPlan((p) => ({ ...p, color }))} />
+              <PlanColorPicker value={newPlan.color} onChange={(color) => setNewPlan((p) => ({ ...p, color }))} t={t} />
 
               <div className={styles.editSectionDivider}>
                 <i className="bi bi-tag" />
-                Tarification
+                {t("bo.adminAbonnements.pricing")}
               </div>
               <div className={styles.editRow}>
                 <label className={styles.field}>
-                  Prix (MAD)
+                  {t("bo.adminAbonnements.priceLabel")}
                   <input
                     type="number"
                     step="0.01"
@@ -815,7 +880,7 @@ export default function AdminAbonnementsPage() {
                   />
                 </label>
                 <label className={styles.field}>
-                  Durée (jours)
+                  {t("bo.adminAbonnements.durationLabel")}
                   <input
                     type="number"
                     value={newPlan.duration_days}
@@ -834,12 +899,12 @@ export default function AdminAbonnementsPage() {
                 <span className={styles.toggleTrack}>
                   <span className={styles.toggleThumb} />
                 </span>
-                <span className={styles.toggleLabel}>Plan d&apos;essai</span>
+                <span className={styles.toggleLabel}>{t("bo.adminAbonnements.trialPlan")}</span>
               </label>
 
               <div className={styles.editSectionDivider}>
                 <i className="bi bi-speedometer2" />
-                Limites d&apos;usage
+                {t("bo.adminAbonnements.usageLimits")}
               </div>
 
               <div className={styles.limitEditList}>
@@ -870,26 +935,26 @@ export default function AdminAbonnementsPage() {
                       <span className={styles.toggleTrack}>
                         <span className={styles.toggleThumb} />
                       </span>
-                      <span className={styles.toggleLabel}>∞ Illimité</span>
+                      <span className={styles.toggleLabel}>{t("bo.adminAbonnements.unlimited")}</span>
                     </label>
                   </div>
                 ))}
               </div>
               <button type="submit" className={styles.btn} disabled={createBusy}>
                 <i className="bi bi-plus-lg" />
-                {createBusy ? "Création..." : "Créer le plan"}
+                {createBusy ? t("bo.adminAbonnements.creating") : t("bo.adminAbonnements.createPlan")}
               </button>
             </form>
 
             <div className={styles.newPlanPreviewWrap}>
               <span className={styles.newPlanPreviewLabel}>
                 <i className="bi bi-eye" />
-                Aperçu en direct
+                {t("bo.adminAbonnements.livePreview")}
               </span>
               {(() => {
                 const price = Number(newPlan.price || 0);
                 const previewPlan = {
-                  name: newPlan.name || "Nom du plan",
+                  name: newPlan.name || t("bo.adminAbonnements.planNamePlaceholder"),
                   description: newPlan.description,
                   price,
                   duration_days: Number(newPlan.duration_days || 30),
@@ -934,22 +999,22 @@ export default function AdminAbonnementsPage() {
               })()}
             </div>
           </div>
-        </div>
+        </Drawer>
       </div>
 
       <ConfirmationDialog
         isOpen={!!planDeleteTarget}
         onClose={() => setPlanDeleteTarget(null)}
         onConfirm={handleConfirmDeletePlan}
-        title="Supprimer le plan"
+        title={t("bo.adminAbonnements.deletePlanTitle")}
         message={
           planDeleteTarget
             ? planDeleteTargetCount > 0
-              ? `Impossible de supprimer "${planDeleteTarget.name}" : ce plan est utilisé par ${planDeleteTargetCount} abonnement${planDeleteTargetCount > 1 ? "s" : ""} existant${planDeleteTargetCount > 1 ? "s" : ""}.`
-              : `Supprimer définitivement le plan "${planDeleteTarget.name}" ?`
+              ? t("bo.adminAbonnements.deletePlanBlocked", { name: planDeleteTarget.name, count: planDeleteTargetCount })
+              : t("bo.adminAbonnements.deletePlanConfirm", { name: planDeleteTarget.name })
             : ""
         }
-        confirmLabel="Supprimer"
+        confirmLabel={t("bo.adminAbonnements.delete")}
         danger
         isBusy={planDeleteBusy}
         error={planDeleteError}
@@ -960,10 +1025,10 @@ export default function AdminAbonnementsPage() {
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>
           <i className="bi bi-table" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-          Abonnements par compte
+          {t("bo.adminAbonnements.byAccountTitle")}
         </h2>
         <p className={styles.sectionSubtitle}>
-          {filteredRows.length} compte(s) affiché(s) sur {rows.length}.
+          {t("bo.adminAbonnements.byAccountSubtitle", { shown: filteredRows.length, total: rows.length })}
         </p>
 
         <div className={styles.filtersRow}>
@@ -972,7 +1037,7 @@ export default function AdminAbonnementsPage() {
             <input
               type="text"
               className={styles.searchInput}
-              placeholder="Rechercher par nom, e-mail, plan, statut..."
+              placeholder={t("bo.adminAbonnements.searchPlaceholder")}
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -987,7 +1052,7 @@ export default function AdminAbonnementsPage() {
               setCurrentPage(1);
             }}
             options={[
-              { value: "", label: "Tous les plans" },
+              { value: "", label: t("bo.adminAbonnements.allPlans") },
               ...sortedPlans.map((plan) => ({ value: plan.id, label: plan.name })),
             ]}
           />
@@ -998,7 +1063,7 @@ export default function AdminAbonnementsPage() {
               setCurrentPage(1);
             }}
             options={[
-              { value: "", label: "Tous les statuts" },
+              { value: "", label: t("bo.adminAbonnements.allStatuses") },
               ...Object.entries(SUBSCRIPTION_STATUS_LABELS).map(([value, label]) => ({ value, label })),
             ]}
           />
@@ -1009,7 +1074,7 @@ export default function AdminAbonnementsPage() {
               setCurrentPage(1);
             }}
           >
-            Free Trial uniquement
+            {t("bo.adminAbonnements.trialOnly")}
           </FilterChip>
           <FilterChip
             checked={expiredOnly}
@@ -1018,7 +1083,7 @@ export default function AdminAbonnementsPage() {
               setCurrentPage(1);
             }}
           >
-            Expirés uniquement
+            {t("bo.adminAbonnements.expiredOnly")}
           </FilterChip>
         </div>
 
@@ -1026,31 +1091,30 @@ export default function AdminAbonnementsPage() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Utilisateur</th>
-                <th>Email</th>
-                <th>Plan</th>
-                <th>Statut</th>
-                <th>Début</th>
-                <th>Expiration</th>
-                <th>Actions</th>
+                <th>{t("bo.adminAbonnements.colUser")}</th>
+                <th>{t("bo.adminAbonnements.colEmail")}</th>
+                <th>{t("bo.adminAbonnements.colPlan")}</th>
+                <th>{t("bo.adminAbonnements.colStatus")}</th>
+                <th>{t("bo.adminAbonnements.colStart")}</th>
+                <th>{t("bo.adminAbonnements.colExpiration")}</th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.length === 0 && (
                 <tr>
-                  <td colSpan={7} className={styles.empty}>
-                    Aucun compte ne correspond à ces critères.
+                  <td colSpan={6} className={styles.empty}>
+                    {t("bo.adminAbonnements.noMatch")}
                   </td>
                 </tr>
               )}
               {paginatedRows.map(({ subscription, user }) => {
                 const initials = `${user.prenom?.[0] || ""}${user.nom?.[0] || ""}`.toUpperCase();
-                const isSuspended = subscription.status === SUBSCRIPTION_STATUS.SUSPENDU;
                 const trial = trialInfo(subscription);
                 return (
                   <tr
                     key={subscription.id}
-                    className={selectedRowId === subscription.id ? styles.tableRowActive : ""}
+                    className={`${styles.tableRowClickable} ${selectedRowId === subscription.id ? styles.tableRowActive : ""}`}
+                    onClick={() => selectRow(subscription.id)}
                   >
                     <td>
                       <div className={styles.userCell}>
@@ -1077,7 +1141,9 @@ export default function AdminAbonnementsPage() {
                       </span>
                       {trial && (
                         <span className={`${styles.trialPill} ${trialPillClass(trial.state)}`}>
-                          {trial.state === "expired" ? "Trial expiré" : `${trial.daysRemaining} j restants`}
+                          {trial.state === "expired"
+                            ? t("bo.adminAbonnements.trialExpired")
+                            : t("bo.adminAbonnements.trialDaysLeft", { count: trial.daysRemaining })}
                         </span>
                       )}
                     </td>
@@ -1088,26 +1154,6 @@ export default function AdminAbonnementsPage() {
                     </td>
                     <td>{formatDate(subscription.start_date)}</td>
                     <td>{formatDate(subscription.end_date)}</td>
-                    <td>
-                      <div className={styles.tableActions}>
-                        <button
-                          type="button"
-                          className={styles.iconBtn}
-                          onClick={() => selectRow(subscription.id)}
-                          title="Voir le détail"
-                        >
-                          <i className="bi bi-eye" />
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.iconBtn}
-                          onClick={() => handleQuickSuspendToggle(subscription)}
-                          title={isSuspended ? "Réactiver" : "Suspendre"}
-                        >
-                          <i className={`bi ${isSuspended ? "bi-play-circle" : "bi-pause-circle"}`} />
-                        </button>
-                      </div>
-                    </td>
                   </tr>
                 );
               })}
@@ -1117,7 +1163,7 @@ export default function AdminAbonnementsPage() {
           {filteredRows.length > 0 && (
             <div className={styles.paginationRow}>
               <span>
-                Page {safePage} / {totalPages} · {filteredRows.length} compte(s)
+                {t("bo.adminAbonnements.pageOf", { page: safePage, total: totalPages, count: filteredRows.length })}
               </span>
               <div className={styles.paginationButtons}>
                 <button
@@ -1127,7 +1173,7 @@ export default function AdminAbonnementsPage() {
                   disabled={safePage <= 1}
                 >
                   <i className="bi bi-chevron-left" />
-                  Précédent
+                  {t("bo.adminAbonnements.previous")}
                 </button>
                 <button
                   type="button"
@@ -1135,7 +1181,7 @@ export default function AdminAbonnementsPage() {
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={safePage >= totalPages}
                 >
-                  Suivant
+                  {t("bo.adminAbonnements.next")}
                   <i className="bi bi-chevron-right" />
                 </button>
               </div>
@@ -1145,41 +1191,153 @@ export default function AdminAbonnementsPage() {
 
         {/* ---- Détail de l'abonnement (Voir) ---- */}
         {selectedRow && (
-          <div className={styles.detailCard}>
-            <div className={styles.detailHeader}>
-              <div className={styles.detailHeaderIdentity}>
-                <span className={styles.detailAvatar}>
-                  {`${selectedRow.user.prenom?.[0] || ""}${selectedRow.user.nom?.[0] || ""}`.toUpperCase() || "?"}
-                </span>
-                <div>
-                  <h3 className={styles.detailTitle}>
-                    {selectedRow.user.prenom} {selectedRow.user.nom}
-                  </h3>
-                  <div className={styles.detailHeaderTags}>
-                    <span
-                      className={`${styles.planPill} ${styles[`planPill${planTones[selectedRow.subscription.plan_id] || "Charcoal"}`]}`}
-                    >
-                      {selectedRow.subscription.plan.name}
-                    </span>
-                    <span className={`${styles.badge} ${badgeClass(selectedRow.subscription.status)}`}>
-                      {SUBSCRIPTION_STATUS_LABELS[selectedRow.subscription.status]}
-                    </span>
+          <Drawer
+            isOpen={!!selectedRow}
+            onClose={() => selectRow(null)}
+            wide
+            title={
+              <div className={styles.detailHeaderRow}>
+                <div className={styles.detailHeaderIdentity}>
+                  <span className={styles.detailAvatar}>
+                    {`${selectedRow.user.prenom?.[0] || ""}${selectedRow.user.nom?.[0] || ""}`.toUpperCase() || "?"}
+                  </span>
+                  <div>
+                    <h3 className={styles.detailTitle}>
+                      {selectedRow.user.prenom} {selectedRow.user.nom}
+                    </h3>
+                    <div className={styles.detailHeaderTags}>
+                      <span
+                        className={`${styles.planPill} ${styles[`planPill${planTones[selectedRow.subscription.plan_id] || "Charcoal"}`]}`}
+                      >
+                        {selectedRow.subscription.plan.name}
+                      </span>
+                      <span className={`${styles.badge} ${badgeClass(selectedRow.subscription.status)}`}>
+                        {SUBSCRIPTION_STATUS_LABELS[selectedRow.subscription.status]}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <button type="button" className={styles.btnOutline} onClick={() => selectRow(null)}>
-                <i className="bi bi-x-lg" />
-                Fermer
-              </button>
-            </div>
+                <div className={styles.detailHeaderActions}>
+                  <button type="button" className={styles.detailHeaderActionBtn} onClick={handleDetailSuspendToggle}>
+                    <i
+                      className={`bi ${selectedRow.subscription.status === SUBSCRIPTION_STATUS.SUSPENDU ? "bi-play-circle" : "bi-pause-circle"}`}
+                    />
+                    {selectedRow.subscription.status === SUBSCRIPTION_STATUS.SUSPENDU
+                      ? t("bo.adminAbonnements.reactivate")
+                      : t("bo.adminAbonnements.suspend")}
+                  </button>
+                  {selectedRow.subscription.status !== SUBSCRIPTION_STATUS.RESILIE && (
+                    <button
+                      type="button"
+                      className={`${styles.detailHeaderActionBtn} ${styles.detailHeaderActionBtnDanger}`}
+                      onClick={handleDetailCancel}
+                    >
+                      <i className="bi bi-x-octagon" />
+                      {t("bo.adminAbonnements.cancelSubscription")}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={`${styles.detailHeaderActionBtn} ${changePlanOpen ? styles.detailHeaderActionBtnActive : ""}`}
+                    onClick={() => setChangePlanOpen((v) => !v)}
+                  >
+                    <i className="bi bi-arrow-left-right" />
+                    {t("bo.adminAbonnements.changePlan")}
+                  </button>
 
+                  {changePlanOpen && (
+                    <div className={styles.changePlanFlyout}>
+                      <div className={styles.changePlanFlyoutHeader}>
+                        <span className={styles.editFormTitle}>
+                          <i className="bi bi-arrow-left-right" />
+                          {t("bo.adminAbonnements.choosePlan")}
+                        </span>
+                        <button
+                          type="button"
+                          className={styles.iconBtn}
+                          onClick={() => setChangePlanOpen(false)}
+                          aria-label={t("bo.adminAbonnements.close")}
+                        >
+                          <i className="bi bi-x-lg" />
+                        </button>
+                      </div>
+                      <Banner banner={changePlanBanner} />
+
+                      <div className={styles.planPickerGrid}>
+                        {activePlans.map((plan) => {
+                          const isCurrent = plan.id === selectedRow.subscription.plan_id;
+                          const isSelected = String(plan.id) === String(changePlanTargetId);
+                          const tone = planTones[plan.id] || "Charcoal";
+                          return (
+                            <button
+                              type="button"
+                              key={plan.id}
+                              className={`${styles.planPickerCard} ${styles[`planPickerCard${tone}`]} ${
+                                isSelected ? styles.planPickerCardSelected : ""
+                              }`}
+                              onClick={() => setChangePlanTargetId(String(plan.id))}
+                            >
+                              {isCurrent && (
+                                <span className={styles.planPickerCurrentBadge}>{t("bo.adminAbonnements.currentPlan")}</span>
+                              )}
+                              <span className={styles.planPickerRadio}>
+                                <i className={`bi ${isSelected ? "bi-check-circle-fill" : "bi-circle"}`} />
+                              </span>
+                              <span className={styles.planPickerName}>{plan.name}</span>
+                              <span className={styles.planPickerPrice}>
+                                {plan.price} DH
+                                {priceUnit(plan) && <span className={styles.planPickerUnit}>{priceUnit(plan)}</span>}
+                              </span>
+                              <span className={styles.planPickerMeta}>{billingLabel(plan)}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {changePlanTarget && (
+                        <div className={styles.previewGrid}>
+                          {LIMIT_FIELDS.map((f) => (
+                            <div className={styles.limitItem} key={f.key}>
+                              <span className={styles.limitIcon}>
+                                <i className={`bi ${f.icon}`} />
+                              </span>
+                              <span className={styles.limitText}>
+                                {f.label}
+                                <span className={styles.limitValue}>{formatLimit(changePlanTarget[f.key])}</span>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className={styles.editActions}>
+                        <button
+                          type="button"
+                          className={styles.btn}
+                          onClick={handleConfirmChangePlan}
+                          disabled={changePlanBusy || Number(changePlanTargetId) === selectedRow.subscription.plan_id}
+                        >
+                          <i className="bi bi-check-lg" />
+                          {changePlanBusy ? t("bo.adminAbonnements.applying") : t("bo.adminAbonnements.confirmChange")}
+                        </button>
+                        <button type="button" className={styles.btnOutline} onClick={() => setChangePlanOpen(false)}>
+                          <i className="bi bi-x-lg" />
+                          {t("bo.adminAbonnements.cancel")}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            }
+          >
             <Banner banner={detailBanner} />
 
             <div className={styles.detailColumns}>
               <div>
                 <div className={styles.detailBlockTitle}>
                   <i className="bi bi-person-fill" />
-                  Compte
+                  {t("bo.adminAbonnements.accountSection")}
                 </div>
                 <div className={styles.detailInfoList}>
                   <div className={styles.detailInfoRow}>
@@ -1187,7 +1345,7 @@ export default function AdminAbonnementsPage() {
                       <i className="bi bi-person" />
                     </span>
                     <span className={styles.detailInfoBody}>
-                      <span className={styles.detailInfoLabel}>Nom</span>
+                      <span className={styles.detailInfoLabel}>{t("bo.adminAbonnements.nameLabel")}</span>
                       <span className={styles.detailInfoValue}>
                         {selectedRow.user.prenom} {selectedRow.user.nom}
                       </span>
@@ -1198,7 +1356,7 @@ export default function AdminAbonnementsPage() {
                       <i className="bi bi-envelope" />
                     </span>
                     <span className={styles.detailInfoBody}>
-                      <span className={styles.detailInfoLabel}>Email</span>
+                      <span className={styles.detailInfoLabel}>{t("bo.adminAbonnements.detailEmailLabel")}</span>
                       <span className={styles.detailInfoValue}>{selectedRow.user.email}</span>
                     </span>
                   </div>
@@ -1207,7 +1365,7 @@ export default function AdminAbonnementsPage() {
                       <i className="bi bi-toggle2-on" />
                     </span>
                     <span className={styles.detailInfoBody}>
-                      <span className={styles.detailInfoLabel}>Statut du compte</span>
+                      <span className={styles.detailInfoLabel}>{t("bo.adminAbonnements.detailAccountStatusLabel")}</span>
                       <span className={styles.detailInfoValue}>
                         {ACCOUNT_STATUS_LABELS[selectedRow.user.statut_compte] || selectedRow.user.statut_compte}
                       </span>
@@ -1218,7 +1376,7 @@ export default function AdminAbonnementsPage() {
               <div>
                 <div className={styles.detailBlockTitle}>
                   <i className="bi bi-credit-card-2-front-fill" />
-                  Abonnement
+                  {t("bo.adminAbonnements.subscriptionSection")}
                 </div>
                 <div className={styles.detailInfoList}>
                   <div className={styles.detailInfoRow}>
@@ -1226,7 +1384,7 @@ export default function AdminAbonnementsPage() {
                       <i className="bi bi-tag" />
                     </span>
                     <span className={styles.detailInfoBody}>
-                      <span className={styles.detailInfoLabel}>Plan</span>
+                      <span className={styles.detailInfoLabel}>{t("bo.adminAbonnements.planLabel")}</span>
                       <span className={styles.detailInfoValue}>
                         {selectedRow.subscription.plan.name} ({selectedRow.subscription.plan.price} MAD)
                       </span>
@@ -1237,7 +1395,7 @@ export default function AdminAbonnementsPage() {
                       <i className="bi bi-calendar-check" />
                     </span>
                     <span className={styles.detailInfoBody}>
-                      <span className={styles.detailInfoLabel}>Début</span>
+                      <span className={styles.detailInfoLabel}>{t("bo.adminAbonnements.startLabel")}</span>
                       <span className={styles.detailInfoValue}>{formatDate(selectedRow.subscription.start_date)}</span>
                     </span>
                   </div>
@@ -1246,7 +1404,7 @@ export default function AdminAbonnementsPage() {
                       <i className="bi bi-calendar-x" />
                     </span>
                     <span className={styles.detailInfoBody}>
-                      <span className={styles.detailInfoLabel}>Expiration</span>
+                      <span className={styles.detailInfoLabel}>{t("bo.adminAbonnements.expirationLabel")}</span>
                       <span className={styles.detailInfoValue}>{formatDate(selectedRow.subscription.end_date)}</span>
                     </span>
                   </div>
@@ -1256,7 +1414,7 @@ export default function AdminAbonnementsPage() {
                         <i className="bi bi-hourglass-split" />
                       </span>
                       <span className={styles.detailInfoBody}>
-                        <span className={styles.detailInfoLabel}>Essai</span>
+                        <span className={styles.detailInfoLabel}>{t("bo.adminAbonnements.trialLabel")}</span>
                         <span className={styles.detailInfoValue}>
                           {formatDate(selectedRow.subscription.trial_start)} → {formatDate(selectedRow.subscription.trial_end)}
                         </span>
@@ -1265,7 +1423,9 @@ export default function AdminAbonnementsPage() {
                           if (!trial) return null;
                           return (
                             <span className={`${styles.trialPill} ${trialPillClass(trial.state)}`} style={{ marginTop: "0.4rem" }}>
-                              {trial.state === "expired" ? "TRIAL — Expiré" : `${trial.daysRemaining} jour(s) restant(s)`}
+                              {trial.state === "expired"
+                                ? t("bo.adminAbonnements.trialExpiredPill")
+                                : t("bo.adminAbonnements.trialDaysRemainingPill", { count: trial.daysRemaining })}
                             </span>
                           );
                         })()}
@@ -1278,9 +1438,9 @@ export default function AdminAbonnementsPage() {
 
             <div className={styles.detailBlockTitle}>
               <i className="bi bi-speedometer2" />
-              Usage vs limites du plan
+              {t("bo.adminAbonnements.usageVsLimits")}
             </div>
-            {usageLoading && <p className={styles.empty}>Chargement de l&apos;usage...</p>}
+            {usageLoading && <p className={styles.empty}>{t("bo.adminAbonnements.loadingUsage")}</p>}
             {!usageLoading && usage && (
               <div className={styles.usageGrid}>
                 {LIMIT_FIELDS.map((f) => {
@@ -1312,101 +1472,7 @@ export default function AdminAbonnementsPage() {
               </div>
             )}
 
-            <div className={styles.detailActions}>
-              <button type="button" className={styles.btnLink} onClick={handleDetailSuspendToggle}>
-                <i className={`bi ${selectedRow.subscription.status === SUBSCRIPTION_STATUS.SUSPENDU ? "bi-play-circle" : "bi-pause-circle"}`} />
-                {selectedRow.subscription.status === SUBSCRIPTION_STATUS.SUSPENDU
-                  ? "Réactiver l'abonnement"
-                  : "Suspendre l'abonnement"}
-              </button>
-              {selectedRow.subscription.status !== SUBSCRIPTION_STATUS.RESILIE && (
-                <button type="button" className={`${styles.btnLink} ${styles.btnLinkDanger}`} onClick={handleDetailCancel}>
-                  <i className="bi bi-x-octagon" />
-                  Annuler l&apos;abonnement
-                </button>
-              )}
-              <button
-                type="button"
-                className={styles.btnOutline}
-                onClick={() => setChangePlanOpen((v) => !v)}
-                style={{ marginLeft: "auto" }}
-              >
-                <i className="bi bi-arrow-left-right" />
-                Changer le plan
-              </button>
-            </div>
-
-            {changePlanOpen && (
-              <div className={styles.changePlanPanel}>
-                <div className={styles.editFormTitle} style={{ marginBottom: "0.9rem" }}>
-                  <i className="bi bi-arrow-left-right" />
-                  Choisir un nouveau plan
-                </div>
-                <Banner banner={changePlanBanner} />
-
-                <div className={styles.planPickerGrid}>
-                  {activePlans.map((plan) => {
-                    const isCurrent = plan.id === selectedRow.subscription.plan_id;
-                    const isSelected = String(plan.id) === String(changePlanTargetId);
-                    const tone = planTones[plan.id] || "Charcoal";
-                    return (
-                      <button
-                        type="button"
-                        key={plan.id}
-                        className={`${styles.planPickerCard} ${styles[`planPickerCard${tone}`]} ${
-                          isSelected ? styles.planPickerCardSelected : ""
-                        }`}
-                        onClick={() => setChangePlanTargetId(String(plan.id))}
-                      >
-                        {isCurrent && <span className={styles.planPickerCurrentBadge}>Plan actuel</span>}
-                        <span className={styles.planPickerRadio}>
-                          <i className={`bi ${isSelected ? "bi-check-circle-fill" : "bi-circle"}`} />
-                        </span>
-                        <span className={styles.planPickerName}>{plan.name}</span>
-                        <span className={styles.planPickerPrice}>
-                          {plan.price} DH
-                          {priceUnit(plan) && <span className={styles.planPickerUnit}>{priceUnit(plan)}</span>}
-                        </span>
-                        <span className={styles.planPickerMeta}>{billingLabel(plan)}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {changePlanTarget && (
-                  <div className={styles.previewGrid}>
-                    {LIMIT_FIELDS.map((f) => (
-                      <div className={styles.limitItem} key={f.key}>
-                        <span className={styles.limitIcon}>
-                          <i className={`bi ${f.icon}`} />
-                        </span>
-                        <span className={styles.limitText}>
-                          {f.label}
-                          <span className={styles.limitValue}>{formatLimit(changePlanTarget[f.key])}</span>
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className={styles.editActions}>
-                  <button
-                    type="button"
-                    className={styles.btn}
-                    onClick={handleConfirmChangePlan}
-                    disabled={changePlanBusy || Number(changePlanTargetId) === selectedRow.subscription.plan_id}
-                  >
-                    <i className="bi bi-check-lg" />
-                    {changePlanBusy ? "Application..." : "Confirmer le changement"}
-                  </button>
-                  <button type="button" className={styles.btnOutline} onClick={() => setChangePlanOpen(false)}>
-                    <i className="bi bi-x-lg" />
-                    Annuler
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          </Drawer>
         )}
       </div>
     </div>

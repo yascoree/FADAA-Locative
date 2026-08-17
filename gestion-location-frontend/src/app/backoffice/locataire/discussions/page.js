@@ -1,36 +1,44 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import { useAuth } from "@/context/AuthContext";
 import { fetchBiens } from "@/lib/properties";
 import { fetchDiscussions, sendMessage, deleteDiscussion, uploadDiscussionAttachment } from "@/lib/discussions";
 import { fetchNotifications, markNotificationRead, NOTIFICATION_STATUS, NOTIFICATION_TYPE } from "@/lib/notifications";
+import { useLanguage } from "@/context/LanguageContext";
 import styles from "../locataire.module.css";
 
 function formatTime(value) {
   return new Date(value).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 }
 
-function previewText(message) {
+function previewText(message, t) {
   if (message.message) return message.message;
-  if (message.piece_jointe) return message.piece_jointe_type?.startsWith("image/") ? "📷 Photo" : "📎 Fichier";
+  if (message.piece_jointe) {
+    return message.piece_jointe_type?.startsWith("image/")
+      ? t("bo.locataireDiscussions.photoPreview")
+      : t("bo.locataireDiscussions.filePreview");
+  }
   return "";
 }
 
-function formatDayLabel(value) {
+function formatDayLabel(value, t) {
   const date = new Date(value);
   const today = new Date();
   const isToday = date.toDateString() === today.toDateString();
-  if (isToday) return "Aujourd'hui";
+  if (isToday) return t("bo.locataireDiscussions.today");
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
-  if (date.toDateString() === yesterday.toDateString()) return "Hier";
+  if (date.toDateString() === yesterday.toDateString()) return t("bo.locataireDiscussions.yesterday");
   return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export default function LocataireDiscussionsPage() {
+  const { t } = useLanguage();
   const { user } = useAuth();
+  const searchParams = useSearchParams();
   const [biens, setBiens] = useState([]);
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -111,12 +119,13 @@ export default function LocataireDiscussionsPage() {
       return {
         id,
         nom: info?.nom || "",
-        prenom: info?.prenom || "Propriétaire",
+        prenom: info?.prenom || t("bo.locataireDiscussions.defaultOwner"),
         email: info?.email || "",
         photo: info?.photo || null,
-        sub: ownedBiens.length > 0 ? ownedBiens.join(", ") : "Propriétaire",
+        sub: ownedBiens.length > 0 ? ownedBiens.join(", ") : t("bo.locataireDiscussions.defaultOwner"),
       };
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [biens, messages]);
 
   const conversations = useMemo(() => {
@@ -135,19 +144,32 @@ export default function LocataireDiscussionsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contacts, messages, user?.id]);
 
-  const selectedConversation = conversations.find((c) => c.contact.id === selectedId) || null;
+  // Arrivée via "Contacter le propriétaire" (page Bail) : ?contact=<id> ouvre
+  // directement le fil concerné plutôt que de laisser l'utilisateur le
+  // rechercher dans la liste — tant qu'il n'a pas explicitement cliqué un
+  // autre contact (selectedId reste alors sa dernière sélection réelle).
+  const contactParam = searchParams.get("contact");
+  const paramContactId = contactParam ? Number(contactParam) : null;
+  const activeContactId =
+    selectedId !== null ? selectedId : contacts.some((c) => c.id === paramContactId) ? paramContactId : null;
+
+  const selectedConversation = conversations.find((c) => c.contact.id === activeContactId) || null;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [selectedConversation?.thread.length, selectedId]);
+  }, [selectedConversation?.thread.length, activeContactId]);
 
   async function handleSend(e) {
     e.preventDefault();
-    if ((!draft.trim() && !stagedAttachment) || !selectedId) return;
+    if ((!draft.trim() && !stagedAttachment) || !activeContactId) return;
     setSendBusy(true);
     setSendError(null);
     try {
-      const created = await sendMessage({ destinataireId: selectedId, message: draft.trim(), attachment: stagedAttachment });
+      const created = await sendMessage({
+        destinataireId: activeContactId,
+        message: draft.trim(),
+        attachment: stagedAttachment,
+      });
       setMessages((prev) => [...prev, created]);
       setDraft("");
       setStagedAttachment(null);
@@ -161,7 +183,7 @@ export default function LocataireDiscussionsPage() {
   async function handleAttachmentChange(e) {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file || !selectedId) return;
+    if (!file || !activeContactId) return;
     setAttachBusy(true);
     setSendError(null);
     try {
@@ -191,7 +213,7 @@ export default function LocataireDiscussionsPage() {
   }
 
   if (isLoading) {
-    return <p>Chargement...</p>;
+    return <p>{t("bo.common.loading")}</p>;
   }
 
   return (
@@ -201,20 +223,22 @@ export default function LocataireDiscussionsPage() {
       <div className={styles.section} style={{ marginBottom: 0 }}>
         <h2 className={styles.sectionTitle}>
           <i className="bi bi-chat-dots-fill" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-          Discussions
+          {t("bo.locataireDiscussions.title")}
         </h2>
-        <p className={styles.sectionSubtitle}>Échangez avec le(s) propriétaire(s) de votre logement.</p>
+        <p className={styles.sectionSubtitle}>{t("bo.locataireDiscussions.subtitle")}</p>
 
         <div className={styles.msgShell}>
           {/* ---- Liste des contacts ---- */}
           <div className={styles.msgContacts}>
             <div className={styles.msgContactsHeader}>
-              <span className={styles.msgContactsTitle}>Contacts ({contacts.length})</span>
+              <span className={styles.msgContactsTitle}>
+                {t("bo.locataireDiscussions.contactsCount", { count: contacts.length })}
+              </span>
             </div>
             {contacts.length === 0 && (
               <div className={styles.msgEmptyState}>
                 <i className="bi bi-people" />
-                Aucun contact pour l&apos;instant.
+                {t("bo.locataireDiscussions.noContacts")}
               </div>
             )}
             {conversations.map(({ contact, last }) => {
@@ -223,7 +247,7 @@ export default function LocataireDiscussionsPage() {
                 <button
                   type="button"
                   key={contact.id}
-                  className={`${styles.msgContactItem} ${selectedId === contact.id ? styles.msgContactItemActive : ""}`}
+                  className={`${styles.msgContactItem} ${activeContactId === contact.id ? styles.msgContactItemActive : ""}`}
                   onClick={() => setSelectedId(contact.id)}
                 >
                   {contact.photo ? (
@@ -248,7 +272,9 @@ export default function LocataireDiscussionsPage() {
                     </div>
                     <div className={styles.msgContactPreviewRow}>
                       <span className={styles.msgContactPreview}>
-                        {last ? `${last.user_id === user?.id ? "Vous : " : ""}${previewText(last)}` : "Aucun message"}
+                        {last
+                          ? `${last.user_id === user?.id ? t("bo.locataireDiscussions.you") : ""}${previewText(last, t)}`
+                          : t("bo.locataireDiscussions.noMessage")}
                       </span>
                       <span className={styles.msgContactRole}>{contact.sub}</span>
                     </div>
@@ -263,7 +289,7 @@ export default function LocataireDiscussionsPage() {
             {!selectedConversation ? (
               <div className={styles.msgEmptyState}>
                 <i className="bi bi-chat-square-text" />
-                Sélectionnez un contact pour démarrer une conversation.
+                {t("bo.locataireDiscussions.selectContact")}
               </div>
             ) : (
               <>
@@ -293,18 +319,19 @@ export default function LocataireDiscussionsPage() {
                   {selectedConversation.thread.length === 0 && (
                     <div className={styles.msgEmptyState}>
                       <i className="bi bi-chat-dots" />
-                      Aucun message pour l&apos;instant. Dites bonjour !
+                      {t("bo.locataireDiscussions.noMessagesYet")}
                     </div>
                   )}
                   {selectedConversation.thread.map((m, i) => {
                     const mine = m.user_id === user?.id;
                     const prev = selectedConversation.thread[i - 1];
-                    const showDaySeparator = !prev || formatDayLabel(prev.date_sent) !== formatDayLabel(m.date_sent);
+                    const showDaySeparator =
+                      !prev || formatDayLabel(prev.date_sent, t) !== formatDayLabel(m.date_sent, t);
                     return (
                       <div key={m.id}>
                         {showDaySeparator && (
                           <div style={{ textAlign: "center", margin: "0.8rem 0" }}>
-                            <span className={styles.msgContactMeta}>{formatDayLabel(m.date_sent)}</span>
+                            <span className={styles.msgContactMeta}>{formatDayLabel(m.date_sent, t)}</span>
                           </div>
                         )}
                         <div className={`${styles.msgBubbleRow} ${mine ? styles.msgBubbleRowMine : ""}`}>
@@ -312,7 +339,7 @@ export default function LocataireDiscussionsPage() {
                             <div
                               className={`${styles.msgBubble} ${mine ? styles.msgBubbleMine : styles.msgBubbleTheirs}`}
                               onDoubleClick={() => mine && handleDeleteMessage(m.id)}
-                              title={mine ? "Double-clic pour supprimer" : undefined}
+                              title={mine ? t("bo.locataireDiscussions.deleteHint") : undefined}
                             >
                               {m.piece_jointe &&
                                 (m.piece_jointe_type?.startsWith("image/") ? (
@@ -339,7 +366,7 @@ export default function LocataireDiscussionsPage() {
                                     className={styles.msgAttachmentFile}
                                   >
                                     <i className="bi bi-file-earmark-arrow-down" />
-                                    <span>{m.piece_jointe_nom || "Fichier"}</span>
+                                    <span>{m.piece_jointe_nom || t("bo.locataireDiscussions.fileFallbackName")}</span>
                                   </a>
                                 ))}
                               {m.message && (
@@ -381,14 +408,14 @@ export default function LocataireDiscussionsPage() {
                         type="button"
                         className={styles.msgStagedRemove}
                         onClick={() => setStagedAttachment(null)}
-                        title="Retirer"
+                        title={t("bo.locataireDiscussions.removeAttachment")}
                       >
                         <i className="bi bi-x-lg" />
                       </button>
                     </div>
                   )}
                   <div className={styles.msgComposerRow}>
-                    <label className={styles.msgAttachBtn} title="Joindre un fichier">
+                    <label className={styles.msgAttachBtn} title={t("bo.locataireDiscussions.attachFile")}>
                       <i className={`bi ${attachBusy ? "bi-hourglass-split" : "bi-paperclip"}`} />
                       <input
                         type="file"
@@ -399,7 +426,7 @@ export default function LocataireDiscussionsPage() {
                     </label>
                     <textarea
                       rows={1}
-                      placeholder="Écrivez un message... (Entrée pour envoyer, Maj+Entrée pour un saut de ligne)"
+                      placeholder={t("bo.locataireDiscussions.messagePlaceholder")}
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
                       onKeyDown={handleKeyDown}
@@ -409,7 +436,7 @@ export default function LocataireDiscussionsPage() {
                       type="submit"
                       className={styles.msgSendBtn}
                       disabled={sendBusy || (!draft.trim() && !stagedAttachment)}
-                      title="Envoyer"
+                      title={t("bo.locataireDiscussions.send")}
                     >
                       <i className="bi bi-send-fill" />
                     </button>

@@ -1,0 +1,222 @@
+/* Mêmes tokens que src/app/landing.module.css (.page) — identité de marque
+   fixe côté site public, indépendante du thème clair/sombre du backoffice. */
+.page {
+  --primary: #889063;
+  --primary-dark: #6d7450;
+  --accent: #cfbb99;
+  --secondary: #3a3826;
+  --bg: #f5f1ea;
+  --border: #e3ddd0;
+  --surface: #ffffff;
+  --text: #2a2820;
+  --text-muted: #6b6552;
+  --page-bg: #fbf8f2;
+
+  background: var(--page-bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.hero {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 3.5rem 1.5rem 2rem;
+  text-align: center;
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--primary-dark);
+  background: rgba(136, 144, 99, 0.12);
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  margin-bottom: 1rem;
+}
+
+.title {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 800;
+  color: var(--secondary);
+  margin: 0 0 0.8rem;
+  line-height: 1.2;
+}
+
+.subtitle {
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ---------- Liste des articles ---------- */
+
+.grid {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.3rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 1.5rem;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: 0 1px 2px rgba(42, 40, 32, 0.05);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 28px -10px rgba(58, 56, 38, 0.24);
+}
+
+.cardMeta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.cardTitle {
+  font-size: 1.15rem;
+  font-weight: 750;
+  color: var(--secondary);
+  line-height: 1.35;
+  margin: 0;
+}
+
+.cardExcerpt {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin: 0;
+  flex: 1;
+}
+
+.cardReadMore {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* ---------- Article ---------- */
+
+.articleWrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 5rem;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--text-muted);
+  text-decoration: none;
+  margin-bottom: 1.5rem;
+}
+
+.backLink:hover {
+  color: var(--primary-dark);
+}
+
+.articleTitle {
+  font-size: clamp(1.6rem, 4vw, 2.3rem);
+  font-weight: 800;
+  color: var(--secondary);
+  line-height: 1.25;
+  margin: 0 0 0.9rem;
+}
+
+.articleMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.postBody {
+  font-size: 1.02rem;
+  line-height: 1.75;
+}
+
+.postP {
+  margin: 0 0 1.2rem;
+  color: var(--text);
+}
+
+.postH2 {
+  font-size: 1.3rem;
+  font-weight: 750;
+  color: var(--secondary);
+  margin: 2.2rem 0 1rem;
+}
+
+.postList {
+  margin: 0 0 1.2rem;
+  padding-left: 1.3rem;
+}
+
+.postList li {
+  margin-bottom: 0.5rem;
+  color: var(--text);
+}
+
+.ctaBox {
+  margin-top: 3rem;
+  padding: 1.8rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  text-align: center;
+}
+
+.ctaBox p {
+  color: var(--text-muted);
+  margin: 0 0 1rem;
+}
+
+.ctaButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  padding: 0.75rem 1.6rem;
+  border-radius: 999px;
+  text-decoration: none;
+}
+
+.ctaButton:hover {
+  background: var(--primary-dark);
+}
+
+.empty {
+  max-width: 600px;
+  margin: 4rem auto;
+  text-align: center;
+  color: var(--text-muted);
+  padding: 0 1.5rem;
+}

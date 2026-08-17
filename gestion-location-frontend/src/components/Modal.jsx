@@ -6,7 +6,10 @@ import styles from "./ui.module.css";
 
 /** Fenêtre modale générique (overlay + fermeture Échap/clic sur le fond).
     `size="lg"` élargit la modale — pour les contenus riches (galerie photo,
-    carte...) à l'étroit dans la largeur par défaut.
+    carte...) à l'étroit dans la largeur par défaut. `size="full"` l'étend à
+    tout l'espace disponible — pour une configuration à part entière (ex. une
+    matrice de permissions) qui mérite son propre espace sans devenir une page,
+    l'utilisateur gardant la liste de contexte juste derrière.
 
     Rendue via un portail dans #portal-root (un div que chaque layout backoffice
     place juste à côté de .shell, voir proprietaire/layout.js) plutôt que dans le
@@ -34,7 +37,7 @@ export default function Modal({ isOpen, onClose, title, children, bodyRef, size 
   return createPortal(
     <div className={styles.overlay} onClick={onClose}>
       <div
-        className={`${styles.modal} ${size === "lg" ? styles.modalLg : ""}`}
+        className={`${styles.modal} ${size === "lg" ? styles.modalLg : ""} ${size === "full" ? styles.modalFull : ""}`}
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
