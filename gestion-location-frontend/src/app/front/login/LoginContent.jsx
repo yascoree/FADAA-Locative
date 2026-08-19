@@ -100,9 +100,10 @@ function BrandPanel() {
 
       <div className={styles.brandBottom}>
         <div className={styles.quoteCard} key={currentAvis ? currentAvis.id : "fallback"}>
-          <span className={styles.quoteMark}>&ldquo;</span>
+          
           {currentAvis ? (
             <>
+              <span className={styles.quoteMark}>&ldquo;</span>
               <p className={styles.quoteText}>{currentAvis.commentaire}</p>
               <p className={styles.quoteAttr}>
                 <strong>
@@ -113,8 +114,8 @@ function BrandPanel() {
             </>
           ) : (
             <>
-              <p className={styles.quoteText}>{t("login.fallbackQuoteText")}</p>
-              <p className={styles.quoteAttr}>{t("login.fallbackQuoteAttribution")}</p>
+              <p className={styles.quoteText}>{t("hero.subhead")}</p>
+              {/* <p className={styles.quoteAttr}>{t("login.fallbackQuoteAttribution")}</p> */}
             </>
           )}
         </div>

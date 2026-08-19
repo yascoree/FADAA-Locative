@@ -30,7 +30,7 @@ export default function BlogIndexPage() {
       <NavBar />
       <div className={styles.page}>
         <div className={styles.hero}>
-          <span className={styles.eyebrow}>Blog FADAA Locative</span>
+          {/* <span className={styles.eyebrow}>Blog FADAA Locative</span> */}
           <h1 className={styles.title}>Gestion locative et immobilière : conseils et guides</h1>
           <p className={styles.subtitle}>{DESCRIPTION}</p>
         </div>

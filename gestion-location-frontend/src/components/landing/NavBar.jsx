@@ -10,7 +10,7 @@ import styles from "@/app/landing.module.css";
 const SECTION_LINKS = [
   { id: "fonctionnalites", labelKey: "nav.fonctionnalites" },
   { id: "solutions", labelKey: "nav.solutions" },
-  { id: "apropos", labelKey: "nav.apropos" },
+  // { id: "apropos", labelKey: "nav.apropos" },
   { id: "partenaires", labelKey: "nav.partenaires" },
 ];
 

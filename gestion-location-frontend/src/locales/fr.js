@@ -1495,6 +1495,7 @@ const fr = {
     submit: "Envoyer mon avis",
     submitting: "Envoi...",
     thanks: "Merci ! Votre avis sera publié après modération.",
+    aucun : "Votre avis compte ! Partagez votre expérience et laissez-nous votre commentaire."
   },
   contact: {
     eyebrow: "Contact",
@@ -1655,7 +1656,7 @@ const fr = {
   footer: {
     tagline: "La plateforme tout-en-un de gestion locative pour agences, propriétaires et locataires.",
     colNav: "Navigation",
-    colNavLinks: ["Accueil", "À propos", "Contact"],
+    colNavLinks: ["Accueil", /* "À propos", */ "Contact"],
     colSolutions: "Nos Solutions",
     colSolutionsLinks: ["Fadaa École", "Fadaa Université", "Fadaa Paie"],
     colLegal: "Légal",
