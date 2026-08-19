@@ -90,15 +90,19 @@ function Hero() {
 }
 
 function PartnerMark({ p }) {
-  return p.logo ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={p.logo.startsWith("http") ? p.logo : `${API_BASE_URL}${p.logo}`}
-      alt={p.nom}
-      className={styles.partnerLogoItem}
-    />
-  ) : (
-    <span className={styles.logoItem}>{p.nom}</span>
+  return (
+    <div className={styles.partnerCard}>
+      {p.logo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={p.logo.startsWith("http") ? p.logo : `${API_BASE_URL}${p.logo}`}
+          alt={p.nom}
+          className={styles.partnerLogoItem}
+        />
+      ) : (
+        <span className={styles.logoItem}>{p.nom}</span>
+      )}
+    </div>
   );
 }
 
@@ -269,7 +273,7 @@ function Stars({ note }) {
   );
 }
 
-function AvisForm() {
+function AvisForm({ onSuccess }) {
   const { t } = useLanguage();
   const [rating, setRating] = useState(5);
   const [name, setName] = useState("");
@@ -292,6 +296,7 @@ function AvisForm() {
       setEmail("");
       setComment("");
       setRating(5);
+      if (onSuccess) setTimeout(onSuccess, 1500);
     } catch (err) {
       setStatus("error");
       setError(extractErrorMessage(err));
@@ -401,6 +406,9 @@ function AvisSection() {
   const { t } = useLanguage();
   const [avisList, setAvisList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [showForm, setShowForm] = useState(false);
+  const CARDS_PER_PAGE = 3;
 
   useEffect(() => {
     let cancelled = false;
@@ -408,9 +416,7 @@ function AvisSection() {
       .then((list) => {
         if (!cancelled) setAvisList(list);
       })
-      .catch(() => {
-        // Avis publics : un échec de chargement ne doit pas casser la landing page.
-      })
+      .catch(() => {})
       .finally(() => {
         if (!cancelled) setIsLoading(false);
       });
@@ -418,6 +424,18 @@ function AvisSection() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    document.body.style.overflow = showForm ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showForm]);
+
+  const totalPages = Math.ceil(avisList.length / CARDS_PER_PAGE);
+  const visibleAvis = avisList.slice(page * CARDS_PER_PAGE, page * CARDS_PER_PAGE + CARDS_PER_PAGE);
+  const goPrev = () => setPage((p) => (p === 0 ? totalPages - 1 : p - 1));
+  const goNext = () => setPage((p) => (p === totalPages - 1 ? 0 : p + 1));
 
   return (
     <section id="avis" className={styles.section}>
@@ -427,44 +445,71 @@ function AvisSection() {
         <p className={styles.sectionSub}>{t("avis.sub")}</p>
       </div>
 
-      <AvisForm />
 
-     {/* {!isLoading && avisList.length === 0 && (
-        <p className={styles.avisEmpty}>Aucun avis publié pour le moment — soyez le premier à en laisser un !</p>
-      )} */}
 
-      {avisList.length > 0 &&
-        (() => {
-          const cards = avisList.slice(0, 6);
-          return (
-            <div className={styles.avisCarouselWrap} style={{ marginTop: "2.5rem" }}>
-              <div
-                className={styles.avisCarouselTrack}
-                style={{ animationDuration: `${Math.max(18, cards.length * 6)}s` }}
-              >
-                {[...cards, ...cards].map((a, i) => (
-                  <div key={`${a.id}-${i}`} className={`${styles.testimonialCard} ${styles.avisCard}`}>
-                    <Stars note={a.note} />
-                    {a.commentaire && (
-                      <p className={styles.quoteText} style={{ marginTop: "0.9rem" }}>
-                        &ldquo;{a.commentaire}&rdquo;
-                      </p>
-                    )}
-                    <div className={styles.testimonialMeta} style={{ marginTop: "1rem" }}>
-                      <span className={styles.testimonialAvatar}>
-                        {a.prenom?.[0]}
-                        {a.nom?.[0]}
-                      </span>
-                      <div className={styles.testimonialName}>
-                        {a.prenom} {a.nom}
-                      </div>
-                    </div>
+      {!isLoading && avisList.length === 0 && (
+        <p className={styles.avisEmpty}>{t("avis.aucun")}</p>
+      )}
+
+      {avisList.length > 0 && (
+        <div className={styles.avisGridWrap}>
+          <div className={styles.avisGrid} style={{ marginTop: "2.5rem" }}>
+            {visibleAvis.map((a) => (
+              <div key={a.id} className={styles.testimonialCard}>
+                <Stars note={a.note} />
+                {a.commentaire && (
+                  <p className={styles.quoteText} style={{ marginTop: "0.9rem" }}>
+                    &ldquo;{a.commentaire}&rdquo;
+                  </p>
+                )}
+                <div className={styles.testimonialMeta} style={{ marginTop: "1rem" }}>
+                  <span className={styles.testimonialAvatar}>
+                    {a.prenom?.[0]}
+                    {a.nom?.[0]}
+                  </span>
+                  <div className={styles.testimonialName}>
+                    {a.prenom} {a.nom}
                   </div>
-                ))}
+                </div>
               </div>
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className={styles.avisNav}>
+              <button type="button" className={styles.avisNavBtn} onClick={goPrev} aria-label="Avis précédents">
+                <i className="bi bi-arrow-left" />
+              </button>
+              <span className={styles.avisNavDots}>
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <span key={i} className={`${styles.avisNavDot} ${i === page ? styles.avisNavDotActive : ""}`} />
+                ))}
+              </span>
+              <button type="button" className={styles.avisNavBtn} onClick={goNext} aria-label="Avis suivants">
+                <i className="bi bi-arrow-right" />
+              </button>
             </div>
-          );
-        })()}
+          )}
+        </div>
+      )}
+
+      <div className={styles.avisTriggerWrap}>
+        <button type="button" className={styles.avisTriggerBtn} onClick={() => setShowForm(true)}>
+          <i className="bi bi-pencil-square" />
+          {t("avis.formTitle")}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className={styles.avisModalOverlay} onClick={() => setShowForm(false)}>
+          <div className={styles.avisModalBox} onClick={(e) => e.stopPropagation()}>
+            <button type="button" className={styles.avisModalClose} onClick={() => setShowForm(false)} aria-label="Fermer">
+              <i className="bi bi-x-lg" />
+            </button>
+            <AvisForm onSuccess={() => setShowForm(false)} />
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -517,8 +562,9 @@ export default function LandingContent() {
       <NavBar />
       <Hero />
       <Features />
-      <Roles />
       <HowItWorks />
+      <Roles />
+      
       <TrustBar />
       <CtaBanner />
       <AvisSection />

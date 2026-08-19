@@ -1548,6 +1548,7 @@ const fr = {
     submit: "Envoyer mon avis",
     submitting: "Envoi...",
     thanks: "Merci ! Votre avis sera publié après modération.",
+    aucun : "Votre avis compte ! Partagez votre expérience et laissez-nous votre commentaire."
   },
   contact: {
     eyebrow: "Contact",
