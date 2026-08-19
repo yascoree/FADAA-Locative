@@ -9,6 +9,7 @@ import {
   deleteBlogPost,
   uploadBlogCoverImage,
   uploadBlogInlineImage,
+  revalidatePublicBlog,
   BLOG_POST_STATUS,
 } from "@/lib/blog";
 import BlogEditor from "@/components/BlogEditor";
@@ -75,7 +76,9 @@ export default function AdminBlogEditPage() {
           .filter(Boolean),
         content_html: contentHtml,
       });
+      const previousSlug = post.slug;
       setPost(updated);
+      revalidatePublicBlog({ slug: updated.slug, previousSlug });
       showToast(t("bo.adminBlog.savedMessage"), "success");
     } catch (err) {
       showToast(extractErrorMessage(err), "error");
@@ -91,6 +94,7 @@ export default function AdminBlogEditPage() {
         post.statut === BLOG_POST_STATUS.PUBLISHED ? BLOG_POST_STATUS.DRAFT : BLOG_POST_STATUS.PUBLISHED;
       const updated = await updateBlogPost(postId, { statut: nextStatus });
       setPost(updated);
+      revalidatePublicBlog({ slug: updated.slug });
       showToast(
         nextStatus === BLOG_POST_STATUS.PUBLISHED
           ? t("bo.adminBlog.publishedMessage")
@@ -128,6 +132,7 @@ export default function AdminBlogEditPage() {
     setDeleteError(null);
     try {
       await deleteBlogPost(postId);
+      revalidatePublicBlog({ slug: post.slug });
       router.push("/backoffice/admin/blog");
     } catch (err) {
       setDeleteError(extractErrorMessage(err));

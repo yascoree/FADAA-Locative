@@ -10,8 +10,8 @@ import styles from "@/app/landing.module.css";
 const SECTION_LINKS = [
   { id: "fonctionnalites", labelKey: "nav.fonctionnalites" },
   { id: "solutions", labelKey: "nav.solutions" },
-  { id: "avis", labelKey: "nav.avis" },
   { id: "partenaires", labelKey: "nav.partenaires" },
+  { id: "avis", labelKey: "nav.avis" },
 ];
 
 export default function NavBar() {

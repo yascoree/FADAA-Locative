@@ -90,19 +90,48 @@ function Hero() {
 }
 
 function PartnerMark({ p }) {
-  return (
+  const { t } = useLanguage();
+  const websiteHref = p.site_web
+    ? p.site_web.startsWith("http")
+      ? p.site_web
+      : `https://${p.site_web}`
+    : null;
+  const hasOverlayInfo = !!(p.description || websiteHref);
+
+  const card = (
     <div className={styles.partnerCard}>
+      <span className={styles.partnerName}>{p.nom}</span>
       {p.logo ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={p.logo.startsWith("http") ? p.logo : `${API_BASE_URL}${p.logo}`}
-          alt={p.nom}
+          alt=""
           className={styles.partnerLogoItem}
         />
       ) : (
-        <span className={styles.logoItem}>{p.nom}</span>
+        <i className={`bi bi-building ${styles.partnerLogoPlaceholder}`} aria-hidden="true" />
+      )}
+      {hasOverlayInfo && (
+        <div className={styles.partnerOverlay}>
+          <span className={styles.partnerOverlayName}>{p.nom}</span>
+          {p.description && <p className={styles.partnerOverlayDesc}>{p.description}</p>}
+          {websiteHref && (
+            <span className={styles.partnerOverlayLink}>
+              {t("trust.visitSite")}
+              <i className="bi bi-box-arrow-up-right" aria-hidden="true" />
+            </span>
+          )}
+        </div>
       )}
     </div>
+  );
+
+  if (!websiteHref) return card;
+
+  return (
+    <a href={websiteHref} target="_blank" rel="noopener noreferrer" className={styles.partnerCardLink}>
+      {card}
+    </a>
   );
 }
 
@@ -207,34 +236,36 @@ function Roles() {
   const { t } = useLanguage();
   const items = t("roles.items");
   return (
-    <section id="roles" className={styles.section}>
-      <div className={styles.sectionHead}>
-        <span className={styles.eyebrow}>{t("roles.eyebrow")}</span>
-        <h2 className={styles.sectionTitle}>{t("roles.title")}</h2>
-        <p className={styles.sectionSub}>{t("roles.sub")}</p>
-      </div>
-      <div className={styles.rolesGrid}>
-        {items.map((r, i) => {
-          const isLocataire = i === 2;
-          const cta = ROLE_CTAS[i];
-          return (
-            <div
-              key={r.title}
-              className={`${styles.roleCard} ${isLocataire ? styles.roleCardFeatured : ""}`}
-            >
-              <span className={styles.roleIcon}>
-                <i className={`bi ${ROLE_ICONS[i]}`} />
-              </span>
-              <h3 className={styles.roleTitle}>{r.title}</h3>
-              <p className={styles.roleText}>{r.text}</p>
-              {cta && (
-                <Link href={cta.href} className={styles.roleLink}>
-                  {t("roles.createAccount")} <i className="bi bi-arrow-right" />
-                </Link>
-              )}
-            </div>
-          );
-        })}
+    <section id="roles" className={styles.sectionAlt}>
+      <div className={styles.section}>
+        <div className={styles.sectionHead}>
+          <span className={styles.eyebrow}>{t("roles.eyebrow")}</span>
+          <h2 className={styles.sectionTitle}>{t("roles.title")}</h2>
+          <p className={styles.sectionSub}>{t("roles.sub")}</p>
+        </div>
+        <div className={styles.rolesGrid}>
+          {items.map((r, i) => {
+            const isLocataire = i === 2;
+            const cta = ROLE_CTAS[i];
+            return (
+              <div
+                key={r.title}
+                className={`${styles.roleCard} ${isLocataire ? styles.roleCardFeatured : ""}`}
+              >
+                <span className={styles.roleIcon}>
+                  <i className={`bi ${ROLE_ICONS[i]}`} />
+                </span>
+                <h3 className={styles.roleTitle}>{r.title}</h3>
+                <p className={styles.roleText}>{r.text}</p>
+                {cta && (
+                  <Link href={cta.href} className={styles.roleLink}>
+                    {t("roles.createAccount")} <i className="bi bi-arrow-right" />
+                  </Link>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </section>
   );
@@ -564,10 +595,9 @@ export default function LandingContent() {
       <Features />
       <HowItWorks />
       <Roles />
-      
       <TrustBar />
       <CtaBanner />
-      <AvisSection />
+      <AvisSection /> 
       <Footer />
       <ChatBot />
     </div>

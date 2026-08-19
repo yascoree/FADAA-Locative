@@ -48,6 +48,24 @@ export async function deleteBlogPost(postId) {
   await apiClient.delete(`/blog/admin/posts/${postId}`);
 }
 
+// La page publique (/blog, /blog/[slug]) met le backend en cache 60s (voir
+// `next: { revalidate: 60 }` côté fetch) — à appeler juste après une mutation
+// admin réussie (publier/dépublier/enregistrer/supprimer) pour que le
+// changement soit visible dès le prochain chargement plutôt que d'attendre le
+// TTL. Best-effort : un échec ici ne doit jamais faire échouer l'action admin
+// elle-même, le TTL reste le filet de sécurité.
+export async function revalidatePublicBlog({ slug, previousSlug } = {}) {
+  try {
+    await fetch("/api/revalidate-blog", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug, previousSlug }),
+    });
+  } catch {
+    // Silencieux : voir commentaire ci-dessus.
+  }
+}
+
 export async function uploadBlogCoverImage(postId, file) {
   const formData = new FormData();
   formData.append("file", file);

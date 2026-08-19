@@ -839,16 +839,27 @@
     transform 0.25s cubic-bezier(0.2, 0.7, 0.3, 1);
 }*/
 
+.partnerCardLink {
+  display: inline-flex;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
 .partnerCard {
-  width: 140px;
-  height: 100px;
+  position: relative;
+  overflow: hidden;
+  width: 150px;
+  height: 120px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 0.45rem;
   background: var(--surface);
   border: 1px solid #e3ddd091;
   border-radius: 14px;
-  padding: 1rem 1.25rem;
+  padding: 0.9rem 1.1rem;
   box-shadow: 0 8px 20px -14px rgba(58, 56, 38, 0.25);
   transition:
     transform 0.25s cubic-bezier(0.2, 0.7, 0.3, 1),
@@ -862,8 +873,21 @@
   border-color: var(--accent);
 }
 
+.partnerName {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .partnerLogoItem {
-  max-height: 70px;
+  max-height: 48px;
   max-width: 100px;
   width: auto;
   height: auto;
@@ -878,6 +902,65 @@
 .marqueeItem:hover .partnerLogoItem {
   opacity: 1;
   filter: grayscale(0);
+}
+
+.partnerLogoPlaceholder {
+  font-size: 1.6rem;
+  color: var(--text-muted);
+  opacity: 0.45;
+}
+
+/* Fiche partenaire (description + lien) révélée au survol, contenue dans la
+   carte elle-même (position: absolute + .partnerCard en overflow: hidden) —
+   plutôt qu'une bulle flottante, qui serait rognée par .marqueeViewport
+   (overflow: hidden + masque de fondu, nécessaires pour la piste défilante). */
+.partnerOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.8rem 0.9rem;
+  background: color-mix(in srgb, var(--secondary) 94%, transparent);
+  text-align: center;
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  pointer-events: none;
+}
+
+.marqueeItem:hover .partnerOverlay {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.partnerOverlayName {
+  font-size: 0.78rem;
+  font-weight: 750;
+  color: #fff;
+}
+
+.partnerOverlayDesc {
+  font-size: 0.66rem;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.82);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.partnerOverlayLink {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

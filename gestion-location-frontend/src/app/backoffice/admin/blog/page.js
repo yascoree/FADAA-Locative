@@ -3,7 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { extractErrorMessage } from "@/lib/apiClient";
-import { fetchAllBlogPosts, createBlogPost, deleteBlogPost, BLOG_POST_STATUS, BLOG_POST_STATUS_LABELS } from "@/lib/blog";
+import {
+  fetchAllBlogPosts,
+  createBlogPost,
+  deleteBlogPost,
+  revalidatePublicBlog,
+  BLOG_POST_STATUS,
+  BLOG_POST_STATUS_LABELS,
+} from "@/lib/blog";
 import Drawer from "@/components/Drawer";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import TextField from "@/components/TextField";
@@ -117,6 +124,7 @@ export default function AdminBlogPage() {
     setDeleteError(null);
     try {
       await deleteBlogPost(deleteTarget.id);
+      revalidatePublicBlog({ slug: deleteTarget.slug });
       setPosts((prev) => prev.filter((p) => p.id !== deleteTarget.id));
       setDeleteTarget(null);
       showToast(t("bo.adminBlog.deletedMessage"), "success");

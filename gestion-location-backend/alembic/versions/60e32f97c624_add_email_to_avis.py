@@ -1,6 +1,6 @@
 """add email to avis
 
-Revision ID: a1b2c3d4e5f6
+Revision ID: 60e32f97c624
 Revises: eff12d67df74
 Create Date: 2026-08-19 00:00:00.000000
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'a1b2c3d4e5f6'
+revision: str = '60e32f97c624'
 down_revision: Union[str, Sequence[str], None] = 'eff12d67df74'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None

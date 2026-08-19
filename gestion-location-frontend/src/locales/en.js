@@ -1483,6 +1483,7 @@ const en = {
     eyebrow: "Partners",
     title: "Trusted by",
     sub: "Agencies and property owners across Morocco already manage their portfolio with FADAA Locative.",
+    visitSite: "Visit website",
   },
   features: {
     eyebrow: "Features",

@@ -1488,6 +1488,7 @@ const fr = {
     eyebrow: "Partenaires",
     title: "Ils nous font confiance",
     sub: "Agences et propriétaires à travers le Maroc gèrent déjà leur portefeuille avec FADAA Locative.",
+    visitSite: "Voir le site",
   },
   features: {
     eyebrow: "Fonctionnalités",
