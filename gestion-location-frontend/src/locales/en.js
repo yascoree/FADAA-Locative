@@ -1490,6 +1490,7 @@ const en = {
     submit: "Submit my review",
     submitting: "Sending...",
     thanks: "Thank you! Your review will be published after moderation.",
+    aucun : "Your opinion matters! Share your experience and leave us your feedback."
   },
   contact: {
     eyebrow: "Contact",
@@ -1650,7 +1651,7 @@ const en = {
   footer: {
     tagline: "The all-in-one property management platform for agencies, owners and tenants.",
     colNav: "Navigation",
-    colNavLinks: ["Home", "About", "Contact"],
+    colNavLinks: ["Home", /* "About", */ "Contact"],
     colSolutions: "Our Solutions",
     colSolutionsLinks: ["Fadaa School", "Fadaa University", "Fadaa Pay"],
     colLegal: "Legal",

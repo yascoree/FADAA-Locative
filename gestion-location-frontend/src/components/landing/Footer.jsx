@@ -10,7 +10,7 @@ import styles from "@/app/landing.module.css";
 // et la landing page se charge de scroller au montage (voir l'effet sur le hash dans page.js).
 const NAV_LINKS = [
   { href: "/", sectionId: null },
-  { href: "/#apropos", sectionId: "apropos" },
+  // { href: "/#apropos", sectionId: "apropos" },
   { href: "/front/contact", sectionId: null },
 ];
 

@@ -30,14 +30,15 @@
 .brandPanel {
   position: relative;
   overflow: hidden;
-  background: radial-gradient(120% 100% at 100% 0%, rgba(136, 144, 99, 0.35), transparent 60%),
-    linear-gradient(160deg, #33311f 0%, var(--secondary) 55%, #302e1e 100%);
+  /* background: radial-gradient(120% 100% at 100% 0%, rgba(136, 144, 99, 0.35), transparent 60%),
+    linear-gradient(160deg, #33311f 0%, var(--secondary) 55%, #302e1e 100%); */
   color: #f1ece1;
   padding: clamp(2.25rem, 4vw, 4rem);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: 2.5rem;
+  background: radial-gradient(60% 75% at 88% 10%, #cfbb9980, #0000 60%), radial-gradient(55% 65% at 8% 95%, #88906390, #0000 65%), linear-gradient(155deg, #4a482d 0%, #5a5739 48%, #3d3b25 100%);
 }
 
 .blob {
@@ -260,7 +261,7 @@
   align-items: center;
   justify-content: center;
   padding: clamp(1.5rem, 4vw, 3rem);
-  background: var(--bg);
+  background: var(--surface);
 }
 
 .formCol {
