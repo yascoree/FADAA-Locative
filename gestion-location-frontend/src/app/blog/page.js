@@ -1,7 +1,7 @@
 import Link from "next/link";
 import NavBar from "@/components/landing/NavBar";
 import Footer from "@/components/landing/Footer";
-import { BLOG_POSTS } from "@/lib/blogPosts";
+import { API_BASE_URL } from "@/lib/apiClient";
 import { SITE_URL } from "../layout";
 import styles from "@/components/blog/blog.module.css";
 import landingStyles from "../landing.module.css";
@@ -22,8 +22,18 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-export default function BlogIndexPage() {
-  const posts = [...BLOG_POSTS].sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+async function loadPosts() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/blog/posts`, { next: { revalidate: 60 } });
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
+  }
+}
+
+export default async function BlogIndexPage() {
+  const posts = (await loadPosts()).sort((a, b) => new Date(b.published_at) - new Date(a.published_at));
 
   return (
     <div className={landingStyles.page}>
@@ -39,7 +49,8 @@ export default function BlogIndexPage() {
           {posts.map((post) => (
             <Link key={post.slug} href={`/blog/${post.slug}`} className={styles.card}>
               <span className={styles.cardMeta}>
-                {formatDate(post.publishedAt)} · {post.readingTime}
+                {formatDate(post.published_at)}
+                {post.reading_time ? ` · ${post.reading_time}` : ""}
               </span>
               <h2 className={styles.cardTitle}>{post.title}</h2>
               <p className={styles.cardExcerpt}>{post.excerpt}</p>

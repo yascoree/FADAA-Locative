@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.models.avis import AvisStatus
 from app.schemas.utilisateur import UtilisateurMini
@@ -11,6 +11,7 @@ class AvisBase(BaseModel):
     user_id: int | None = Field(default=None, gt=0)
     nom: str = Field(max_length=100)
     prenom: str = Field(max_length=100)
+    email: Optional[EmailStr] = Field(default=None, max_length=255)
     note: int = Field(ge=1, le=5)
     commentaire: Optional[str] = None
 

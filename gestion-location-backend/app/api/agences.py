@@ -14,6 +14,7 @@ from app.schemas.agence import (
 from app.schemas.invitation_client import InvitationClientCreate, InvitationClientCreateResult, InvitationClientRead
 from app.services import agence_service, invitation_client_service
 from app.services.exceptions import BadRequest, Forbidden, NotFound
+from app.services.subscription_service import SubscriptionError
 
 router = APIRouter(prefix="/agences", tags=["agences"])
 
@@ -136,6 +137,8 @@ def create_agence_invitation(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except Forbidden as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except SubscriptionError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     return {"invitation": invitation, "invite_link": invite_link}
 
 

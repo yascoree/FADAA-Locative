@@ -20,6 +20,7 @@ class Avis(Base):
     user_id = Column(Integer, ForeignKey("utilisateurs.id"), nullable=True)
     nom = Column(String(100), nullable=False)
     prenom = Column(String(100), nullable=False)
+    email = Column(String(255), nullable=True)
     note = Column(Integer, nullable=False)
     commentaire = Column(Text, nullable=True)
     date_creation = Column(DateTime, nullable=False, default=datetime.utcnow)

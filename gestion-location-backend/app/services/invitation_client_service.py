@@ -109,6 +109,9 @@ def create_invitation(
         raise BadRequest("This email belongs to an account that isn't a property owner")
 
     if target is None:
+        # Checked before any write: see subscription_service.ensure_trial_plan_available.
+        subscription_service.ensure_trial_plan_available(db)
+
         # Aucun nom n'est collecté à l'invitation (voir InvitationClient) — l'email
         # est la seule information connue. nom/prenom ne peuvent pas rester vides
         # (UtilisateurRead exige min_length=1) ; le propriétaire les met à jour

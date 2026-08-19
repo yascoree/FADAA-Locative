@@ -9,6 +9,7 @@ const RESOURCE_ICONS = {
   LEASE: "bi-file-earmark-text",
   DUE_DATE: "bi-calendar-check",
   PAYMENT: "bi-cash-stack",
+  CHARGE: "bi-wallet2",
 };
 
 // Reflète la hiérarchie réelle des données (un bien contient des lots, qui
@@ -33,12 +34,14 @@ export default function PermissionsMatrix({ groups, granted, onToggle, disabled,
     LEASE: t("bo.permissionCatalog.resourceLease"),
     DUE_DATE: t("bo.permissionCatalog.resourceDueDate"),
     PAYMENT: t("bo.permissionCatalog.resourcePayment"),
+    CHARGE: t("bo.permissionCatalog.resourceCharge"),
   };
   const ACTION_LABELS = {
     VIEW: t("bo.permissionCatalog.actionView"),
     CREATE: t("bo.permissionCatalog.actionCreate"),
     UPDATE: t("bo.permissionCatalog.actionUpdate"),
     DELETE: t("bo.permissionCatalog.actionDelete"),
+    MANAGE: t("bo.permissionCatalog.actionManage"),
   };
 
   return (

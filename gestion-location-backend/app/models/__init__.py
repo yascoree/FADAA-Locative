@@ -30,6 +30,7 @@ from app.models.plan_change_request import PlanChangeRequest
 from app.models.charge import Charge
 from app.models.demande_maintenance import DemandeMaintenance
 from app.models.invitation_client import InvitationClient
+from app.models.blog_post import BlogPost
 
 __all__ = [
     "Utilisateur",
@@ -64,4 +65,5 @@ __all__ = [
     "Charge",
     "DemandeMaintenance",
     "InvitationClient",
+    "BlogPost",
 ]

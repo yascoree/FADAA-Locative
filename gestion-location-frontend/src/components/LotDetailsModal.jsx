@@ -43,7 +43,7 @@ const BAIL_STATUS_TONE = {
     entre les espaces propriétaire et agence.
     `bien` et `categorieName`/`bail` sont fournis par la page appelante, qui a
     déjà les données nécessaires en mémoire (pas de fetch ici). */
-export default function LotDetailsModal({ lot, onClose, bien, categorieName, bail, canManageCharges }) {
+export default function LotDetailsModal({ lot, onClose, bien, categorieName, bail }) {
   if (!lot) return null;
 
   const photos = lot.photos || [];
@@ -98,7 +98,7 @@ export default function LotDetailsModal({ lot, onClose, bien, categorieName, bai
         )}
       </div>
 
-      {canManageCharges !== undefined && <ChargesSection lotId={lot.id} canManage={canManageCharges} />}
+      <ChargesSection lotId={lot.id} />
 
       <div className={styles.bienDetailsSection}>
         <h3 className={styles.bienDetailsSectionTitle}>

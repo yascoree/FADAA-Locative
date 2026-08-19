@@ -20,34 +20,13 @@ import styles from "./landing.module.css";
 const FEATURE_ICONS = ["bi-house", "bi-stack", "bi-people", "bi-credit-card", "bi-bar-chart", "bi-bell"];
 
 const ROLE_ICONS = ["bi-person-badge", "bi-briefcase", "bi-house-heart"];
-const ROLE_CTAS = [{ href: "/front/login?tab=register" }, null, null];
+const ROLE_CTAS = [
+  { href: "/front/login?tab=register" },
+  { href: "/front/login?tab=register&type=agence" },
+  null,
+];
 
 const WHY_FADAA_ICONS = ["bi-lock", "bi-cloud", "bi-lightning-charge", "bi-grid-3x3-gap"];
-
-const TESTIMONIALS = [
-  {
-    initials: "YA",
-    name: "Youssef Alaoui",
-    role: "Directeur d'agence, Urbanest",
-    quote:
-      "FADAA Locative a réduit notre temps de rapprochement mensuel de deux jours à deux heures. Le générateur d'échéancier automatique vaut à lui seul l'abonnement.",
-  },
-  {
-    initials: "SB",
-    name: "Sara Bennis",
-    role: "Propriétaire",
-    quote:
-      "J'ai enfin une visibilité complète sur mes biens sans appeler mon agence chaque semaine. L'application mobile est simple et claire.",
-    accent: true,
-  },
-  {
-    initials: "KT",
-    name: "Karim Tibichte",
-    role: "Fondateur, IRMASERVICE",
-    quote:
-      "Les quittances prenaient un temps fou. Maintenant elles sont générées dès qu'un paiement solde l'échéance — les locataires les reçoivent instantanément.",
-  },
-];
 
 function Hero() {
   const { t } = useLanguage();
@@ -224,7 +203,7 @@ function Roles() {
   const { t } = useLanguage();
   const items = t("roles.items");
   return (
-    <section id="roles" className={`${styles.section} ${styles.sectionAlt}`}>
+    <section id="roles" className={styles.section}>
       <div className={styles.sectionHead}>
         <span className={styles.eyebrow}>{t("roles.eyebrow")}</span>
         <h2 className={styles.sectionTitle}>{t("roles.title")}</h2>
@@ -280,39 +259,6 @@ function HowItWorks() {
 }
 
 
-function About() {
-  const { t } = useLanguage();
-  return (
-    <section id="apropos" className={styles.section}>
-      <div className={styles.sectionHead}>
-        <span className={styles.eyebrow}>{t("about.eyebrow")}</span>
-        <h2 className={styles.sectionTitle}>{t("about.title")}</h2>
-        <p className={styles.sectionSub}>{t("about.sub")}</p>
-      </div>
-      {/* Témoignages gardés en français quelle que soit la langue choisie : ce
-          sont des citations réelles attribuées à des personnes nommées, les
-          traduire romprait leur authenticité. */}
-      <div className={styles.testimonialsGrid}>
-        {TESTIMONIALS.map((item) => (
-          <div
-            key={item.name}
-            className={`${styles.testimonialCard} ${item.accent ? styles.testimonialCardAccent : ""}`}
-          >
-            <p className={styles.quoteText}>&ldquo;{item.quote}&rdquo;</p>
-            <div className={styles.testimonialMeta}>
-              <span className={styles.testimonialAvatar}>{item.initials}</span>
-              <div>
-                <div className={styles.testimonialName}>{item.name}</div>
-                <div className={styles.testimonialRole}>{item.role}</div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function Stars({ note }) {
   return (
     <span className={styles.avisStars}>
@@ -340,9 +286,7 @@ function AvisForm() {
     const [prenom, ...rest] = name.trim().split(/\s+/);
     const nom = rest.join(" ") || prenom;
     try {
-      // L'email n'est demandé que pour limiter les envois anonymes en masse — il
-      // n'est pas envoyé au serveur (le modèle Avis ne le stocke pas).
-      await createAvis({ prenom, nom, note: rating, commentaire: comment.trim() });
+      await createAvis({ prenom, nom, email: email.trim(), note: rating, commentaire: comment.trim() });
       setStatus("sent");
       setName("");
       setEmail("");
@@ -420,6 +364,39 @@ function AvisForm() {
   );
 }
 
+function CtaBanner() {
+  const { t } = useLanguage();
+  const why = t("cta.why");
+
+  return (
+    <section className={styles.section} style={{ paddingBottom: "1.5rem" }}>
+      <div className={styles.ctaCard}>
+        <h2 className={styles.ctaTitle}>{t("cta.title")}</h2>
+        <p className={styles.ctaSub}>{t("cta.sub")}</p>
+        <div className={styles.ctaWhyGrid}>
+          {why.map((w, i) => (
+            <div key={w.title} className={styles.ctaWhyTile}>
+              <span className={styles.ctaWhyIcon}>
+                <i className={`bi ${WHY_FADAA_ICONS[i]}`} />
+              </span>
+              <h3 className={styles.ctaWhyTitle}>{w.title}</h3>
+              <p className={styles.ctaWhyText}>{w.text}</p>
+            </div>
+          ))}
+        </div>
+        <div className={styles.ctaActions}>
+          <Link href="/front/login?tab=register" className={styles.btnPrimaryLight}>
+            {t("cta.ctaFree")}
+          </Link>
+          <Link href="/front/contact?subject=demo" className={styles.btnCtaGhost}>
+            {t("cta.ctaDemo")}
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function AvisSection() {
   const { t } = useLanguage();
   const [avisList, setAvisList] = useState([]);
@@ -492,38 +469,6 @@ function AvisSection() {
   );
 }
 
-function CtaBanner() {
-  const { t } = useLanguage();
-  const why = t("cta.why");
-
-  return (
-    <section className={styles.section} style={{ paddingBottom: "1.5rem" }}>
-      <div className={styles.ctaCard}>
-        <h2 className={styles.ctaTitle}>{t("cta.title")}</h2>
-        <p className={styles.ctaSub}>{t("cta.sub")}</p>
-        <div className={styles.ctaWhyGrid}>
-          {why.map((w, i) => (
-            <div key={w.title} className={styles.ctaWhyTile}>
-              <span className={styles.ctaWhyIcon}>
-                <i className={`bi ${WHY_FADAA_ICONS[i]}`} />
-              </span>
-              <h3 className={styles.ctaWhyTitle}>{w.title}</h3>
-              <p className={styles.ctaWhyText}>{w.text}</p>
-            </div>
-          ))}
-        </div>
-        <div className={styles.ctaActions}>
-          <Link href="/front/login?tab=register" className={styles.btnPrimaryLight}>
-            {t("cta.ctaFree")}
-          </Link>
-          <Link href="/front/contact?subject=demo" className={styles.btnCtaGhost}>
-            {t("cta.ctaDemo")}
-          </Link>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 export default function LandingContent() {
   const router = useRouter();
@@ -575,9 +520,8 @@ export default function LandingContent() {
       <Roles />
       <HowItWorks />
       <TrustBar />
-      <About />
-      <AvisSection />
       <CtaBanner />
+      <AvisSection />
       <Footer />
       <ChatBot />
     </div>

@@ -576,7 +576,7 @@ export default function AdminAbonnementsPage() {
             return sortedPlans.map((plan, index) => {
               const isEditing = editingPlanId === plan.id;
               const impactCount = subscriptions.filter((s) => s.plan_id === plan.id).length;
-              const tone = isEditing && editDraft ? capitalizeTone(editDraft.color) : planTones[plan.id];
+              const tone = planTones[plan.id];
               const isPopular = !!cheapestPaid && plan.id === cheapestPaid.id;
               return (
                 <div
@@ -602,8 +602,6 @@ export default function AdminAbonnementsPage() {
                 </div>
 
                 <div className={styles.planCardBody}>
-                {!isEditing && (
-                  <>
                     <div className={styles.planLimitsList}>
                       {LIMIT_FIELDS.map((f) => (
                         <div className={styles.planLimitRow} key={f.key}>
@@ -640,155 +638,6 @@ export default function AdminAbonnementsPage() {
                       </div>
                     </div>
                     <div className={styles.planUsersLine}>{usersLine(impactCount, plan, t)}</div>
-                  </>
-                )}
-
-                {isEditing && editDraft && (
-                  <div className={styles.editForm}>
-                    <div className={styles.editFormHeader}>
-                      <span className={styles.editFormTitle}>
-                        <i className="bi bi-sliders" />
-                        {t("bo.adminAbonnements.editPlanTitle")}
-                      </span>
-                      <button type="button" className={styles.editFormClose} onClick={cancelEdit} aria-label={t("bo.adminAbonnements.close")}>
-                        <i className="bi bi-x-lg" />
-                      </button>
-                    </div>
-
-                    <div className={styles.editRow}>
-                      <label className={styles.field}>
-                        {t("bo.adminAbonnements.nameLabel")}
-                        <input
-                          type="text"
-                          value={editDraft.name}
-                          onChange={(e) => setEditDraft((d) => ({ ...d, name: e.target.value }))}
-                        />
-                      </label>
-                      <label className={styles.field}>
-                        {t("bo.adminAbonnements.descriptionLabel")}
-                        <input
-                          type="text"
-                          value={editDraft.description}
-                          onChange={(e) => setEditDraft((d) => ({ ...d, description: e.target.value }))}
-                        />
-                      </label>
-                    </div>
-
-                    <div className={styles.editSectionDivider}>
-                      <i className="bi bi-palette" />
-                      {t("bo.adminAbonnements.appearance")}
-                    </div>
-                    <PlanColorPicker
-                      value={editDraft.color}
-                      onChange={(color) => setEditDraft((d) => ({ ...d, color }))}
-                      t={t}
-                    />
-
-                    <div className={styles.editRow}>
-                      <label className={styles.field}>
-                        {t("bo.adminAbonnements.priceLabel")}
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={editDraft.price}
-                          onChange={(e) => setEditDraft((d) => ({ ...d, price: e.target.value }))}
-                        />
-                      </label>
-                      <label className={styles.field}>
-                        {t("bo.adminAbonnements.durationLabel")}
-                        <input
-                          type="number"
-                          value={editDraft.duration_days}
-                          onChange={(e) => setEditDraft((d) => ({ ...d, duration_days: e.target.value }))}
-                        />
-                      </label>
-                    </div>
-
-                    <div className={styles.editSectionDivider}>
-                      <i className="bi bi-speedometer2" />
-                      {t("bo.adminAbonnements.usageLimits")}
-                    </div>
-
-                    <div className={styles.limitEditList}>
-                      {LIMIT_FIELDS.map((f) => (
-                        <div className={styles.limitEditRow} key={f.key}>
-                          <span className={styles.limitEditIcon}>
-                            <i className={`bi ${f.icon}`} />
-                          </span>
-                          <span className={styles.limitEditLabel}>{f.label}</span>
-                          <input
-                            type="number"
-                            min="0"
-                            className={styles.limitEditInput}
-                            disabled={editDraft.unlimited[f.key]}
-                            value={editDraft.limits[f.key]}
-                            onChange={(e) =>
-                              setEditDraft((d) => ({ ...d, limits: { ...d.limits, [f.key]: e.target.value } }))
-                            }
-                          />
-                          <label className={styles.toggleSwitch}>
-                            <input
-                              type="checkbox"
-                              checked={editDraft.unlimited[f.key]}
-                              onChange={(e) =>
-                                setEditDraft((d) => ({
-                                  ...d,
-                                  unlimited: { ...d.unlimited, [f.key]: e.target.checked },
-                                }))
-                              }
-                            />
-                            <span className={styles.toggleTrack}>
-                              <span className={styles.toggleThumb} />
-                            </span>
-                            <span className={styles.toggleLabel}>{t("bo.adminAbonnements.unlimited")}</span>
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-
-                    {(() => {
-                      const entries = diffEntries(plan, editDraft, t);
-                      if (entries.length === 0) return null;
-                      return (
-                        <div className={styles.diffBox}>
-                          <div className={styles.diffTitle}>
-                            <i className="bi bi-arrow-left-right" />
-                            {t("bo.adminAbonnements.changesTitle")}
-                          </div>
-                          {entries.map((entry) => (
-                            <div className={styles.diffRow} key={entry.label}>
-                              <span className={styles.diffLabel}>{entry.label}</span>
-                              <span className={styles.diffBefore}>{entry.before}</span>
-                              <i className="bi bi-arrow-right" />
-                              <span className={styles.diffAfter}>{entry.after}</span>
-                            </div>
-                          ))}
-                          <div className={styles.diffImpact}>
-                            {impactCount === 0
-                              ? t("bo.adminAbonnements.diffImpactNone")
-                              : t("bo.adminAbonnements.diffImpactSome", { count: impactCount })}
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    <div className={styles.editActions}>
-                      <button
-                        type="button"
-                        className={styles.btn}
-                        onClick={() => handleSaveEdit(plan)}
-                        disabled={planSaving}
-                      >
-                        <i className="bi bi-check-lg" />
-                        {planSaving ? t("bo.adminAbonnements.saving") : t("bo.adminAbonnements.save")}
-                      </button>
-                      <button type="button" className={styles.btnOutline} onClick={cancelEdit} disabled={planSaving}>
-                        <i className="bi bi-x-lg" />
-                        {t("bo.adminAbonnements.cancel")}
-                      </button>
-                    </div>
-                  </div>
-                )}
                 </div>
               </div>
               );
@@ -1000,6 +849,244 @@ export default function AdminAbonnementsPage() {
             </div>
           </div>
         </Drawer>
+
+        {/* ---- Modifier un plan ---- */}
+        {(() => {
+          const editingPlan = sortedPlans.find((p) => p.id === editingPlanId);
+          const impactCount = editingPlan
+            ? subscriptions.filter((s) => s.plan_id === editingPlan.id).length
+            : 0;
+          return (
+            <Drawer
+              isOpen={!!editingPlan && !!editDraft}
+              onClose={cancelEdit}
+              wide
+              title={
+                editingPlan && (
+                  <div className={styles.newPlanHeader}>
+                    <span className={styles.newPlanHeaderIcon}>
+                      <i className="bi bi-sliders" />
+                    </span>
+                    <div>
+                      <h3 className={styles.newPlanTitle}>{t("bo.adminAbonnements.editPlanTitle")}</h3>
+                      <p className={styles.newPlanSubtitle}>{editingPlan.name}</p>
+                    </div>
+                  </div>
+                )
+              }
+            >
+              {editingPlan && editDraft && (
+                <>
+                  <Banner banner={planBanner} />
+
+                  <div className={styles.newPlanLayout}>
+                    <form
+                      className={styles.newPlanForm}
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        handleSaveEdit(editingPlan);
+                      }}
+                    >
+                      <div className={`${styles.editSectionDivider} ${styles.editSectionDividerFirst}`}>
+                        <i className="bi bi-card-text" />
+                        {t("bo.adminAbonnements.generalInfo")}
+                      </div>
+                      <div className={styles.editRow}>
+                        <label className={styles.field}>
+                          {t("bo.adminAbonnements.nameLabel")}
+                          <input
+                            type="text"
+                            value={editDraft.name}
+                            onChange={(e) => setEditDraft((d) => ({ ...d, name: e.target.value }))}
+                            required
+                          />
+                        </label>
+                        <label className={styles.field}>
+                          {t("bo.adminAbonnements.descriptionLabel")}
+                          <input
+                            type="text"
+                            value={editDraft.description}
+                            onChange={(e) => setEditDraft((d) => ({ ...d, description: e.target.value }))}
+                          />
+                        </label>
+                      </div>
+
+                      <div className={styles.editSectionDivider}>
+                        <i className="bi bi-palette" />
+                        {t("bo.adminAbonnements.appearance")}
+                      </div>
+                      <PlanColorPicker
+                        value={editDraft.color}
+                        onChange={(color) => setEditDraft((d) => ({ ...d, color }))}
+                        t={t}
+                      />
+
+                      <div className={styles.editSectionDivider}>
+                        <i className="bi bi-tag" />
+                        {t("bo.adminAbonnements.pricing")}
+                      </div>
+                      <div className={styles.editRow}>
+                        <label className={styles.field}>
+                          {t("bo.adminAbonnements.priceLabel")}
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editDraft.price}
+                            onChange={(e) => setEditDraft((d) => ({ ...d, price: e.target.value }))}
+                            required
+                          />
+                        </label>
+                        <label className={styles.field}>
+                          {t("bo.adminAbonnements.durationLabel")}
+                          <input
+                            type="number"
+                            value={editDraft.duration_days}
+                            onChange={(e) => setEditDraft((d) => ({ ...d, duration_days: e.target.value }))}
+                            required
+                          />
+                        </label>
+                      </div>
+
+                      <div className={styles.editSectionDivider}>
+                        <i className="bi bi-speedometer2" />
+                        {t("bo.adminAbonnements.usageLimits")}
+                      </div>
+
+                      <div className={styles.limitEditList}>
+                        {LIMIT_FIELDS.map((f) => (
+                          <div className={styles.limitEditRow} key={f.key}>
+                            <span className={styles.limitEditIcon}>
+                              <i className={`bi ${f.icon}`} />
+                            </span>
+                            <span className={styles.limitEditLabel}>{f.label}</span>
+                            <input
+                              type="number"
+                              min="0"
+                              className={styles.limitEditInput}
+                              disabled={editDraft.unlimited[f.key]}
+                              value={editDraft.limits[f.key]}
+                              onChange={(e) =>
+                                setEditDraft((d) => ({ ...d, limits: { ...d.limits, [f.key]: e.target.value } }))
+                              }
+                            />
+                            <label className={styles.toggleSwitch}>
+                              <input
+                                type="checkbox"
+                                checked={editDraft.unlimited[f.key]}
+                                onChange={(e) =>
+                                  setEditDraft((d) => ({
+                                    ...d,
+                                    unlimited: { ...d.unlimited, [f.key]: e.target.checked },
+                                  }))
+                                }
+                              />
+                              <span className={styles.toggleTrack}>
+                                <span className={styles.toggleThumb} />
+                              </span>
+                              <span className={styles.toggleLabel}>{t("bo.adminAbonnements.unlimited")}</span>
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+
+                      {(() => {
+                        const entries = diffEntries(editingPlan, editDraft, t);
+                        if (entries.length === 0) return null;
+                        return (
+                          <div className={styles.diffBox}>
+                            <div className={styles.diffTitle}>
+                              <i className="bi bi-arrow-left-right" />
+                              {t("bo.adminAbonnements.changesTitle")}
+                            </div>
+                            {entries.map((entry) => (
+                              <div className={styles.diffRow} key={entry.label}>
+                                <span className={styles.diffLabel}>{entry.label}</span>
+                                <span className={styles.diffBefore}>{entry.before}</span>
+                                <i className="bi bi-arrow-right" />
+                                <span className={styles.diffAfter}>{entry.after}</span>
+                              </div>
+                            ))}
+                            <div className={styles.diffImpact}>
+                              {impactCount === 0
+                                ? t("bo.adminAbonnements.diffImpactNone")
+                                : t("bo.adminAbonnements.diffImpactSome", { count: impactCount })}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      <div className={styles.editActions}>
+                        <button type="submit" className={styles.btn} disabled={planSaving}>
+                          <i className="bi bi-check-lg" />
+                          {planSaving ? t("bo.adminAbonnements.saving") : t("bo.adminAbonnements.save")}
+                        </button>
+                        <button type="button" className={styles.btnOutline} onClick={cancelEdit} disabled={planSaving}>
+                          <i className="bi bi-x-lg" />
+                          {t("bo.adminAbonnements.cancel")}
+                        </button>
+                      </div>
+                    </form>
+
+                    <div className={styles.newPlanPreviewWrap}>
+                      <span className={styles.newPlanPreviewLabel}>
+                        <i className="bi bi-eye" />
+                        {t("bo.adminAbonnements.livePreview")}
+                      </span>
+                      {(() => {
+                        const price = Number(editDraft.price || 0);
+                        const previewPlan = {
+                          name: editDraft.name || t("bo.adminAbonnements.planNamePlaceholder"),
+                          description: editDraft.description,
+                          price,
+                          duration_days: Number(editDraft.duration_days || 30),
+                          is_trial: editingPlan.is_trial,
+                          color: editDraft.color,
+                          ...Object.fromEntries(
+                            LIMIT_FIELDS.map((f) => [
+                              f.key,
+                              editDraft.unlimited[f.key] ? UNLIMITED : Number(editDraft.limits[f.key] || 0),
+                            ])
+                          ),
+                        };
+                        const tone = capitalizeTone(previewPlan.color);
+                        return (
+                          <div className={`${styles.planCard} ${styles[`planCard${tone}`]} ${styles.planCardPreview}`}>
+                            <div className={styles.planCardHeader}>
+                              <span className={styles.planIcon}>
+                                <i className={`bi ${planIcon(previewPlan, false)}`} />
+                              </span>
+                              <div className={styles.planName}>{previewPlan.name}</div>
+                              <div className={styles.planPriceRow}>
+                                <span className={styles.planPrice}>{previewPlan.price} DH</span>
+                                {priceUnit(previewPlan) && (
+                                  <span className={styles.planPriceUnit}>{priceUnit(previewPlan)}</span>
+                                )}
+                              </div>
+                              <div className={styles.planMeta}>{billingLabel(previewPlan)}</div>
+                            </div>
+                            <div className={styles.planCardBody}>
+                              {previewPlan.description && (
+                                <p className={styles.newPlanPreviewDesc}>{previewPlan.description}</p>
+                              )}
+                              <div className={styles.planLimitsList}>
+                                {LIMIT_FIELDS.map((f) => (
+                                  <div className={styles.planLimitRow} key={f.key}>
+                                    <span>{f.label}</span>
+                                    <span className={styles.planLimitValue}>{formatLimit(previewPlan[f.key])}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </>
+              )}
+            </Drawer>
+          );
+        })()}
       </div>
 
       <ConfirmationDialog

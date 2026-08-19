@@ -139,7 +139,7 @@ export default function AdminAvisPage() {
                         {avis.user ? `${avis.user.prenom} ${avis.user.nom}` : `${avis.prenom} ${avis.nom}`}
                       </span>
                     </td>
-                    <td>{avis.user?.email || "—"}</td>
+                    <td>{avis.user?.email || avis.email || "—"}</td>
                     <td>
                       <Stars note={avis.note} />
                     </td>

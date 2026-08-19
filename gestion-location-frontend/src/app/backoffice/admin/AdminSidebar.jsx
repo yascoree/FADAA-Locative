@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { API_BASE_URL } from "@/lib/apiClient";
 import { fetchNotifications, NOTIFICATION_STATUS, NOTIFICATION_TYPE, NOTIFICATIONS_CHANGED_EVENT } from "@/lib/notifications";
 import { fetchDemandesDemo, DEMANDE_DEMO_STATUS } from "@/lib/demandesDemo";
+import { fetchContactMessages, CONTACT_MESSAGE_STATUS } from "@/lib/contactMessages";
 import { fetchPlanChangeRequests, PLAN_CHANGE_REQUEST_STATUS } from "@/lib/subscriptions";
 import LogoIcon from "@/components/LogoIcon";
 import { useLanguage } from "@/context/LanguageContext";
@@ -21,10 +22,10 @@ function useNavSections() {
         { href: "/backoffice/admin/utilisateurs", label: t("bo.adminSidebar.users"), icon: "bi-people" },
         { href: "/backoffice/admin/messagerie", label: t("bo.adminSidebar.messaging"), icon: "bi-chat-dots", badgeKey: "discussions" },
         {
-          href: "/backoffice/admin/demandes-demo",
-          label: t("bo.adminSidebar.demoRequests"),
-          icon: "bi-calendar2-check",
-          badgeKey: "demandesDemo",
+          href: "/backoffice/admin/contact",
+          label: t("bo.adminSidebar.contact"),
+          icon: "bi-envelope-paper",
+          badgeKey: "contact",
         },
         { href: "/backoffice/admin/notifications", label: t("bo.adminSidebar.notifications"), icon: "bi-bell", badgeKey: "notifications" },
       ],
@@ -46,6 +47,7 @@ function useNavSections() {
         { href: "/backoffice/admin/architecture", label: t("bo.adminSidebar.categories"), icon: "bi-diagram-3" },
         { href: "/backoffice/admin/avis", label: t("bo.adminSidebar.reviews"), icon: "bi-chat-square-quote" },
         { href: "/backoffice/admin/partenaires", label: t("bo.adminSidebar.partners"), icon: "bi-buildings" },
+        { href: "/backoffice/admin/blog", label: t("bo.adminSidebar.blog"), icon: "bi-newspaper" },
       ],
     },
     {
@@ -67,7 +69,7 @@ export default function AdminSidebar({ user, onLogout }) {
   const [bubble, setBubble] = useState(null);
   const [badges, setBadges] = useState({
     discussions: 0,
-    demandesDemo: 0,
+    contact: 0,
     notifications: 0,
     planRequests: 0,
   });
@@ -76,16 +78,19 @@ export default function AdminSidebar({ user, onLogout }) {
     let cancelled = false;
     async function load() {
       try {
-        const [list, demandes, planRequests] = await Promise.all([
+        const [list, demandes, contactMessages, planRequests] = await Promise.all([
           fetchNotifications(),
           fetchDemandesDemo(),
+          fetchContactMessages(),
           fetchPlanChangeRequests(),
         ]);
         if (cancelled) return;
         const unread = list.filter((n) => n.statut === NOTIFICATION_STATUS.NON_LUE);
         setBadges({
           discussions: unread.filter((n) => n.type === NOTIFICATION_TYPE.DISCUSSION).length,
-          demandesDemo: demandes.filter((d) => d.statut === DEMANDE_DEMO_STATUS.NOUVELLE).length,
+          contact:
+            demandes.filter((d) => d.statut === DEMANDE_DEMO_STATUS.NOUVELLE).length +
+            contactMessages.filter((m) => m.statut === CONTACT_MESSAGE_STATUS.NOUVEAU).length,
           notifications: unread.filter((n) => n.type !== NOTIFICATION_TYPE.DISCUSSION).length,
           planRequests: planRequests.filter((r) => r.statut === PLAN_CHANGE_REQUEST_STATUS.EN_ATTENTE).length,
         });

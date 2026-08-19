@@ -10,8 +10,8 @@ export async function fetchAvis() {
 
 // Reachable by anonymous visitors (public landing page) — lands as EN_ATTENTE
 // and only appears publicly once an admin publishes it.
-export async function createAvis({ nom, prenom, note, commentaire }) {
-  const { data } = await apiClient.post("/reviews/", { nom, prenom, note, commentaire });
+export async function createAvis({ nom, prenom, email, note, commentaire }) {
+  const { data } = await apiClient.post("/reviews/", { nom, prenom, email, note, commentaire });
   return data;
 }
 

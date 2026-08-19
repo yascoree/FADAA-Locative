@@ -10,6 +10,7 @@ from app.schemas.gestionnaire_invite import GestionnaireInviteCreate, Gestionnai
 from app.schemas.utilisateur import UtilisateurCreate, UtilisateurRead, UtilisateurUpdate
 from app.services import utilisateur_service
 from app.services.exceptions import BadRequest, Forbidden, NotFound, PaymentRequired
+from app.services.subscription_service import SubscriptionError
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -37,6 +38,8 @@ def create_utilisateur(
     try:
         return utilisateur_service.create_utilisateur(db, utilisateur_in)
     except BadRequest as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except SubscriptionError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 

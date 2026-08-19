@@ -11,6 +11,7 @@ import { requestPasswordReset } from "@/lib/passwordReset";
 import { fetchAvis } from "@/lib/avis";
 import Modal from "@/components/Modal";
 import LogoIcon from "@/components/LogoIcon";
+import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
 import styles from "./login.module.css";
 
 const QUOTE_ROTATION_MS = 6000;
@@ -123,63 +124,6 @@ function BrandPanel() {
   );
 }
 
-function getPasswordStrength(pw) {
-  if (!pw) return 0;
-  let score = 0;
-  if (pw.length >= 8) score++;
-  if (pw.length >= 12) score++;
-  if (/[A-Z]/.test(pw)) score++;
-  if (/[0-9]/.test(pw)) score++;
-  if (/[^A-Za-z0-9]/.test(pw)) score++;
-  if (score <= 1) return 1;
-  if (score <= 3) return 2;
-  return 3;
-}
-
-const STRENGTH_BAR_CLASS = [null, "pwStrengthBarWeak", "pwStrengthBarMedium", "pwStrengthBarStrong"];
-const STRENGTH_LABEL_CLASS = [null, "pwStrengthLabelWeak", "pwStrengthLabelMedium", "pwStrengthLabelStrong"];
-const STRENGTH_LABEL_KEY = [null, "login.pwStrengthWeak", "login.pwStrengthMedium", "login.pwStrengthStrong"];
-
-function PasswordStrengthMeter({ password }) {
-  const { t } = useLanguage();
-  const strength = getPasswordStrength(password);
-  const hasLength = password.length >= 8;
-  const hasUpper = /[A-Z]/.test(password);
-  const hasNumber = /[0-9]/.test(password);
-
-  return (
-    <div>
-      <div className={styles.pwStrengthMeter}>
-        {[1, 2, 3].map((bar) => (
-          <span
-            key={bar}
-            className={`${styles.pwStrengthBar} ${bar <= strength ? styles[STRENGTH_BAR_CLASS[strength]] : ""}`}
-          />
-        ))}
-      </div>
-      {password.length > 0 && (
-        <p className={`${styles.pwStrengthLabel} ${styles[STRENGTH_LABEL_CLASS[strength]]}`}>
-          {t("login.pwStrengthLabel")} : {t(STRENGTH_LABEL_KEY[strength])}
-        </p>
-      )}
-      <ul className={styles.pwChecklist}>
-        <li className={`${styles.pwChecklistItem} ${hasLength ? styles.pwChecklistItemMet : ""}`}>
-          <span className={styles.pwChecklistDot}>{hasLength && <i className="bi bi-check" />}</span>
-          {t("login.pwReqLength")}
-        </li>
-        <li className={`${styles.pwChecklistItem} ${hasUpper ? styles.pwChecklistItemMet : ""}`}>
-          <span className={styles.pwChecklistDot}>{hasUpper && <i className="bi bi-check" />}</span>
-          {t("login.pwReqUpper")}
-        </li>
-        <li className={`${styles.pwChecklistItem} ${hasNumber ? styles.pwChecklistItemMet : ""}`}>
-          <span className={styles.pwChecklistDot}>{hasNumber && <i className="bi bi-check" />}</span>
-          {t("login.pwReqNumber")}
-        </li>
-      </ul>
-    </div>
-  );
-}
-
 function PasswordField({ id, label, value, onChange, placeholder, autoComplete, minLength, invalid }) {
   const { t } = useLanguage();
   const [visible, setVisible] = useState(false);
@@ -239,7 +183,9 @@ export default function LoginContent() {
   // nom distinct du nom de son responsable, un propriétaire non).
   const REGISTER_STEPS_TOTAL = 4;
   const [registerStep, setRegisterStep] = useState(1);
-  const [accountType, setAccountType] = useState(null);
+  const [accountType, setAccountType] = useState(
+    searchParams.get("type") === "agence" ? ROLES.GESTIONNAIRE : null
+  );
   const [agenceName, setAgenceName] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");

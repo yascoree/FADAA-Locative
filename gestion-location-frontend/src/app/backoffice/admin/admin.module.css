@@ -1999,7 +1999,11 @@
   }
 }
 
-.newPlanForm .btn {
+/* Direct child only: the create-plan form ends with a single lone .btn that
+   needs breathing room above it. The edit-plan form's Save button sits one
+   level deeper inside .editActions next to Cancel — descendant selector was
+   pushing Save down without moving Cancel, throwing the pair out of line. */
+.newPlanForm > .btn {
   margin-top: 1.3rem;
 }
 
@@ -2023,6 +2027,13 @@
 }
 
 .planCardPreview {
+  /* .planCard's flex-basis is meant for the horizontal plan carousel, where
+     the main axis is horizontal so the basis sets width. Reused here inside a
+     column flex container (.newPlanPreviewWrap), that same basis instead caps
+     the *height*, clipping the card's content via .planCard's overflow:hidden. */
+  flex: none;
+  width: 100%;
+  height: auto;
   transform: none !important;
   cursor: default;
 }
@@ -2077,7 +2088,18 @@
 
 .searchInput {
   width: 100%;
-  padding-left: 2.1rem !important;
+  padding: 0.55rem 0.75rem 0.55rem 2.1rem !important;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field);
+  font-size: 0.84rem;
+  background: var(--surface);
+  color: var(--text);
+  color-scheme: light;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--primary);
 }
 
 .filtersRow input[type="text"],

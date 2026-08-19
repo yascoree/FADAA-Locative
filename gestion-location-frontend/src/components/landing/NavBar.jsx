@@ -10,7 +10,7 @@ import styles from "@/app/landing.module.css";
 const SECTION_LINKS = [
   { id: "fonctionnalites", labelKey: "nav.fonctionnalites" },
   { id: "solutions", labelKey: "nav.solutions" },
-  { id: "apropos", labelKey: "nav.apropos" },
+  { id: "avis", labelKey: "nav.avis" },
   { id: "partenaires", labelKey: "nav.partenaires" },
 ];
 
@@ -63,8 +63,8 @@ export default function NavBar() {
               {t(labelKey)}
             </Link>
           ))}
-          <Link href="/blog">{t("nav.blog")}</Link>
           <Link href="/front/contact">{t("nav.contact")}</Link>
+          <Link href="/blog">{t("nav.blog")}</Link>
         </nav>
         <div className={styles.navActions}>
           <LanguageSwitcher />

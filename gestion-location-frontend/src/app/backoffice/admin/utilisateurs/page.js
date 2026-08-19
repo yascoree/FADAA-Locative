@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import { fetchUsers } from "@/lib/subscriptions";
 import {
@@ -68,6 +69,7 @@ export default function AdminUtilisateursPage() {
     [ACCOUNT_STATUS_LABELS]
   );
   const { user: currentUser } = useAuth();
+  const router = useRouter();
 
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -435,6 +437,20 @@ export default function AdminUtilisateursPage() {
                   {ACCOUNT_STATUS_LABELS[selectedUser.statut_compte]}
                 </span>
               </div>
+
+              {!isSelf && (
+                <button
+                  type="button"
+                  className={styles.btn}
+                  style={{ width: "100%", marginBottom: "1.25rem" }}
+                  onClick={() =>
+                    router.push(`/backoffice/admin/messagerie?tab=conversations&user=${selectedUser.id}`)
+                  }
+                >
+                  <i className="bi bi-chat-dots-fill" />
+                  {t("bo.adminUtilisateurs.sendMessage")}
+                </button>
+              )}
 
               <div className={styles.detailInfoList}>
                 <div className={styles.detailInfoRow}>

@@ -47,6 +47,10 @@ def register(db: Session, utilisateur_in: UtilisateurCreate) -> Utilisateur:
     if existing:
         raise BadRequest("Email already registered")
 
+    if utilisateur_in.role == UtilisateurRole.PROPRIETAIRE:
+        # Checked before any write: see subscription_service.ensure_trial_plan_available.
+        subscription_service.ensure_trial_plan_available(db)
+
     utilisateur = Utilisateur(
         nom=utilisateur_in.nom,
         prenom=utilisateur_in.prenom,

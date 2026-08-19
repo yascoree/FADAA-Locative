@@ -17,7 +17,7 @@ from app.services.usage_service import enforce_limit
 # Accordées automatiquement à la création d'un mandat : la lecture "vient avec le
 # mandat" par défaut (comportement historique), mais reste un vrai droit que le
 # propriétaire peut ensuite révoquer depuis la page Permissions.
-DEFAULT_VIEW_PERMISSIONS = ["VIEW_PROPERTY", "VIEW_LOT", "VIEW_LEASE", "VIEW_DUE_DATE", "VIEW_PAYMENT"]
+DEFAULT_VIEW_PERMISSIONS = ["VIEW_PROPERTY", "VIEW_LOT", "VIEW_LEASE", "VIEW_DUE_DATE", "VIEW_PAYMENT", "VIEW_CHARGE"]
 
 # Reflète la hiérarchie réelle des données (un bien contient des lots, qui
 # contiennent des baux, qui ont des échéances, qui ont des paiements) : voir un

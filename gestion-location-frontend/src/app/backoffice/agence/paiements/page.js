@@ -30,6 +30,7 @@ import SelectField from "@/components/SelectField";
 import FilterChip from "@/components/FilterChip";
 import FilterSelect from "@/components/FilterSelect";
 import PlanLimitPopup from "@/components/PlanLimitPopup";
+import ChargesPanel from "@/components/ChargesPanel";
 import LoadingState from "@/components/LoadingState";
 import EmptyState from "@/components/EmptyState";
 import { useLanguage } from "@/context/LanguageContext";
@@ -663,6 +664,13 @@ export default function AgencePaiementsPage() {
           )}
         </div>
       </div>
+
+      {/* ---- Charges ---- */}
+      <ChargesPanel
+        biens={biens}
+        creatableBiens={biens.filter((b) => permIndex?.hasForBien(b.id, b.proprietaire_id, "MANAGE_CHARGE"))}
+        styles={styles}
+      />
 
       {/* ---- Enregistrer un paiement ---- */}
       <Modal isOpen={createOpen} onClose={closeCreate} title={t("bo.proprietairePaiements.createTitle")}>

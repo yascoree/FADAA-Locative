@@ -29,6 +29,7 @@ import SelectField from "@/components/SelectField";
 import FilterChip from "@/components/FilterChip";
 import FilterSelect from "@/components/FilterSelect";
 import PlanLimitPopup from "@/components/PlanLimitPopup";
+import ChargesPanel from "@/components/ChargesPanel";
 import { usePlanGate } from "@/hooks/usePlanGate";
 import { useLanguage } from "@/context/LanguageContext";
 import uiStyles from "@/components/ui.module.css";
@@ -643,6 +644,9 @@ export default function ProprietairePaiementsPage() {
           )}
         </div>
       </div>
+
+      {/* ---- Charges ---- */}
+      <ChargesPanel biens={biens} styles={styles} />
 
       {/* ---- Enregistrer un paiement ---- */}
       <Modal isOpen={createOpen} onClose={closeCreate} title={t("bo.proprietairePaiements.createTitle")}>

@@ -11,7 +11,7 @@ from app.models.lot import Lot, LotStatus
 from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.bail import BailCreate, BailUpdate
 from app.services.exceptions import BadRequest, Forbidden, NotFound
-from app.services.usage_service import enforce_limit
+from app.services.usage_service import enforce_limit, is_locataire_counted
 
 # Modifier ces champs romprait la cohérence avec des échéances déjà réglées
 # (montants générés à partir de l'ancien loyer, dates hors de la nouvelle
@@ -239,15 +239,15 @@ def create_bail(db: Session, current_user: Utilisateur, bail_in: BailCreate) -> 
 
     if bail_in.statut == BailStatus.ACTIF:
         enforce_limit(db, bien.proprietaire_id, "baux_actifs")
-    is_new_locataire = (
-        db.query(Bail)
-        .join(Lot, Lot.id == Bail.lot_id)
-        .join(Bien, Bien.id == Lot.bien_id)
-        .filter(Bien.proprietaire_id == bien.proprietaire_id, Bail.locataire_id == bail_in.locataire_id, Bail.deleted_at.is_(None))
-        .first()
-        is None
-    )
-    if is_new_locataire:
+    # Ne re-vérifie le quota locataires QUE si ce locataire n'est pas déjà compté
+    # dans l'usage du propriétaire (voir usage_service._counted_locataire_ids) —
+    # un locataire déjà onboardé (donc déjà compté) qui reçoit son premier bail ne
+    # consomme pas de nouvelle place. L'ancienne logique ("un bail existe-t-il
+    # déjà pour cette paire ?") le traitait à tort comme "nouveau" dans ce cas,
+    # bloquant à demeure l'attribution d'un bail au Nième locataire d'un plan
+    # max_locataires=N dès lors qu'il avait été créé (donc compté) avant le bail
+    # — le seul ordre possible, locataire_id devant déjà exister.
+    if not is_locataire_counted(db, bien.proprietaire_id, bail_in.locataire_id):
         enforce_limit(db, bien.proprietaire_id, "locataires")
 
     bail = Bail(**bail_in.model_dump())

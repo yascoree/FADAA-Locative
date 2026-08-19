@@ -3,18 +3,34 @@ import { notFound } from "next/navigation";
 import NavBar from "@/components/landing/NavBar";
 import Footer from "@/components/landing/Footer";
 import BlogPostBody from "@/components/blog/BlogPostBody";
-import { BLOG_POSTS, getAllBlogSlugs, getBlogPost } from "@/lib/blogPosts";
+import { API_BASE_URL } from "@/lib/apiClient";
 import { SITE_URL } from "../../layout";
 import styles from "@/components/blog/blog.module.css";
 import landingStyles from "../../landing.module.css";
 
-export function generateStaticParams() {
-  return getAllBlogSlugs().map((slug) => ({ slug }));
+async function loadPost(slug) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/blog/posts/${slug}`, { next: { revalidate: 60 } });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+async function loadPosts() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/blog/posts`, { next: { revalidate: 60 } });
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const post = await loadPost(slug);
   if (!post) return {};
   const url = `${SITE_URL}/blog/${post.slug}`;
   return {
@@ -27,8 +43,8 @@ export async function generateMetadata({ params }) {
       title: post.title,
       description: post.description,
       url,
-      publishedTime: post.publishedAt,
-      modifiedTime: post.updatedAt || post.publishedAt,
+      publishedTime: post.published_at,
+      modifiedTime: post.updated_at || post.published_at,
     },
     twitter: { title: post.title, description: post.description },
   };
@@ -40,7 +56,7 @@ function formatDate(value) {
 
 export default async function BlogPostPage({ params }) {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const post = await loadPost(slug);
   if (!post) notFound();
 
   const url = `${SITE_URL}/blog/${post.slug}`;
@@ -49,14 +65,15 @@ export default async function BlogPostPage({ params }) {
     "@type": "BlogPosting",
     headline: post.title,
     description: post.description,
-    datePublished: post.publishedAt,
-    dateModified: post.updatedAt || post.publishedAt,
+    datePublished: post.published_at,
+    dateModified: post.updated_at || post.published_at,
     author: { "@type": "Organization", name: "FADAA Locative" },
     publisher: { "@type": "Organization", name: "FADAA Locative", url: SITE_URL },
     mainEntityOfPage: url,
   };
 
-  const related = BLOG_POSTS.filter((p) => p.slug !== post.slug).slice(0, 2);
+  const allPosts = await loadPosts();
+  const related = allPosts.filter((p) => p.slug !== post.slug).slice(0, 2);
 
   return (
     <div className={landingStyles.page}>
@@ -69,12 +86,16 @@ export default async function BlogPostPage({ params }) {
           </Link>
           <h1 className={styles.articleTitle}>{post.title}</h1>
           <div className={styles.articleMeta}>
-            <span>{formatDate(post.publishedAt)}</span>
-            <span>·</span>
-            <span>{post.readingTime} de lecture</span>
+            <span>{formatDate(post.published_at)}</span>
+            {post.reading_time && (
+              <>
+                <span>·</span>
+                <span>{post.reading_time} de lecture</span>
+              </>
+            )}
           </div>
 
-          <BlogPostBody content={post.content} />
+          <BlogPostBody contentHtml={post.content_html} />
 
           <div className={styles.ctaBox}>
             <p>Envie de simplifier la gestion locative de vos biens ?</p>
@@ -87,7 +108,7 @@ export default async function BlogPostPage({ params }) {
             <div className={styles.grid} style={{ padding: "2.5rem 0 0", gridTemplateColumns: "1fr 1fr" }}>
               {related.map((p) => (
                 <Link key={p.slug} href={`/blog/${p.slug}`} className={styles.card}>
-                  <span className={styles.cardMeta}>{formatDate(p.publishedAt)}</span>
+                  <span className={styles.cardMeta}>{formatDate(p.published_at)}</span>
                   <h2 className={styles.cardTitle}>{p.title}</h2>
                 </Link>
               ))}

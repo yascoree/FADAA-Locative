@@ -18,6 +18,7 @@ from app.schemas.auth import (
 from app.schemas.utilisateur import UtilisateurCreate, UtilisateurRead
 from app.services import auth_service
 from app.services.exceptions import BadRequest, Forbidden
+from app.services.subscription_service import SubscriptionError
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -29,6 +30,8 @@ def register(utilisateur_in: UtilisateurCreate, db: Session = Depends(get_db)):
     try:
         return auth_service.register(db, utilisateur_in)
     except BadRequest as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except SubscriptionError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 

@@ -48,7 +48,7 @@ function lotThumb(lot) {
     `ownerName` et `lots`/`onSelectLot` sont optionnels : `ownerName` n'a de sens
     que côté agence (le propriétaire est déjà l'utilisateur courant), `lots` est
     fourni par la page qui sait déjà lesquels appartiennent à ce bien. */
-export default function BienDetailsModal({ bien, onClose, ownerName, lots, onSelectLot, canManageCharges }) {
+export default function BienDetailsModal({ bien, onClose, ownerName, lots, onSelectLot }) {
   if (!bien) return null;
 
   const photos = bien.photos || [];
@@ -119,7 +119,7 @@ export default function BienDetailsModal({ bien, onClose, ownerName, lots, onSel
         )}
       </div>
 
-      {canManageCharges !== undefined && <ChargesSection bienId={bien.id} canManage={canManageCharges} />}
+      <ChargesSection bienId={bien.id} />
 
       {lots && (
         <div className={styles.bienDetailsSection}>

@@ -11,7 +11,12 @@ import landingStyles from "../../landing.module.css";
 import styles from "./contact.module.css";
 
 const CONTACT_ICONS = ["bi-envelope", "bi-telephone", "bi-geo-alt", "bi-clock"];
-const CONTACT_HREFS = ["mailto:contact@fadaalocative.ma", "tel:+212500000000", null, null];
+const CONTACT_HREFS = [
+  "mailto:contact@fadaalocative.ma",
+  "tel:+212520735061",
+  "https://maps.app.goo.gl/cjEgpkUMvFVDhdxo7",
+  null,
+];
 
 // Index dans contact.subjects (même ordre dans les 3 langues) — utilisé pour
 // pré-sélectionner "Demande de démo" quand on arrive via ?subject=demo
@@ -164,7 +169,7 @@ export default function ContactContent() {
   const { t } = useLanguage();
   const CONTACT_INFO = [
     { icon: CONTACT_ICONS[0], label: t("contact.labelEmail"), value: "contact@fadaalocative.ma", href: CONTACT_HREFS[0] },
-    { icon: CONTACT_ICONS[1], label: t("contact.labelPhone"), value: "+212 5 00 00 00 00", href: CONTACT_HREFS[1] },
+    { icon: CONTACT_ICONS[1], label: t("contact.labelPhone"), value: "+212 520735061", href: CONTACT_HREFS[1] },
     { icon: CONTACT_ICONS[2], label: t("contact.labelAddress"), value: t("contact.addressValue"), href: CONTACT_HREFS[2] },
     { icon: CONTACT_ICONS[3], label: t("contact.labelHours"), value: t("contact.hoursValue"), href: CONTACT_HREFS[3] },
   ];
@@ -194,7 +199,16 @@ export default function ContactContent() {
               <div>
                 <p className={styles.infoLabel}>{info.label}</p>
                 <p className={styles.infoValue}>
-                  {info.href ? <a href={info.href}>{info.value}</a> : info.value}
+                  {info.href ? (
+                    <a
+                      href={info.href}
+                      {...(info.href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                    >
+                      {info.value}
+                    </a>
+                  ) : (
+                    info.value
+                  )}
                 </p>
               </div>
             </div>

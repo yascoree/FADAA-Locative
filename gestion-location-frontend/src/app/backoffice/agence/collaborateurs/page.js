@@ -41,6 +41,7 @@ const RESOURCE_ICONS = {
   LEASE: "bi-file-earmark-text",
   DUE_DATE: "bi-calendar-check",
   PAYMENT: "bi-cash-stack",
+  CHARGE: "bi-wallet2",
 };
 
 const RESOURCE_LABEL_KEYS = {
@@ -49,6 +50,7 @@ const RESOURCE_LABEL_KEYS = {
   LEASE: "bo.permissionCatalog.resourceLease",
   DUE_DATE: "bo.permissionCatalog.resourceDueDate",
   PAYMENT: "bo.permissionCatalog.resourcePayment",
+  CHARGE: "bo.permissionCatalog.resourceCharge",
 };
 
 function Banner({ banner }) {

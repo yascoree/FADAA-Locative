@@ -91,6 +91,7 @@ export default function ProprietaireBiensPage() {
 
   const [editingPhotos, setEditingPhotos] = useState([]);
   const [stagedFiles, setStagedFiles] = useState([]);
+  const [pendingRemovePhotoIds, setPendingRemovePhotoIds] = useState([]);
   const [photoBusy, setPhotoBusy] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -181,6 +182,7 @@ export default function ProprietaireBiensPage() {
     });
     setEditingPhotos(bien.photos || []);
     setStagedFiles([]);
+    setPendingRemovePhotoIds([]);
     setFormBanner(null);
     setFormOpen(true);
   }
@@ -188,6 +190,7 @@ export default function ProprietaireBiensPage() {
   function closeForm() {
     if (formBusy || photoBusy) return;
     stagedFiles.forEach((f) => URL.revokeObjectURL(f.preview));
+    setPendingRemovePhotoIds([]);
     setFormOpen(false);
   }
 
@@ -230,22 +233,13 @@ export default function ProprietaireBiensPage() {
     }
   }
 
-  async function handleRemoveExistingPhoto(photo) {
-    setPhotoBusy(true);
-    setFormBanner(null);
-    try {
-      await deleteBienPhoto(formTargetId, photo.id);
-      setEditingPhotos((prev) => prev.filter((p) => p.id !== photo.id));
-      setBiens((prev) =>
-        prev.map((b) =>
-          b.id === formTargetId ? { ...b, photos: (b.photos || []).filter((p) => p.id !== photo.id) } : b
-        )
-      );
-    } catch (err) {
-      setFormBanner({ type: "error", message: extractErrorMessage(err) });
-    } finally {
-      setPhotoBusy(false);
-    }
+  // La suppression réelle n'est effectuée qu'à la soumission du formulaire (voir
+  // handleSubmitForm) : ce clic ne fait que marquer/démarquer la photo localement,
+  // pour éviter qu'un simple clic sur la vignette supprime la photo sans confirmation.
+  function toggleRemoveExistingPhoto(photoId) {
+    setPendingRemovePhotoIds((prev) =>
+      prev.includes(photoId) ? prev.filter((id) => id !== photoId) : [...prev, photoId]
+    );
   }
 
   async function handleSubmitForm(e) {
@@ -285,7 +279,19 @@ export default function ProprietaireBiensPage() {
           statut: Number(formDraft.statut),
           valorisation: formDraft.valorisation === "" ? null : Number(formDraft.valorisation),
         });
-        setBiens((prev) => prev.map((b) => (b.id === updated.id ? { ...b, ...updated } : b)));
+        if (pendingRemovePhotoIds.length > 0) {
+          for (const photoId of pendingRemovePhotoIds) {
+            // eslint-disable-next-line no-await-in-loop
+            await deleteBienPhoto(formTargetId, photoId);
+          }
+        }
+        const remainingPhotos = (updated.photos || editingPhotos).filter(
+          (p) => !pendingRemovePhotoIds.includes(p.id)
+        );
+        setBiens((prev) =>
+          prev.map((b) => (b.id === updated.id ? { ...b, ...updated, photos: remainingPhotos } : b))
+        );
+        setPendingRemovePhotoIds([]);
       }
       setFormOpen(false);
     } catch (err) {
@@ -544,20 +550,27 @@ export default function ProprietaireBiensPage() {
             {t("bo.proprietaireBiens.photosLabel")}
             <div className={styles.photoGrid}>
               {formMode === "edit" &&
-                editingPhotos.map((photo) => (
-                  <div className={styles.photoThumb} key={photo.id}>
-                    <img src={photoUrl(photo.url)} alt="" />
-                    <button
-                      type="button"
-                      className={styles.photoRemoveBtn}
-                      onClick={() => handleRemoveExistingPhoto(photo)}
-                      disabled={photoBusy}
-                      title={t("bo.proprietaireBiens.removePhotoTitle")}
-                    >
-                      <i className="bi bi-x" />
-                    </button>
-                  </div>
-                ))}
+                editingPhotos.map((photo) => {
+                  const pendingRemove = pendingRemovePhotoIds.includes(photo.id);
+                  return (
+                    <div className={styles.photoThumb} key={photo.id} style={{ opacity: pendingRemove ? 0.4 : 1 }}>
+                      <img src={photoUrl(photo.url)} alt="" />
+                      <button
+                        type="button"
+                        className={styles.photoRemoveBtn}
+                        onClick={() => toggleRemoveExistingPhoto(photo.id)}
+                        disabled={photoBusy}
+                        title={t(
+                          pendingRemove
+                            ? "bo.proprietaireBiens.restorePhotoTitle"
+                            : "bo.proprietaireBiens.removePhotoTitle"
+                        )}
+                      >
+                        <i className={`bi ${pendingRemove ? "bi-arrow-counterclockwise" : "bi-x"}`} />
+                      </button>
+                    </div>
+                  );
+                })}
               {formMode === "create" &&
                 stagedFiles.map((staged, index) => (
                   <div className={styles.photoThumb} key={staged.preview}>
@@ -626,7 +639,6 @@ export default function ProprietaireBiensPage() {
         bien={detailsTarget}
         onClose={() => setDetailsTarget(null)}
         lots={detailsTarget ? lots.filter((l) => l.bien_id === detailsTarget.id) : null}
-        canManageCharges
       />
     </div>
   );

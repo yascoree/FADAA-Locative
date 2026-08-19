@@ -161,26 +161,52 @@
   line-height: 1.75;
 }
 
-.postP {
+.postBody p {
   margin: 0 0 1.2rem;
   color: var(--text);
 }
 
-.postH2 {
+.postBody h2 {
   font-size: 1.3rem;
   font-weight: 750;
   color: var(--secondary);
   margin: 2.2rem 0 1rem;
 }
 
-.postList {
+.postBody h3 {
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: var(--secondary);
+  margin: 1.8rem 0 0.8rem;
+}
+
+.postBody ul,
+.postBody ol {
   margin: 0 0 1.2rem;
   padding-left: 1.3rem;
 }
 
-.postList li {
+.postBody li {
   margin-bottom: 0.5rem;
   color: var(--text);
+}
+
+.postBody a {
+  color: var(--primary-dark);
+  text-decoration: underline;
+}
+
+.postBody blockquote {
+  margin: 0 0 1.2rem;
+  padding-left: 1rem;
+  border-left: 3px solid var(--border);
+  color: var(--text-muted);
+}
+
+.postBody img {
+  max-width: 100%;
+  border-radius: 12px;
+  margin: 0.5rem 0 1.2rem;
 }
 
 .ctaBox {

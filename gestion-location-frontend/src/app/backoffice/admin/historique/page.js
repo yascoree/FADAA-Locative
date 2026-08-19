@@ -10,10 +10,93 @@ import Drawer from "@/components/Drawer";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "../admin.module.css";
 
+const ISO_DATETIME_RE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/;
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Les snapshots avant/après sont des colonnes SQL brutes (voir diffKeys
+// ci-dessous) — ni les noms de champs ni les valeurs enum ne sont traduits par
+// le backend, d'où ce lexique best-effort plutôt qu'un JSON illisible.
+const KEY_LABELS = {
+  id: "ID",
+  statut: "Statut",
+  statut_compte: "Statut du compte",
+  role: "Rôle",
+  nom: "Nom",
+  prenom: "Prénom",
+  email: "Email",
+  telephone: "Téléphone",
+  montant: "Montant",
+  description: "Description",
+  commentaire: "Commentaire",
+  titre: "Titre",
+  title: "Titre",
+  slug: "Slug",
+  note: "Note",
+  adresse: "Adresse",
+  ville: "Ville",
+  code_postal: "Code postal",
+  date_creation: "Créé le",
+  date_sent: "Envoyé le",
+  created_at: "Créé le",
+  updated_at: "Dernière modification",
+  deleted_at: "Supprimé le",
+  date_debut: "Date de début",
+  date_fin: "Date de fin",
+  date_echeance: "Date d'échéance",
+  date_paiement: "Date de paiement",
+  user_id: "Utilisateur",
+  proprietaire_id: "Propriétaire",
+  locataire_id: "Locataire",
+  agence_id: "Agence",
+  bien_id: "Bien",
+  lot_id: "Lot",
+  bail_id: "Bail",
+};
+
+function humanizeKey(key) {
+  if (KEY_LABELS[key]) return KEY_LABELS[key];
+  return key
+    .replace(/_id$/, "")
+    .split("_")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+// Les statuts/enums arrivent tels quels depuis la base (ex: "EN_ATTENTE",
+// "PUBLIE") — on ne connaît pas ici la traduction exacte de chaque enum de
+// chaque module, donc on se contente d'une mise en forme lisible plutôt que
+// d'afficher la constante brute en majuscules.
+function prettifyEnumLike(value) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 function formatValue(v) {
   if (v === null || v === undefined || v === "") return "—";
-  if (typeof v === "boolean") return v ? "true" : "false";
+  if (typeof v === "boolean") return v ? "Oui" : "Non";
   if (typeof v === "object") return JSON.stringify(v);
+  if (typeof v === "string") {
+    if (ISO_DATETIME_RE.test(v)) {
+      return new Date(v).toLocaleString("fr-FR", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+    if (ISO_DATE_RE.test(v)) {
+      return new Date(v).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+    }
+    if (/^[A-Z][A-Z0-9_]*$/.test(v)) {
+      return prettifyEnumLike(v);
+    }
+  }
   return String(v);
 }
 
@@ -332,7 +415,7 @@ export default function AdminHistoriquePage() {
                     </div>
                     {keys.map((k) => (
                       <div className={styles.diffRow} key={k}>
-                        <span className={styles.diffLabel}>{k}</span>
+                        <span className={styles.diffLabel}>{humanizeKey(k)}</span>
                         <span className={styles.diffBefore}>{formatValue(oldValues[k])}</span>
                         <i className="bi bi-arrow-right" />
                         <span className={styles.diffAfter}>{formatValue(newValues[k])}</span>
@@ -354,7 +437,7 @@ export default function AdminHistoriquePage() {
                     .filter(([k]) => k !== "id")
                     .map(([k, v]) => (
                       <div className={styles.diffRow} key={k}>
-                        <span className={styles.diffLabel}>{k}</span>
+                        <span className={styles.diffLabel}>{humanizeKey(k)}</span>
                         <span className={styles.diffAfter}>{formatValue(v)}</span>
                       </div>
                     ))}

@@ -28,6 +28,18 @@ def _get_trial_plan(db: Session) -> SubscriptionPlan:
     return plan
 
 
+def ensure_trial_plan_available(db: Session) -> None:
+    """Fail fast, BEFORE any write, when a new PROPRIETAIRE account is about to be
+    created — the three callers (auth_service.register, utilisateur_service.
+    create_utilisateur, invitation_client_service.create_invitation) all commit
+    the new Utilisateur row and only then call create_trial_subscription. If no
+    active trial plan exists, that call raises SubscriptionError *after* the
+    account is already committed, leaving an orphaned user with no subscription.
+    Calling this first means the whole request raises before a single row is
+    written, so nothing is ever left orphaned."""
+    _get_trial_plan(db)
+
+
 def create_trial_subscription(db: Session, owner_id: int) -> Subscription:
     """Called right after a property owner registers: assigns the Trial plan for
     duration_days, starting now. Idempotent — returns the existing subscription

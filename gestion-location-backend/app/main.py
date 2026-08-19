@@ -10,6 +10,7 @@ from app.api import (
     avis,
     baux,
     biens,
+    blog_posts,
     categories,
     charges,
     contact_messages,
@@ -93,6 +94,7 @@ app.include_router(partenaires.router)
 app.include_router(reclamations.router)
 app.include_router(demandes_demo.router)
 app.include_router(contact_messages.router)
+app.include_router(blog_posts.router)
 app.include_router(stats.router)
 app.include_router(historique.router)
 

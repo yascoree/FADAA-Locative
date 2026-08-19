@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "@/app/landing.module.css";
 
-// Accueil et À propos pointent vers la landing page ("/" et "#apropos") : si on y est
+// Accueil et Avis pointent vers la landing page ("/" et "#avis") : si on y est
 // déjà, on scrolle nous-mêmes (même logique que NavBar) ; sinon Link navigue normalement
 // et la landing page se charge de scroller au montage (voir l'effet sur le hash dans page.js).
 const NAV_LINKS = [
   { href: "/", sectionId: null },
-  { href: "/#apropos", sectionId: "apropos" },
+  { href: "/#avis", sectionId: "avis" },
   { href: "/front/contact", sectionId: null },
 ];
 
@@ -101,9 +101,14 @@ export default function Footer() {
           <a href="mailto:contact@fadaa.ma" className={styles.footerContactRow}>
             <i className="bi bi-envelope" /> contact@fadaa.ma
           </a>
-          <span className={`${styles.footerAddress} ${styles.footerContactRow}`}>
+          <a
+            href={`https://maps.app.goo.gl/cjEgpkUMvFVDhdxo7`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`${styles.footerAddress} ${styles.footerContactRow}`}
+          >
             <i className="bi bi-geo-alt" /> {t("footer.address")}
-          </span>
+          </a>
         </div>
       </div>
 

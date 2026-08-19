@@ -6,6 +6,7 @@ import Link from "next/link";
 import { extractErrorMessage } from "@/lib/apiClient";
 import { resetPassword } from "@/lib/passwordReset";
 import LogoIcon from "@/components/LogoIcon";
+import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
 import styles from "../login/login.module.css";
 
 export default function ResetPasswordContent() {
@@ -98,6 +99,7 @@ export default function ResetPasswordContent() {
                     autoComplete="new-password"
                     required
                   />
+                  <PasswordStrengthMeter password={password} />
                 </div>
                 <div className={styles.field}>
                   <label htmlFor="confirm-password">Confirmer le mot de passe</label>

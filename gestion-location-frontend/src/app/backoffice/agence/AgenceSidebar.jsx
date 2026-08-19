@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { API_BASE_URL } from "@/lib/apiClient";
 import { fetchNotifications, NOTIFICATION_STATUS, NOTIFICATION_TYPE, NOTIFICATIONS_CHANGED_EVENT } from "@/lib/notifications";
+import { fetchMyAgence, fetchAgenceMembers, ROLE_AGENCE } from "@/lib/agences";
 import LogoIcon from "@/components/LogoIcon";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "./agence.module.css";
@@ -81,6 +82,25 @@ export default function AgenceSidebar({ user, onLogout }) {
   const itemRefs = useRef({});
   const [bubble, setBubble] = useState(null);
   const [badges, setBadges] = useState({ discussions: 0, notifications: 0, maintenance: 0 });
+  const [roleAgence, setRoleAgence] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadOwnRole() {
+      try {
+        const agence = await fetchMyAgence();
+        const membres = await fetchAgenceMembers(agence.id);
+        const own = membres.find((m) => m.utilisateur?.id === user?.id);
+        if (!cancelled && own) setRoleAgence(own.role_agence);
+      } catch {
+        // Le libellé générique reste affiché en cas d'échec — pas critique pour la sidebar.
+      }
+    }
+    if (user?.id) loadOwnRole();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -176,7 +196,13 @@ export default function AgenceSidebar({ user, onLogout }) {
           <span className={styles.userName}>
             {user?.prenom} {user?.nom}
           </span>
-          <span className={styles.userRole}>{t("bo.agenceSidebar.role")}</span>
+          <span className={styles.userRole}>
+            {roleAgence === ROLE_AGENCE.ADMIN
+              ? t("bo.agenceSidebar.roleAdmin")
+              : roleAgence === ROLE_AGENCE.MEMBRE
+                ? t("bo.agenceSidebar.roleMembre")
+                : t("bo.agenceSidebar.role")}
+          </span>
         </div>
         <button type="button" className={styles.logoutButton} onClick={onLogout} title={t("bo.common.logout")}>
           <i className="bi bi-box-arrow-right" />
