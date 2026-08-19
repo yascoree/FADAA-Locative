@@ -4141,6 +4141,28 @@
   font-weight: 650;
   color: var(--text);
   margin-top: 0.2rem;
+  flex-wrap: wrap;
+}
+
+/* Pastille de type (Démo/Message) compacte pour tenir dans la ligne de sujet
+   d'une carte d'inbox — réutilise la palette de .planPill(Terracotta|Navy)
+   plutôt que d'inventer de nouvelles couleurs. */
+.msgTypeBadgeSm {
+  font-size: 0.64rem;
+  font-weight: 750;
+  padding: 0.15rem 0.55rem;
+  gap: 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.messageCardDemoDate {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--tone-terracotta-dark);
 }
 
 .messageCardDot {
@@ -4189,6 +4211,132 @@
   line-height: 1.65;
   color: var(--text);
   white-space: pre-wrap;
+}
+
+/* ---------- Inbox contact/démo : vue à deux volets (liste + détail) ---------- */
+
+.focusDemoBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.focusDemoBtn:hover {
+  transform: translateY(-1px);
+}
+
+.focusDemoBtnActive {
+  background: linear-gradient(135deg, var(--tone-terracotta), var(--tone-terracotta-dark));
+  color: #fff;
+}
+
+.inboxShell {
+  display: grid;
+  grid-template-columns: minmax(360px, 1.3fr) minmax(320px, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .inboxShell {
+    grid-template-columns: 1fr;
+  }
+}
+
+.inboxList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  max-height: min(74vh, 760px);
+  overflow-y: auto;
+  padding-right: 0.3rem;
+}
+
+.inboxDetail {
+  position: sticky;
+  top: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5rem;
+  max-height: min(74vh, 760px);
+  overflow-y: auto;
+}
+
+@media (max-width: 960px) {
+  .inboxDetail {
+    position: static;
+  }
+}
+
+.inboxDetailEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.6rem;
+  min-height: 320px;
+  color: var(--text-muted);
+}
+
+.inboxDetailEmpty i {
+  font-size: 1.8rem;
+  opacity: 0.5;
+}
+
+.inboxDetailHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.inboxDetailIdentity {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.inboxDetailTags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+
+.inboxDetailFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-top: 1.4rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.inboxDetailFooterLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  margin-bottom: 0.3rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

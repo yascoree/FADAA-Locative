@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { extractErrorMessage, API_BASE_URL } from "@/lib/apiClient";
 import { useAuth } from "@/context/AuthContext";
 import { fetchUsers } from "@/lib/subscriptions";
@@ -74,12 +75,13 @@ export default function AdminMessageriePage() {
   const { t } = useLanguage();
   const TABS = useMemo(() => buildTabs(t), [t]);
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const userParam = searchParams.get("user");
+  const tabParam = searchParams.get("tab");
   const ROLE_LABELS = useMemo(() => roleLabels(t), [t]);
   const [activeTab, setActiveTab] = useState(() => {
-    if (typeof window === "undefined") return "reclamations";
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("user")) return "conversations";
-    return params.get("tab") === "conversations" ? "conversations" : "reclamations";
+    if (userParam) return "conversations";
+    return tabParam === "conversations" ? "conversations" : "reclamations";
   });
   const tabRefs = useRef({});
   const [tabIndicator, setTabIndicator] = useState(null);
@@ -94,11 +96,7 @@ export default function AdminMessageriePage() {
   const [reclamationBusyId, setReclamationBusyId] = useState(null);
 
   const [contactSearch, setContactSearch] = useState("");
-  const [selectedId, setSelectedId] = useState(() => {
-    if (typeof window === "undefined") return null;
-    const raw = new URLSearchParams(window.location.search).get("user");
-    return raw ? Number(raw) : null;
-  });
+  const [selectedId, setSelectedId] = useState(() => (userParam ? Number(userParam) : null));
   const [draft, setDraft] = useState("");
   const [sendBusy, setSendBusy] = useState(false);
   const [sendError, setSendError] = useState(null);
@@ -106,6 +104,27 @@ export default function AdminMessageriePage() {
   const [stagedAttachment, setStagedAttachment] = useState(null);
 
   const messagesEndRef = useRef(null);
+
+  // Les useState ci-dessus ne lisent ?user=/?tab= qu'au tout premier montage —
+  // si on navigue vers cette page une seconde fois pendant que le composant
+  // est déjà monté (ex: depuis la fiche d'un utilisateur, en étant déjà passé
+  // par Messagerie plus tôt dans la session), Next.js réutilise l'instance
+  // existante et ces initialisateurs ne se redéclenchent pas : la conversation
+  // n'était donc "prise directement" qu'à la toute première visite. Ajustement
+  // pendant le rendu plutôt que dans un effet (voir "Adjusting state when a
+  // prop changes" — react.dev) : resynchronise l'onglet et le contact
+  // sélectionné dès que ?user= change, sans le rendu intermédiaire obsolète
+  // qu'un useEffect provoquerait.
+  const [syncedUserParam, setSyncedUserParam] = useState(userParam);
+  if (userParam !== syncedUserParam) {
+    setSyncedUserParam(userParam);
+    if (userParam) {
+      setSelectedId(Number(userParam));
+      setActiveTab("conversations");
+    } else if (tabParam === "conversations") {
+      setActiveTab("conversations");
+    }
+  }
 
   useEffect(() => {
     async function init() {

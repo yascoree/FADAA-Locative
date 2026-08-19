@@ -1,24 +1,53 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { extractErrorMessage } from "@/lib/apiClient";
-import {
-  fetchDemandesDemo,
-  updateDemandeDemoStatut,
-  DEMANDE_DEMO_STATUS,
-  DEMANDE_DEMO_STATUS_LABELS,
-} from "@/lib/demandesDemo";
-import {
-  fetchContactMessages,
-  updateContactMessageStatut,
-  CONTACT_MESSAGE_STATUS,
-  CONTACT_MESSAGE_STATUS_LABELS,
-} from "@/lib/contactMessages";
+import { fetchDemandesDemo, updateDemandeDemoStatut, DEMANDE_DEMO_STATUS } from "@/lib/demandesDemo";
+import { fetchContactMessages, updateContactMessageStatut, CONTACT_MESSAGE_STATUS } from "@/lib/contactMessages";
 import StatCard from "@/components/StatCard";
 import CountUp from "@/components/CountUp";
-import Drawer from "@/components/Drawer";
+import FilterSelect from "@/components/FilterSelect";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "../admin.module.css";
+
+// Le formulaire de contact public stocke le sujet choisi tel quel (texte
+// affiché dans le <select>, pas un code stable — voir ContactContent.jsx),
+// dans la langue du visiteur au moment de l'envoi. Cette table associe chaque
+// variante connue (fr/en/ar) à une clé de sujet stable, utilisée pour trier/
+// filtrer et pour l'icône + la couleur affichées, indépendamment de la langue
+// d'origine du message. Le modèle DemandeDemo dédié (table/endpoint séparés,
+// legacyDemo: true) reste lu en parallèle pour les demandes plus anciennes
+// envoyées avant que ce formulaire ne soit unifié — sans champ sujet, donc
+// toujours classées "demo".
+const SUBJECT_VARIANTS = {
+  info: ["demande d'information", "information request", "طلب معلومات"],
+  demo: ["demande de démo", "demo request", "طلب عرض توضيحي"],
+  support: ["support / assistance", "الدعم / المساعدة"],
+  partnership: ["partenariat", "partnership", "شراكة"],
+  press: ["presse", "press", "صحافة"],
+  other: ["autre", "other", "أخرى"],
+};
+const SUBJECT_LOOKUP = new Map();
+Object.entries(SUBJECT_VARIANTS).forEach(([key, variants]) => {
+  variants.forEach((v) => SUBJECT_LOOKUP.set(v, key));
+});
+
+function subjectKeyOf(sujet) {
+  if (!sujet) return "demo";
+  return SUBJECT_LOOKUP.get(sujet.trim().toLowerCase()) || "other";
+}
+
+function buildSubjectMeta(t) {
+  return {
+    info: { label: t("bo.adminContact.subjectInfo"), icon: "bi-info-circle", tone: "Navy" },
+    demo: { label: t("bo.adminContact.subjectDemo"), icon: "bi-calendar2-check", tone: "Olive" },
+    support: { label: t("bo.adminContact.subjectSupport"), icon: "bi-headset", tone: "Charcoal" },
+    partnership: { label: t("bo.adminContact.subjectPartnership"), icon: "bi-briefcase", tone: "Terracotta" },
+    press: { label: t("bo.adminContact.subjectPress"), icon: "bi-newspaper", tone: "Navy" },
+    other: { label: t("bo.adminContact.subjectOther"), icon: "bi-three-dots", tone: "Charcoal" },
+  };
+}
 
 function Banner({ banner }) {
   if (!banner) return null;
@@ -34,73 +63,63 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-function demandeBadgeClass(statut) {
-  if (statut === DEMANDE_DEMO_STATUS.CONTACTEE) return styles.badgeActive;
-  return styles.badgeSuspended;
+function timeAgo(value, t) {
+  const minutes = Math.floor((Date.now() - new Date(value).getTime()) / 60000);
+  if (minutes < 1) return t("bo.adminContact.timeAgoNow");
+  if (minutes < 60) return t("bo.adminContact.timeAgoMinutes", { count: minutes });
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return t("bo.adminContact.timeAgoHours", { count: hours });
+  return t("bo.adminContact.timeAgoDays", { count: Math.floor(hours / 24) });
 }
 
-function contactMessageBadgeClass(statut) {
-  if (statut === CONTACT_MESSAGE_STATUS.TRAITE) return styles.badgeActive;
-  return styles.badgeSuspended;
+function initialsFromName(fullName) {
+  const parts = (fullName || "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
-function contactInitialsOf(m) {
-  return `${m.prenom?.[0] || ""}${m.nom?.[0] || ""}`.toUpperCase() || "?";
+function statusMetaOf(item, t) {
+  if (item.isNew) return { label: t("bo.adminContact.statusNew"), cls: styles.badgeSuspended };
+  if (item.inProgress) return { label: t("bo.adminContact.statusInProgress"), cls: styles.badgeWarning };
+  return { label: t("bo.adminContact.statusTreated"), cls: styles.badgeActive };
 }
-
-function buildTabs(t) {
-  return [
-    { key: "demandes", label: t("bo.adminContact.tabDemandes"), icon: "bi-calendar2-check" },
-    { key: "contact", label: t("bo.adminContact.tabMessages"), icon: "bi-envelope-paper" },
-  ];
-}
-
-const buildDemandeFilters = (t) => [
-  { value: "all", label: t("bo.adminDemandesDemo.filterAll") },
-  { value: DEMANDE_DEMO_STATUS.NOUVELLE, label: t("bo.adminDemandesDemo.filterNew") },
-  { value: DEMANDE_DEMO_STATUS.CONTACTEE, label: t("bo.adminDemandesDemo.filterContacted") },
-];
-
-const buildContactFilters = (t) => [
-  { value: "all", label: t("bo.adminMessagesContact.filterAll") },
-  { value: CONTACT_MESSAGE_STATUS.NOUVEAU, label: t("bo.adminMessagesContact.filterNew") },
-  { value: CONTACT_MESSAGE_STATUS.TRAITE, label: t("bo.adminMessagesContact.filterTreated") },
-];
 
 export default function AdminContactPage() {
   const { t } = useLanguage();
-  const TABS = useMemo(() => buildTabs(t), [t]);
-  const DEMANDE_FILTERS = useMemo(() => buildDemandeFilters(t), [t]);
-  const CONTACT_FILTERS = useMemo(() => buildContactFilters(t), [t]);
+  const SUBJECT_META = useMemo(() => buildSubjectMeta(t), [t]);
 
-  const [activeTab, setActiveTab] = useState(() => {
-    if (typeof window === "undefined") return "demandes";
-    const tab = new URLSearchParams(window.location.search).get("tab");
-    return tab === "contact" ? tab : "demandes";
-  });
-  const tabRefs = useRef({});
-  const [tabIndicator, setTabIndicator] = useState(null);
+  // Permet un lien direct vers un type précis (ex: depuis une notification
+  // "Nouvelle demande de démo" — voir TYPE_TARGET dans notifications/page.js).
+  const searchParams = useSearchParams();
+  const typeParam = searchParams.get("type");
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
+  const [banner, setBanner] = useState(null);
+  const [busyKey, setBusyKey] = useState(null);
 
-  // ---- Demandes de démo ----
   const [demandes, setDemandes] = useState([]);
-  const [demandeFilter, setDemandeFilter] = useState(DEMANDE_DEMO_STATUS.NOUVELLE);
-  const [demandeBanner, setDemandeBanner] = useState(null);
-  const [demandeBusyId, setDemandeBusyId] = useState(null);
-  const demandeTabRefs = useRef([]);
-  const [demandeIndicator, setDemandeIndicator] = useState({ left: 0, width: 0 });
-
-  // ---- Messages de contact ----
   const [contactMessages, setContactMessages] = useState([]);
-  const [contactBanner, setContactBanner] = useState(null);
-  const [contactBusyId, setContactBusyId] = useState(null);
-  const [contactSearch, setContactSearch] = useState("");
-  const [contactStatusFilter, setContactStatusFilter] = useState(CONTACT_MESSAGE_STATUS.NOUVEAU);
-  const [contactSelectedId, setContactSelectedId] = useState(null);
-  const contactTabRefs = useRef([]);
-  const [contactIndicator, setContactIndicator] = useState({ left: 0, width: 0 });
+
+  const [subjectFilter, setSubjectFilter] = useState(() => (typeParam === "demo" ? "demo" : "all"));
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("recent");
+  const [search, setSearch] = useState("");
+  const [selectedKey, setSelectedKey] = useState(null);
+
+  // Le useState ci-dessus ne lit ?type= qu'au tout premier montage — si on
+  // clique une 2e notification pendant que la page est déjà montée, Next.js
+  // réutilise l'instance et l'initialisateur ne se redéclenche pas (même
+  // piège que sur Messagerie). Ajustement pendant le rendu plutôt que dans un
+  // effet.
+  const [syncedTypeParam, setSyncedTypeParam] = useState(typeParam);
+  if (typeParam !== syncedTypeParam) {
+    setSyncedTypeParam(typeParam);
+    if (typeParam === "demo") {
+      setSubjectFilter("demo");
+    }
+  }
 
   useEffect(() => {
     async function init() {
@@ -118,92 +137,123 @@ export default function AdminContactPage() {
     init();
   }, []);
 
-  useEffect(() => {
-    const el = tabRefs.current[activeTab];
-    if (!el) return;
-    setTabIndicator({ width: el.offsetWidth, left: el.offsetLeft });
-  }, [activeTab, isLoading]);
+  const unified = useMemo(() => {
+    const fromDemandes = demandes.map((d) => ({
+      key: `demo-${d.id}`,
+      rawId: d.id,
+      legacyDemo: true,
+      subjectKey: "demo",
+      name: d.nom,
+      email: d.email,
+      telephone: d.telephone,
+      dateSouhaitee: d.date_souhaitee,
+      message: d.message,
+      date_creation: d.date_creation,
+      isNew: d.statut === DEMANDE_DEMO_STATUS.NOUVELLE,
+      inProgress: d.statut === DEMANDE_DEMO_STATUS.EN_COURS,
+    }));
+    const fromContact = contactMessages.map((m) => ({
+      key: `contact-${m.id}`,
+      rawId: m.id,
+      legacyDemo: false,
+      subjectKey: subjectKeyOf(m.sujet),
+      name: `${m.prenom} ${m.nom}`.trim(),
+      email: m.email,
+      telephone: m.telephone,
+      dateSouhaitee: null,
+      message: m.message,
+      date_creation: m.date_creation,
+      isNew: m.statut === CONTACT_MESSAGE_STATUS.NOUVEAU,
+      inProgress: m.statut === CONTACT_MESSAGE_STATUS.EN_COURS,
+    }));
+    return [...fromDemandes, ...fromContact];
+  }, [demandes, contactMessages]);
 
-  const demandeCounts = useMemo(() => {
-    const nouvelles = demandes.filter((d) => d.statut === DEMANDE_DEMO_STATUS.NOUVELLE).length;
-    return { nouvelles, contactees: demandes.length - nouvelles, total: demandes.length };
-  }, [demandes]);
+  const stats = useMemo(() => {
+    const total = unified.length;
+    const nouveaux = unified.filter((i) => i.isNew).length;
+    const demoTotal = unified.filter((i) => i.subjectKey === "demo").length;
+    const demoNouvelles = unified.filter((i) => i.subjectKey === "demo" && i.isNew).length;
+    const traites = unified.filter((i) => !i.isNew && !i.inProgress).length;
+    return { total, nouveaux, demoTotal, demoNouvelles, traites };
+  }, [unified]);
 
-  const filteredDemandes = useMemo(() => {
-    if (demandeFilter === "all") return demandes;
-    return demandes.filter((d) => d.statut === demandeFilter);
-  }, [demandes, demandeFilter]);
-
-  useEffect(() => {
-    const activeIndex = DEMANDE_FILTERS.findIndex((f) => f.value === demandeFilter);
-    const el = demandeTabRefs.current[activeIndex];
-    if (el) {
-      setDemandeIndicator({ left: el.offsetLeft, width: el.offsetWidth });
-    }
-  }, [demandeFilter, demandeCounts.nouvelles, DEMANDE_FILTERS, isLoading, activeTab]);
-
-  async function handleMarkContactee(demande) {
-    setDemandeBanner(null);
-    setDemandeBusyId(demande.id);
-    try {
-      const updated = await updateDemandeDemoStatut(demande.id, DEMANDE_DEMO_STATUS.CONTACTEE);
-      setDemandes((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
-    } catch (err) {
-      setDemandeBanner({ type: "error", message: extractErrorMessage(err) });
-    } finally {
-      setDemandeBusyId(null);
-    }
-  }
-
-  const contactStats = useMemo(
-    () => ({
-      total: contactMessages.length,
-      nouveaux: contactMessages.filter((m) => m.statut === CONTACT_MESSAGE_STATUS.NOUVEAU).length,
-      traites: contactMessages.filter((m) => m.statut === CONTACT_MESSAGE_STATUS.TRAITE).length,
-    }),
-    [contactMessages]
+  const STATUS_FILTERS = useMemo(
+    () => [
+      { value: "all", label: t("bo.adminContact.filterStatusAll") },
+      { value: "new", label: t("bo.adminContact.filterStatusNew") },
+      { value: "inProgress", label: t("bo.adminContact.statusInProgress") },
+      { value: "done", label: t("bo.adminContact.filterStatusTreated") },
+    ],
+    [t]
   );
 
-  const filteredContactMessages = useMemo(() => {
-    const term = contactSearch.trim().toLowerCase();
-    return contactMessages.filter((m) => {
+  const SUBJECT_FILTER_OPTIONS = useMemo(
+    () => [
+      { value: "all", label: t("bo.adminContact.filterAllSubjects") },
+      ...Object.entries(SUBJECT_META).map(([key, meta]) => ({ value: key, label: meta.label })),
+    ],
+    [SUBJECT_META, t]
+  );
+
+  const SORT_OPTIONS_LOCAL = useMemo(
+    () => [
+      { value: "recent", label: t("bo.adminContact.sortRecent") },
+      { value: "oldest", label: t("bo.adminContact.sortOldest") },
+    ],
+    [t]
+  );
+
+  const STATUS_VALUE_OPTIONS = useMemo(
+    () => [
+      { value: "1", label: t("bo.adminContact.statusNew") },
+      { value: "3", label: t("bo.adminContact.statusInProgress") },
+      { value: "2", label: t("bo.adminContact.statusTreated") },
+    ],
+    [t]
+  );
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const list = unified.filter((item) => {
+      if (subjectFilter !== "all" && item.subjectKey !== subjectFilter) return false;
+      if (statusFilter === "new" && !item.isNew) return false;
+      if (statusFilter === "inProgress" && !item.inProgress) return false;
+      if (statusFilter === "done" && (item.isNew || item.inProgress)) return false;
       if (term) {
-        const haystack = [m.prenom, m.nom, m.email, m.telephone, m.sujet, m.message]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
+        const haystack = [item.name, item.email, item.telephone, item.message].filter(Boolean).join(" ").toLowerCase();
         if (!haystack.includes(term)) return false;
       }
-      if (contactStatusFilter !== "all" && m.statut !== contactStatusFilter) return false;
       return true;
     });
-  }, [contactMessages, contactSearch, contactStatusFilter]);
+    return [...list].sort((a, b) => {
+      const diff = new Date(b.date_creation) - new Date(a.date_creation);
+      return sortOrder === "recent" ? diff : -diff;
+    });
+  }, [unified, subjectFilter, statusFilter, search, sortOrder]);
 
-  useEffect(() => {
-    const activeIndex = CONTACT_FILTERS.findIndex((f) => f.value === contactStatusFilter);
-    const el = contactTabRefs.current[activeIndex];
-    if (el) {
-      setContactIndicator({ left: el.offsetLeft, width: el.offsetWidth });
-    }
-  }, [contactStatusFilter, contactStats.nouveaux, CONTACT_FILTERS, isLoading, activeTab]);
+  const selected = unified.find((item) => item.key === selectedKey) || null;
 
-  const contactSelected = contactMessages.find((m) => m.id === contactSelectedId) || null;
-
-  async function handleMarkContactTraite(message) {
-    setContactBanner(null);
-    setContactBusyId(message.id);
+  async function handleStatusChange(item, nextValue) {
+    setBanner(null);
+    setBusyKey(item.key);
     try {
-      const updated = await updateContactMessageStatut(message.id, CONTACT_MESSAGE_STATUS.TRAITE);
-      setContactMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      if (item.legacyDemo) {
+        const updated = await updateDemandeDemoStatut(item.rawId, Number(nextValue));
+        setDemandes((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+      } else {
+        const updated = await updateContactMessageStatut(item.rawId, Number(nextValue));
+        setContactMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      }
     } catch (err) {
-      setContactBanner({ type: "error", message: extractErrorMessage(err) });
+      setBanner({ type: "error", message: extractErrorMessage(err) });
     } finally {
-      setContactBusyId(null);
+      setBusyKey(null);
     }
   }
 
   if (isLoading) {
-    return <p>{t("bo.common.loading")}</p>;
+    return <p>{t("bo.adminContact.loading")}</p>;
   }
 
   return (
@@ -211,340 +261,211 @@ export default function AdminContactPage() {
       {loadError && <div className={`${styles.banner} ${styles.bannerError}`}>{loadError}</div>}
 
       <div className={styles.section} style={{ marginBottom: 0 }}>
-        <h2 className={styles.sectionTitle}>
-          <i className="bi bi-envelope-paper-fill" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
-          {t("bo.adminContact.title")}
-        </h2>
-        <p className={styles.sectionSubtitle}>{t("bo.adminContact.subtitle")}</p>
-
-        <div className={styles.archTabs}>
-          {tabIndicator && (
-            <span
-              className={styles.archTabBubble}
-              style={{ width: `${tabIndicator.width}px`, transform: `translateX(${tabIndicator.left}px)` }}
-            />
-          )}
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              ref={(el) => {
-                tabRefs.current[tab.key] = el;
-              }}
-              type="button"
-              className={`${styles.archTab} ${activeTab === tab.key ? styles.archTabActive : ""}`}
-              onClick={() => setActiveTab(tab.key)}
-            >
-              <i className={`bi ${tab.icon}`} />
-              {tab.label}
-              {tab.key === "demandes" && demandeCounts.nouvelles > 0 && (
-                <span className={styles.archTabBadge}>{demandeCounts.nouvelles}</span>
-              )}
-              {tab.key === "contact" && contactStats.nouveaux > 0 && (
-                <span className={styles.archTabBadge}>{contactStats.nouveaux}</span>
-              )}
-            </button>
-          ))}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
+          <div>
+            <h2 className={styles.sectionTitle}>
+              <i className="bi bi-envelope-paper-fill" style={{ marginRight: "0.5rem", color: "var(--primary)" }} />
+              {t("bo.adminContact.title")}
+            </h2>
+            <p className={styles.sectionSubtitle}>{t("bo.adminContact.subtitle")}</p>
+          </div>
+          <button
+            type="button"
+            className={`${styles.focusDemoBtn} ${subjectFilter === "demo" ? styles.focusDemoBtnActive : ""}`}
+            onClick={() => setSubjectFilter((prev) => (prev === "demo" ? "all" : "demo"))}
+          >
+            <i className="bi bi-bullseye" />
+            {t("bo.adminContact.focusDemoToggle")}
+          </button>
         </div>
 
-        {/* ==================== Demandes de démo ==================== */}
-        {activeTab === "demandes" && (
-          <div>
-            <Banner banner={demandeBanner} />
+        <Banner banner={banner} />
 
-            <div className={styles.requestFilterTabs} role="tablist" aria-label={t("bo.adminDemandesDemo.filterAriaLabel")}>
-              <span
-                className={styles.requestFilterIndicator}
-                style={{ transform: `translateX(${demandeIndicator.left}px)`, width: demandeIndicator.width }}
-                aria-hidden="true"
-              />
-              {DEMANDE_FILTERS.map((f, i) => (
-                <button
-                  key={f.value}
-                  ref={(el) => {
-                    demandeTabRefs.current[i] = el;
-                  }}
-                  type="button"
-                  role="tab"
-                  aria-selected={demandeFilter === f.value}
-                  className={`${styles.requestFilterTab} ${demandeFilter === f.value ? styles.requestFilterTabActive : ""}`}
-                  onClick={() => setDemandeFilter(f.value)}
-                >
-                  {f.label}
-                  {f.value === DEMANDE_DEMO_STATUS.NOUVELLE && demandeCounts.nouvelles > 0 && (
-                    <span className={styles.requestFilterTabBadge}>{demandeCounts.nouvelles}</span>
-                  )}
-                </button>
-              ))}
-            </div>
+        <div className={styles.statsGrid} style={{ marginTop: "1rem", marginBottom: "1.5rem" }}>
+          <StatCard icon="bi-calendar2-check-fill" tone="danger" label={t("bo.adminContact.statDemoPending")} value={<CountUp value={stats.demoNouvelles} />} />
+          <StatCard icon="bi-inbox-fill" tone="primary" label={t("bo.adminContact.statTotal")} value={<CountUp value={stats.total} />} />
+          <StatCard icon="bi-envelope-exclamation-fill" tone="warning" label={t("bo.adminContact.statNew")} value={<CountUp value={stats.nouveaux} />} />
+          <StatCard icon="bi-check-circle-fill" tone="accent" label={t("bo.adminContact.statTreated")} value={<CountUp value={stats.traites} />} />
+        </div>
 
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>{t("bo.adminDemandesDemo.colName")}</th>
-                    <th>{t("bo.adminDemandesDemo.colContact")}</th>
-                    <th>{t("bo.adminDemandesDemo.colDesiredDate")}</th>
-                    <th>{t("bo.adminDemandesDemo.colMessage")}</th>
-                    <th>{t("bo.adminDemandesDemo.colReceivedOn")}</th>
-                    <th>{t("bo.adminDemandesDemo.colStatus")}</th>
-                    <th>{t("bo.adminDemandesDemo.colActions")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredDemandes.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className={styles.empty}>
-                        {t("bo.adminDemandesDemo.noRequests")}
-                      </td>
-                    </tr>
-                  )}
-                  {filteredDemandes.map((d) => {
-                    const busy = demandeBusyId === d.id;
-                    return (
-                      <tr key={d.id}>
-                        <td>
-                          <span className={styles.userName}>{d.nom}</span>
-                        </td>
-                        <td>
-                          <div>{d.email}</div>
-                          <div className={styles.tableSubtext}>{d.telephone}</div>
-                        </td>
-                        <td>{d.date_souhaitee ? formatDate(d.date_souhaitee) : "—"}</td>
-                        <td style={{ maxWidth: 280 }}>{d.message || "—"}</td>
-                        <td>{formatDate(d.date_creation)}</td>
-                        <td>
-                          <span className={`${styles.badge} ${demandeBadgeClass(d.statut)}`}>
-                            {DEMANDE_DEMO_STATUS_LABELS[d.statut]}
-                          </span>
-                        </td>
-                        <td>
-                          {d.statut !== DEMANDE_DEMO_STATUS.CONTACTEE && (
-                            <div className={styles.tableActions}>
-                              <button
-                                type="button"
-                                className={styles.iconBtn}
-                                onClick={() => handleMarkContactee(d)}
-                                disabled={busy}
-                                title={t("bo.adminDemandesDemo.markContacted")}
-                              >
-                                <i className="bi bi-check-lg" />
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+        <div className={styles.filtersRow}>
+          <div className={styles.searchInputWrap}>
+            <i className={`bi bi-search ${styles.searchIcon}`} />
+            <input
+              type="text"
+              className={styles.searchInput}
+              placeholder={t("bo.adminContact.searchPlaceholder")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
+          <FilterSelect value={statusFilter} onChange={setStatusFilter} options={STATUS_FILTERS} />
+          <FilterSelect value={subjectFilter} onChange={setSubjectFilter} options={SUBJECT_FILTER_OPTIONS} />
+          <FilterSelect value={sortOrder} onChange={setSortOrder} options={SORT_OPTIONS_LOCAL} />
+        </div>
+
+        {filtered.length === 0 && (
+          <p className={styles.empty}>
+            <i className="bi bi-inbox" style={{ display: "block", fontSize: "1.6rem", marginBottom: "0.5rem" }} />
+            {t("bo.adminContact.noMatch")}
+          </p>
         )}
 
-        {/* ==================== Messages de contact ==================== */}
-        {activeTab === "contact" && (
-          <div>
-            <Banner banner={contactBanner} />
-
-            <div className={styles.statsGrid} style={{ marginTop: "0.25rem", marginBottom: "1.5rem" }}>
-              <StatCard
-                icon="bi-inbox-fill"
-                tone="primary"
-                label={t("bo.adminMessagesContact.statReceived")}
-                value={<CountUp value={contactStats.total} />}
-              />
-              <StatCard
-                icon="bi-envelope-exclamation-fill"
-                tone="warning"
-                label={t("bo.adminMessagesContact.statNew")}
-                value={<CountUp value={contactStats.nouveaux} />}
-              />
-              <StatCard
-                icon="bi-check-circle-fill"
-                tone="accent"
-                label={t("bo.adminMessagesContact.statTreated")}
-                value={<CountUp value={contactStats.traites} />}
-              />
-            </div>
-
-            <div className={styles.filtersRow}>
-              <div className={styles.searchInputWrap}>
-                <i className={`bi bi-search ${styles.searchIcon}`} />
-                <input
-                  type="text"
-                  className={styles.searchInput}
-                  placeholder={t("bo.adminMessagesContact.searchPlaceholder")}
-                  value={contactSearch}
-                  onChange={(e) => setContactSearch(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div
-              className={styles.requestFilterTabs}
-              role="tablist"
-              aria-label={t("bo.adminMessagesContact.filterAriaLabel")}
-            >
-              <span
-                className={styles.requestFilterIndicator}
-                style={{ transform: `translateX(${contactIndicator.left}px)`, width: contactIndicator.width }}
-                aria-hidden="true"
-              />
-              {CONTACT_FILTERS.map((f, i) => (
+        <div className={styles.inboxShell}>
+          <div className={styles.inboxList}>
+            {filtered.map((item, index) => {
+              const meta = SUBJECT_META[item.subjectKey];
+              const status = statusMetaOf(item, t);
+              return (
                 <button
-                  key={f.value}
-                  ref={(el) => {
-                    contactTabRefs.current[i] = el;
-                  }}
                   type="button"
-                  role="tab"
-                  aria-selected={contactStatusFilter === f.value}
-                  className={`${styles.requestFilterTab} ${contactStatusFilter === f.value ? styles.requestFilterTabActive : ""}`}
-                  onClick={() => setContactStatusFilter(f.value)}
+                  key={item.key}
+                  style={{ "--i": index }}
+                  className={`${styles.messageCard} ${item.isNew ? styles.messageCardNew : ""} ${
+                    selectedKey === item.key ? styles.messageCardSelected : ""
+                  }`}
+                  onClick={() => setSelectedKey(item.key)}
                 >
-                  {f.label}
-                  {f.value === CONTACT_MESSAGE_STATUS.NOUVEAU && contactStats.nouveaux > 0 && (
-                    <span className={styles.requestFilterTabBadge}>{contactStats.nouveaux}</span>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {filteredContactMessages.length === 0 && (
-              <p className={styles.empty}>
-                <i className="bi bi-inbox" style={{ display: "block", fontSize: "1.6rem", marginBottom: "0.5rem" }} />
-                {t("bo.adminMessagesContact.noMatch")}
-              </p>
-            )}
-
-            <div className={styles.messageInboxList}>
-              {filteredContactMessages.map((m, index) => {
-                const isNew = m.statut === CONTACT_MESSAGE_STATUS.NOUVEAU;
-                return (
-                  <button
-                    type="button"
-                    key={m.id}
-                    style={{ "--i": index }}
-                    className={`${styles.messageCard} ${isNew ? styles.messageCardNew : ""} ${
-                      contactSelectedId === m.id ? styles.messageCardSelected : ""
-                    }`}
-                    onClick={() => setContactSelectedId(m.id)}
-                  >
-                    <span className={styles.messageCardAvatar}>{contactInitialsOf(m)}</span>
-                    <div className={styles.messageCardBody}>
-                      <div className={styles.messageCardTopRow}>
-                        <span className={styles.messageCardName}>
-                          {m.prenom} {m.nom}
-                        </span>
-                        <span className={styles.messageCardDate}>{formatDate(m.date_creation)}</span>
-                      </div>
-                      <div className={styles.tableSubtext}>
-                        <i className="bi bi-envelope" style={{ marginRight: "0.3rem" }} />
-                        {m.email}
-                      </div>
-                      <div className={styles.messageCardSubject}>
-                        {isNew && <span className={styles.messageCardDot} />}
-                        {m.sujet}
-                      </div>
-                      <p className={styles.messageCardSnippet}>{m.message}</p>
+                  <span className={styles.messageCardAvatar}>{initialsFromName(item.name)}</span>
+                  <div className={styles.messageCardBody}>
+                    <div className={styles.messageCardTopRow}>
+                      <span className={styles.messageCardName}>{item.name}</span>
+                      <span className={styles.messageCardDate}>{timeAgo(item.date_creation, t)}</span>
                     </div>
-                    <span className={`${styles.badge} ${contactMessageBadgeClass(m.statut)}`}>
-                      {CONTACT_MESSAGE_STATUS_LABELS[m.statut]}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {contactSelected && (
-        <Drawer
-          isOpen={!!contactSelected}
-          onClose={() => setContactSelectedId(null)}
-          title={
-            <div className={styles.detailHeaderRow}>
-              <div className={styles.detailHeaderIdentity}>
-                <span className={styles.detailAvatar}>{contactInitialsOf(contactSelected)}</span>
-                <div>
-                  <h3 className={styles.detailTitle}>
-                    {contactSelected.prenom} {contactSelected.nom}
-                  </h3>
-                  <div className={styles.detailHeaderTags}>
-                    <span className={`${styles.badge} ${contactMessageBadgeClass(contactSelected.statut)}`}>
-                      {CONTACT_MESSAGE_STATUS_LABELS[contactSelected.statut]}
-                    </span>
+                    <div className={styles.tableSubtext}>
+                      <i className="bi bi-envelope" style={{ marginRight: "0.3rem" }} />
+                      {item.email}
+                    </div>
+                    <div className={styles.messageCardSubject}>
+                      {item.isNew && <span className={styles.messageCardDot} />}
+                      <span className={`${styles.planPill} ${styles[`planPill${meta.tone}`]} ${styles.msgTypeBadgeSm}`}>
+                        <i className={`bi ${meta.icon}`} />
+                        {meta.label}
+                      </span>
+                      {item.subjectKey === "demo" && item.dateSouhaitee && (
+                        <span className={styles.messageCardDemoDate}>
+                          <i className="bi bi-calendar-event" />
+                          {formatDate(item.dateSouhaitee)}
+                        </span>
+                      )}
+                    </div>
+                    <p className={styles.messageCardSnippet}>{item.message || "—"}</p>
                   </div>
-                </div>
-              </div>
-              <div className={styles.detailHeaderActions}>
-                {contactSelected.statut !== CONTACT_MESSAGE_STATUS.TRAITE && (
-                  <button
-                    type="button"
-                    className={styles.detailHeaderActionBtn}
-                    onClick={() => handleMarkContactTraite(contactSelected)}
-                    disabled={contactBusyId === contactSelected.id}
-                  >
-                    <i className="bi bi-check-lg" />
-                    {contactBusyId === contactSelected.id
-                      ? t("bo.adminMessagesContact.markingTreated")
-                      : t("bo.adminMessagesContact.markTreated")}
-                  </button>
-                )}
-              </div>
-            </div>
-          }
-        >
-          <div className={styles.detailBlockTitle}>
-            <i className="bi bi-person-fill" />
-            {t("bo.adminMessagesContact.contactSection")}
-          </div>
-          <div className={styles.detailInfoList}>
-            <div className={styles.detailInfoRow}>
-              <span className={styles.detailInfoIcon}>
-                <i className="bi bi-envelope" />
-              </span>
-              <span className={styles.detailInfoBody}>
-                <span className={styles.detailInfoLabel}>{t("bo.adminMessagesContact.emailLabel")}</span>
-                <a className={styles.detailInfoValue} href={`mailto:${contactSelected.email}`}>
-                  {contactSelected.email}
-                </a>
-              </span>
-            </div>
-            {contactSelected.telephone && (
-              <div className={styles.detailInfoRow}>
-                <span className={styles.detailInfoIcon}>
-                  <i className="bi bi-telephone" />
-                </span>
-                <span className={styles.detailInfoBody}>
-                  <span className={styles.detailInfoLabel}>{t("bo.adminMessagesContact.phoneLabel")}</span>
-                  <a className={styles.detailInfoValue} href={`tel:${contactSelected.telephone}`}>
-                    {contactSelected.telephone}
-                  </a>
-                </span>
-              </div>
-            )}
-            <div className={styles.detailInfoRow}>
-              <span className={styles.detailInfoIcon}>
-                <i className="bi bi-calendar-event" />
-              </span>
-              <span className={styles.detailInfoBody}>
-                <span className={styles.detailInfoLabel}>{t("bo.adminMessagesContact.receivedOnLabel")}</span>
-                <span className={styles.detailInfoValue}>{formatDate(contactSelected.date_creation)}</span>
-              </span>
-            </div>
+                  <span className={`${styles.badge} ${status.cls}`}>{status.label}</span>
+                </button>
+              );
+            })}
           </div>
 
-          <div className={styles.detailBlockTitle} style={{ marginTop: "1.4rem" }}>
-            <i className="bi bi-chat-square-text-fill" />
-            {contactSelected.sujet}
+          <div className={styles.inboxDetail}>
+            {!selected ? (
+              <div className={styles.inboxDetailEmpty}>
+                <i className="bi bi-chat-square-text" />
+                <strong>{t("bo.adminContact.detailEmptyTitle")}</strong>
+                <span>{t("bo.adminContact.detailEmptySub")}</span>
+              </div>
+            ) : (
+              (() => {
+                const meta = SUBJECT_META[selected.subjectKey];
+                const status = statusMetaOf(selected, t);
+                return (
+                  <>
+                    <div className={styles.inboxDetailHeader}>
+                      <div className={styles.inboxDetailIdentity}>
+                        <span className={styles.detailAvatar}>{initialsFromName(selected.name)}</span>
+                        <div>
+                          <h3 className={styles.detailTitle}>{selected.name}</h3>
+                          <div className={styles.inboxDetailTags}>
+                            <span className={`${styles.planPill} ${styles[`planPill${meta.tone}`]} ${styles.msgTypeBadgeSm}`}>
+                              <i className={`bi ${meta.icon}`} />
+                              {meta.label}
+                            </span>
+                            <span className={`${styles.badge} ${status.cls}`}>{status.label}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <span className={styles.messageCardDate}>{timeAgo(selected.date_creation, t)}</span>
+                    </div>
+
+                    <div className={styles.detailInfoList} style={{ marginTop: "1.1rem" }}>
+                      <div className={styles.detailInfoRow}>
+                        <span className={styles.detailInfoIcon}>
+                          <i className="bi bi-envelope" />
+                        </span>
+                        <span className={styles.detailInfoBody}>
+                          <span className={styles.detailInfoLabel}>{t("bo.adminContact.emailLabel")}</span>
+                          <a className={styles.detailInfoValue} href={`mailto:${selected.email}`}>
+                            {selected.email}
+                          </a>
+                        </span>
+                      </div>
+                      {selected.telephone && (
+                        <div className={styles.detailInfoRow}>
+                          <span className={styles.detailInfoIcon}>
+                            <i className="bi bi-telephone" />
+                          </span>
+                          <span className={styles.detailInfoBody}>
+                            <span className={styles.detailInfoLabel}>{t("bo.adminContact.phoneLabel")}</span>
+                            <a className={styles.detailInfoValue} href={`tel:${selected.telephone}`}>
+                              {selected.telephone}
+                            </a>
+                          </span>
+                        </div>
+                      )}
+                      <div className={styles.detailInfoRow}>
+                        <span className={styles.detailInfoIcon}>
+                          <i className="bi bi-calendar-event" />
+                        </span>
+                        <span className={styles.detailInfoBody}>
+                          <span className={styles.detailInfoLabel}>{t("bo.adminContact.receivedOnLabel")}</span>
+                          <span className={styles.detailInfoValue}>{formatDate(selected.date_creation)}</span>
+                        </span>
+                      </div>
+                      {selected.subjectKey === "demo" && (
+                        <div className={styles.detailInfoRow}>
+                          <span className={styles.detailInfoIcon}>
+                            <i className="bi bi-calendar2-check" />
+                          </span>
+                          <span className={styles.detailInfoBody}>
+                            <span className={styles.detailInfoLabel}>{t("bo.adminContact.desiredDateLabel")}</span>
+                            <span className={styles.detailInfoValue}>
+                              {selected.dateSouhaitee ? formatDate(selected.dateSouhaitee) : t("bo.adminContact.noDesiredDate")}
+                            </span>
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className={styles.detailBlockTitle} style={{ marginTop: "1.4rem" }}>
+                      <i className="bi bi-chat-square-text-fill" />
+                      {t("bo.adminContact.contactSection")}
+                    </div>
+                    <div className={styles.messageQuoteCard}>
+                      <p className={styles.messageQuoteText}>{selected.message || "—"}</p>
+                    </div>
+
+                    <div className={styles.inboxDetailFooter}>
+                      <div>
+                        <div className={styles.inboxDetailFooterLabel}>{t("bo.adminContact.statusLabel")}</div>
+                        <FilterSelect
+                          value={String(selected.isNew ? 1 : selected.inProgress ? 3 : 2)}
+                          onChange={(v) => handleStatusChange(selected, v)}
+                          options={STATUS_VALUE_OPTIONS}
+                          disabled={busyKey === selected.key}
+                        />
+                      </div>
+                      <a className={styles.btn} href={`mailto:${selected.email}`}>
+                        <i className="bi bi-reply-fill" />
+                        {t("bo.adminContact.reply")}
+                      </a>
+                    </div>
+                  </>
+                );
+              })()
+            )}
           </div>
-          <div className={styles.messageQuoteCard}>
-            <p className={styles.messageQuoteText}>{contactSelected.message}</p>
-          </div>
-        </Drawer>
-      )}
+        </div>
+      </div>
     </div>
   );
 }

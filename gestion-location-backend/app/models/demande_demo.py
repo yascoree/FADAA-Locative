@@ -9,6 +9,7 @@ from app.database import Base
 class DemandeDemoStatus(int, enum.Enum):
     NOUVELLE = 1
     CONTACTEE = 2
+    EN_COURS = 3
 
 
 class DemandeDemo(Base):

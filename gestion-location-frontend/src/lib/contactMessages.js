@@ -1,7 +1,7 @@
 import apiClient from "@/lib/apiClient";
 
-export const CONTACT_MESSAGE_STATUS = { NOUVEAU: 1, TRAITE: 2 };
-export const CONTACT_MESSAGE_STATUS_LABELS = { 1: "Nouveau", 2: "Traité" };
+export const CONTACT_MESSAGE_STATUS = { NOUVEAU: 1, TRAITE: 2, EN_COURS: 3 };
+export const CONTACT_MESSAGE_STATUS_LABELS = { 1: "Nouveau", 2: "Traité", 3: "En cours" };
 
 export async function createContactMessage({ prenom, nom, email, telephone, sujet, message }) {
   const { data } = await apiClient.post("/contact-messages/", {

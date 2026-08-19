@@ -9,6 +9,7 @@ from app.database import Base
 class ContactMessageStatus(int, enum.Enum):
     NOUVEAU = 1
     TRAITE = 2
+    EN_COURS = 3
 
 
 class ContactMessage(Base):
