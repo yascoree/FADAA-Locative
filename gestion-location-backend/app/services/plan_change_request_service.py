@@ -75,7 +75,11 @@ def approve_request(db: Session, request_id: int) -> PlanChangeRequest:
     if not plan:
         raise NotFound("Plan not found")
 
-    subscription_service.assign_plan(db, request.owner_id, plan)
+    # Déterminer si la demande vient d'un propriétaire ou d'une agence
+    if request.owner.role == UtilisateurRole.GESTIONNAIRE and request.owner.agence_id:
+        subscription_service.assign_plan(db, plan=plan, agence_id=request.owner.agence_id)
+    else:
+        subscription_service.assign_plan(db, plan=plan, owner_id=request.owner_id)
 
     request.statut = PlanChangeRequestStatus.APPROUVEE
     db.commit()

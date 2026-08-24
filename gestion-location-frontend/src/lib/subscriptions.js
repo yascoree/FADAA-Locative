@@ -192,8 +192,8 @@ export async function fetchOwnerUsage(ownerId) {
   return data;
 }
 
-export async function assignSubscription(ownerId, planId) {
-  const { data } = await apiClient.post("/subscriptions/assign", { owner_id: ownerId, plan_id: planId });
+export async function assignSubscription(payload) {
+  const { data } = await apiClient.post("/subscriptions/assign", payload);
   return data;
 }
 

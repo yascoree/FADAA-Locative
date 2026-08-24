@@ -13,16 +13,16 @@ from app.services.subscription_service import SubscriptionError
 
 router = APIRouter(prefix="/plan-change-requests", tags=["plan-change-requests"])
 
-# Choisir un plan (popup de blocage) est réservé au propriétaire concerné ;
+# Choisir un plan (popup de blocage) est réservé au propriétaire ou gestionnaire admin concerné ;
 # consulter/traiter les demandes est réservé à l'admin de la plateforme.
-require_proprietaire = require_roles(UtilisateurRole.PROPRIETAIRE)
+require_plan_requester = require_roles(UtilisateurRole.PROPRIETAIRE, UtilisateurRole.GESTIONNAIRE)
 
 
 @router.post("/", response_model=PlanChangeRequestRead, status_code=status.HTTP_201_CREATED)
 def create_plan_change_request(
     request_in: PlanChangeRequestCreate,
     db: Session = Depends(get_db),
-    current_user: Utilisateur = Depends(require_proprietaire),
+    current_user: Utilisateur = Depends(require_plan_requester),
 ):
     try:
         return plan_change_request_service.create_request(db, current_user, request_in)
@@ -33,9 +33,9 @@ def create_plan_change_request(
 @router.get("/me", response_model=Optional[PlanChangeRequestRead])
 def get_my_plan_change_request(
     db: Session = Depends(get_db),
-    current_user: Utilisateur = Depends(require_proprietaire),
+    current_user: Utilisateur = Depends(require_plan_requester),
 ):
-    """La demande EN_ATTENTE du propriétaire connecté, s'il y en a une — pour
+    """La demande EN_ATTENTE du compte connecté, s'il y en a une — pour
     afficher "Choix envoyé, en attente de l'admin" plutôt que le formulaire."""
     return plan_change_request_service.get_my_pending_request(db, current_user)
 

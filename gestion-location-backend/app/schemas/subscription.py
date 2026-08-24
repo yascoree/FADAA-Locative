@@ -26,6 +26,8 @@ class SubscriptionRead(BaseModel):
     id: int
     owner_id: Optional[int] = None
     agence_id: Optional[int] = None
+    owner_name: Optional[str] = None
+    agence_name: Optional[str] = None
     plan_id: int
     plan: SubscriptionPlanRead
     status: SubscriptionStatus

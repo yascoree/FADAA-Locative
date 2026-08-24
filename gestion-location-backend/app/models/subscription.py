@@ -45,3 +45,15 @@ class Subscription(Base):
     owner = relationship("Utilisateur")
     agence = relationship("Agence")
     plan = relationship("SubscriptionPlan", back_populates="subscriptions")
+
+    @property
+    def owner_name(self) -> str | None:
+        if self.owner:
+            return f"{self.owner.nom} {self.owner.prenom}".strip()
+        return None
+
+    @property
+    def agence_name(self) -> str | None:
+        if self.agence:
+            return self.agence.nom
+        return None

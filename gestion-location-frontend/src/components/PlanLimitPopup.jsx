@@ -25,7 +25,7 @@ const VIEW = { INFO: "info", PICKER: "picker", PENDING: "pending", SENT: "sent" 
 // ne peut jamais changer son propre plan, seulement le demander.
 export default function PlanLimitPopup({ message, contactHref = "/front/contact", onClose }) {
   const { user } = useAuth();
-  const canRequestPlan = user?.role === ROLES.PROPRIETAIRE;
+  const canRequestPlan = user?.role === ROLES.PROPRIETAIRE || user?.role === ROLES.GESTIONNAIRE;
   const isOpen = !!message;
   const [view, setView] = useState(VIEW.INFO);
   const [plans, setPlans] = useState([]);
@@ -148,9 +148,7 @@ export default function PlanLimitPopup({ message, contactHref = "/front/contact"
                 Choisir un abonnement
                 <i className="bi bi-arrow-right" />
               </button>
-              <Link href={contactHref} className={styles.secondaryLink} onClick={onClose}>
-                Nous contacter
-              </Link>
+
               <button type="button" className={styles.dismiss} onClick={onClose}>
                 <i className="bi bi-clock" />
                 Plus tard
@@ -220,10 +218,10 @@ export default function PlanLimitPopup({ message, contactHref = "/front/contact"
                   <i className="bi bi-send" />
                 </button>
               ) : (
-                <Link href={contactHref} className={styles.cta} onClick={onClose}>
-                  Nous contacter
-                  <i className="bi bi-arrow-right" />
-                </Link>
+                <button type="button" className={styles.cta} onClick={onClose}>
+                  Fermer
+                  <i className="bi bi-x-lg" />
+                </button>
               )}
               <button
                 type="button"

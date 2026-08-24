@@ -100,8 +100,14 @@ export default function ProprietaireAbonnementPage() {
                   status: subscriptionStatusLabel(subscription, subscriptionBlocked).toLowerCase(),
                 })}{" "}
             {t("bo.proprietaireAbonnement.blockedInfo")}{" "}
-            <Link href="/front/contact">{t("bo.proprietaireAbonnement.contactLink")}</Link>{" "}
-            {t("bo.proprietaireAbonnement.renewSuffix")}
+            <button
+              type="button"
+              className={styles.btn}
+              style={{ padding: "0.2rem 0.5rem", fontSize: "0.85rem", marginLeft: "0.5rem" }}
+              onClick={() => setPlanPopupMessage(t("bo.proprietaireAbonnement.popupMessage"))}
+            >
+              {t("bo.proprietaireAbonnement.changePlan", "Mettre à niveau")}
+            </button>
           </span>
         </div>
       )}
