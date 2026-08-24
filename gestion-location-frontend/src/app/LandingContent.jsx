@@ -596,8 +596,8 @@ export default function LandingContent() {
       <HowItWorks />
       <Roles />
       <TrustBar />
-      <CtaBanner />
       <AvisSection /> 
+      <CtaBanner />
       <Footer />
       <ChatBot />
     </div>
