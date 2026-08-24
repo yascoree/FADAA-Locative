@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.api.deps import bien_ids_with_permission, has_permission_for_bien
+from app.api.deps import bien_ids_with_permission, can_access_proprietaire, has_permission_for_bien
 from app.models.bail import Bail, BailStatus, FrequencePaiement
 from app.models.bien import Bien
 from app.models.echeance import Echeance, EcheanceStatus
@@ -185,7 +185,11 @@ def _can_view_bail(db: Session, user: Utilisateur, bail: Bail) -> bool:
     return bool(bien) and has_permission_for_bien(db, user, bien, "VIEW_LEASE")
 
 
-def list_baux(db: Session, current_user: Utilisateur, skip: int = 0, limit: int = 100) -> list[Bail]:
+def list_baux(
+    db: Session, current_user: Utilisateur, skip: int = 0, limit: int = 100, proprietaire_id: int | None = None
+) -> list[Bail]:
+    if proprietaire_id is not None and not can_access_proprietaire(db, current_user, proprietaire_id):
+        raise Forbidden("Not allowed to access this proprietaire")
     query = db.query(Bail).filter(Bail.deleted_at.is_(None))
     if current_user.role == UtilisateurRole.PROPRIETAIRE:
         query = (
@@ -204,6 +208,10 @@ def list_baux(db: Session, current_user: Utilisateur, skip: int = 0, limit: int 
         )
     elif current_user.role == UtilisateurRole.LOCATAIRE:
         query = query.filter(Bail.locataire_id == current_user.id)
+    if proprietaire_id is not None:
+        if current_user.role == UtilisateurRole.LOCATAIRE:
+            query = query.join(Lot, Lot.id == Bail.lot_id).join(Bien, Bien.id == Lot.bien_id)
+        query = query.filter(Bien.proprietaire_id == proprietaire_id, Lot.deleted_at.is_(None), Bien.deleted_at.is_(None))
     return query.offset(skip).limit(limit).all()
 
 

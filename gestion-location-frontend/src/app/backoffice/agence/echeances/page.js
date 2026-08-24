@@ -31,6 +31,7 @@ import ToggleSwitch from "@/components/ToggleSwitch";
 import LoadingState from "@/components/LoadingState";
 import EmptyState from "@/components/EmptyState";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAgencyPortfolio } from "@/context/AgencyPortfolioContext";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -102,15 +103,18 @@ export default function AgenceEcheancesPage() {
   const [relanceBusyId, setRelanceBusyId] = useState(null);
   const [relanceBanner, setRelanceBanner] = useState(null);
 
+  const { selectedClientId } = useAgencyPortfolio();
+
   useEffect(() => {
     async function init() {
       setIsLoading(true);
       try {
+        const params = selectedClientId ? { proprietaire_id: selectedClientId } : {};
         const [echeancesList, bauxList, biensList, paiementsList, permissionIndex] = await Promise.all([
-          fetchEcheances(),
-          fetchBaux(),
-          fetchBiens(),
-          fetchPaiements(),
+          fetchEcheances(params),
+          fetchBaux(params),
+          fetchBiens(params),
+          fetchPaiements(params),
           fetchGestionnairePermissionIndex(),
         ]);
         setEcheances(echeancesList);
@@ -125,7 +129,7 @@ export default function AgenceEcheancesPage() {
       }
     }
     init();
-  }, []);
+  }, [selectedClientId]);
 
   function paidSoFar(echeanceId) {
     return paiements

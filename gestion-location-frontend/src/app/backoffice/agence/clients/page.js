@@ -12,6 +12,7 @@ import {
   accessLevelLabel,
   MANDAT_STATUS,
 } from "@/lib/mandates";
+import { useAgencyPortfolio } from "@/context/AgencyPortfolioContext";
 import { fetchBiens, fetchLots, fetchBaux, BAIL_STATUS } from "@/lib/properties";
 import { fetchMyAgence, fetchAgenceMembers, ROLE_AGENCE } from "@/lib/agences";
 import {
@@ -151,20 +152,21 @@ export default function AgenceClientsPage() {
     return counts;
   }, [biens, lots, baux]);
 
+  const { clients: agencyClients, loading: clientsLoading } = useAgencyPortfolio();
+
   const clientGroups = useMemo(() => {
-    const map = new Map();
-    mandates.forEach((mandat) => {
-      const pid = mandat.proprietaire?.id;
-      if (pid == null) return;
-      if (!map.has(pid)) map.set(pid, { proprietaire: mandat.proprietaire, mandats: [] });
-      map.get(pid).mandats.push(mandat);
-    });
-    return Array.from(map.values()).map((g) => ({
-      ...g,
-      hasActive: g.mandats.some((m) => m.statut === MANDAT_STATUS.ACTIF),
-      counts: countsByProprietaire[g.proprietaire.id] || { biens: 0, lots: 0, baux: 0 },
+    // Use the backend-provided clients list (guaranteed to be owners with an ACTIVE
+    // mandate for this agence) and enrich with counts computed by the frontend
+    // where available. This avoids fetching all users and re-filtering on the
+    // client side.
+    if (!agencyClients) return [];
+    return agencyClients.map((c) => ({
+      proprietaire: { id: c.id, nom: c.nom, prenom: c.prenom, email: c.email },
+      mandats: [],
+      hasActive: true,
+      counts: { biens: c.biens_count ?? 0, lots: c.lots_count ?? 0, baux: 0 },
     }));
-  }, [mandates, countsByProprietaire]);
+  }, [agencyClients]);
 
   const filteredClientGroups = useMemo(() => {
     const term = search.trim().toLowerCase();

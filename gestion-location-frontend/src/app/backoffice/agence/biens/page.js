@@ -29,6 +29,7 @@ import PlanLimitPopup from "@/components/PlanLimitPopup";
 import LoadingState from "@/components/LoadingState";
 import EmptyState from "@/components/EmptyState";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAgencyPortfolio } from "@/context/AgencyPortfolioContext";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -99,13 +100,16 @@ export default function AgenceBiensPage() {
 
   const [detailsTarget, setDetailsTarget] = useState(null);
 
+  const { selectedClientId } = useAgencyPortfolio();
+
   useEffect(() => {
     async function init() {
       setIsLoading(true);
       try {
+        const params = selectedClientId ? { proprietaire_id: selectedClientId } : {};
         const [biensList, lotsList, mandatesList, permissionIndex] = await Promise.all([
-          fetchBiens(),
-          fetchLots(),
+          fetchBiens(params),
+          fetchLots(params),
           fetchMandates(),
           fetchGestionnairePermissionIndex(),
         ]);
@@ -124,7 +128,7 @@ export default function AgenceBiensPage() {
       }
     }
     init();
-  }, []);
+  }, [selectedClientId]);
 
   const stats = useMemo(() => {
     return {

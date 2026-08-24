@@ -204,3 +204,60 @@ def update_agence_member(
     db.commit()
     db.refresh(membre)
     return membre
+
+
+def list_agence_clients(db: Session, current_user: Utilisateur) -> list[dict]:
+    """Retourne la liste des propriétaires (clients) gérés par l'agence du
+    current_user. Chaque entrée contient les champs minimaux de l'utilisateur
+    plus quelques compteurs utiles pour l'UX (biens_count, lots_count).
+
+    La fonction s'appuie sur managed_proprietaire_ids (app.api.deps) pour
+    déterminer de façon sûre quels propriétaires appartiennent au portefeuille
+    de l'agence du gestionnaire connecté.
+    """
+    from sqlalchemy import func
+    from app.api.deps import managed_proprietaire_ids
+    from app.models.bien import Bien
+    from app.models.lot import Lot
+
+    owner_ids = managed_proprietaire_ids(db, current_user.id)
+    if not owner_ids:
+        return []
+
+    # Récupère les propriétaires
+    owners = db.query(Utilisateur).filter(Utilisateur.id.in_(owner_ids)).all()
+
+    # Comptages par proprietaire
+    biens_rows = (
+        db.query(Bien.proprietaire_id, func.count(Bien.id))
+        .filter(Bien.proprietaire_id.in_(owner_ids), Bien.deleted_at.is_(None))
+        .group_by(Bien.proprietaire_id)
+        .all()
+    )
+    biens_counts = {row[0]: int(row[1]) for row in biens_rows}
+
+    lots_rows = (
+        db.query(Bien.proprietaire_id, func.count(Lot.id))
+        .join(Lot, Lot.bien_id == Bien.id)
+        .filter(Bien.proprietaire_id.in_(owner_ids), Bien.deleted_at.is_(None), Lot.deleted_at.is_(None))
+        .group_by(Bien.proprietaire_id)
+        .all()
+    )
+    lots_counts = {row[0]: int(row[1]) for row in lots_rows}
+
+    result = []
+    for o in owners:
+        result.append(
+            {
+                "id": o.id,
+                "nom": o.nom or "",
+                "prenom": o.prenom or "",
+                "email": o.email,
+                "statut_compte": o.statut_compte,
+                "photo": o.photo,
+                "derniere_connexion": o.derniere_connexion,
+                "biens_count": biens_counts.get(o.id, 0),
+                "lots_count": lots_counts.get(o.id, 0),
+            }
+        )
+    return result

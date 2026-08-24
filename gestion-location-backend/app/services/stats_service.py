@@ -239,16 +239,21 @@ def get_proprietaire_dashboard_stats(db: Session, owner_id: int) -> Proprietaire
     return ProprietaireDashboardStats(**counts)
 
 
-def get_gestionnaire_dashboard_stats(db: Session, gestionnaire_id: int) -> GestionnaireDashboardStats:
-    agence_id = active_agence_id(db, gestionnaire_id)
-    owner_ids = (
-        db.query(Mandat.proprietaire_id)
-        .filter(Mandat.agence_id == agence_id, Mandat.statut == MandatStatus.ACTIF)
-        .all()
-        if agence_id is not None
-        else []
-    )
-    owner_ids = [row[0] for row in owner_ids]
+def get_gestionnaire_dashboard_stats(
+    db: Session, gestionnaire_id: int, owner_ids_override: list[int] | None = None
+) -> GestionnaireDashboardStats:
+    if owner_ids_override is None:
+        agence_id = active_agence_id(db, gestionnaire_id)
+        owner_ids = (
+            db.query(Mandat.proprietaire_id)
+            .filter(Mandat.agence_id == agence_id, Mandat.statut == MandatStatus.ACTIF)
+            .all()
+            if agence_id is not None
+            else []
+        )
+        owner_ids = [row[0] for row in owner_ids]
+    else:
+        owner_ids = owner_ids_override
     if not owner_ids:
         return GestionnaireDashboardStats(
             proprietaires_geres=0,

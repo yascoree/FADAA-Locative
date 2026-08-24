@@ -4,7 +4,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from app.api.deps import bien_ids_with_permission, has_permission_for_bien
+from app.api.deps import bien_ids_with_permission, can_access_proprietaire, has_permission_for_bien
 from app.models.bail import Bail, BailStatus
 from app.models.bien import Bien
 from app.models.categorie import Categorie
@@ -86,7 +86,11 @@ def _can_view_lot(db: Session, user: Utilisateur, lot: Lot) -> bool:
     return user.role == UtilisateurRole.LOCATAIRE and _is_tenant_of_lot(db, user.id, lot.id)
 
 
-def list_lots(db: Session, current_user: Utilisateur, skip: int = 0, limit: int = 100) -> list[Lot]:
+def list_lots(
+    db: Session, current_user: Utilisateur, skip: int = 0, limit: int = 100, proprietaire_id: int | None = None
+) -> list[Lot]:
+    if proprietaire_id is not None and not can_access_proprietaire(db, current_user, proprietaire_id):
+        raise Forbidden("Not allowed to access this proprietaire")
     query = db.query(Lot).filter(Lot.deleted_at.is_(None))
     if current_user.role == UtilisateurRole.PROPRIETAIRE:
         query = query.join(Bien, Bien.id == Lot.bien_id).filter(
@@ -99,6 +103,10 @@ def list_lots(db: Session, current_user: Utilisateur, skip: int = 0, limit: int 
         query = query.join(Bien, Bien.id == Lot.bien_id).filter(Bien.id.in_(ids), Bien.deleted_at.is_(None))
     elif current_user.role == UtilisateurRole.LOCATAIRE:
         query = query.join(Bail, Bail.lot_id == Lot.id).filter(Bail.locataire_id == current_user.id).distinct()
+    if proprietaire_id is not None:
+        if current_user.role == UtilisateurRole.LOCATAIRE:
+            query = query.join(Bien, Bien.id == Lot.bien_id)
+        query = query.filter(Bien.proprietaire_id == proprietaire_id, Bien.deleted_at.is_(None))
     return query.offset(skip).limit(limit).all()
 
 

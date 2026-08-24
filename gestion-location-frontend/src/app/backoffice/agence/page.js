@@ -9,6 +9,7 @@ import { fetchDashboardStats, fetchRevenueStats } from "@/lib/stats";
 import CountUp from "@/components/CountUp";
 import LoadingState from "@/components/LoadingState";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAgencyPortfolio } from "@/context/AgencyPortfolioContext";
 import styles from "./agence.module.css";
 
 function formatCurrency(value, compact = false) {
@@ -96,11 +97,17 @@ export default function AgenceDashboardPage() {
   const [hoverIndex, setHoverIndex] = useState(null);
   const svgRef = useRef(null);
 
+  const { selectedClientId } = useAgencyPortfolio();
+
   useEffect(() => {
     async function init() {
       setIsLoading(true);
       try {
-        const [statsData, revenueData] = await Promise.all([fetchDashboardStats(), fetchRevenueStats()]);
+        const params = selectedClientId ? { proprietaire_id: selectedClientId } : {};
+        const [statsData, revenueData] = await Promise.all([
+          fetchDashboardStats(params),
+          fetchRevenueStats(params),
+        ]);
         setStats(statsData);
         setRevenue(revenueData);
       } catch (err) {
@@ -110,7 +117,7 @@ export default function AgenceDashboardPage() {
       }
     }
     init();
-  }, []);
+  }, [selectedClientId]);
 
   const trailing = useMemo(() => {
     if (!revenue) return { points: [], max: 100, linePath: "", areaPath: "" };

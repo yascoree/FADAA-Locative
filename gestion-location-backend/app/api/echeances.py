@@ -15,10 +15,14 @@ router = APIRouter(prefix="/due-dates", tags=["due-dates"])
 def list_echeances(
     skip: int = 0,
     limit: int = 100,
+    proprietaire_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    return echeance_service.list_echeances(db, current_user, skip, limit)
+    try:
+        return echeance_service.list_echeances(db, current_user, skip, limit, proprietaire_id=proprietaire_id)
+    except Forbidden as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
 
 
 @router.post("/", response_model=EcheanceRead, status_code=status.HTTP_201_CREATED)

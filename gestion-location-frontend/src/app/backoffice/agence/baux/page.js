@@ -29,6 +29,7 @@ import PlanLimitPopup from "@/components/PlanLimitPopup";
 import LoadingState from "@/components/LoadingState";
 import EmptyState from "@/components/EmptyState";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAgencyPortfolio } from "@/context/AgencyPortfolioContext";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -107,15 +108,18 @@ export default function AgenceBauxPage() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
 
+  const { selectedClientId } = useAgencyPortfolio();
+
   useEffect(() => {
     async function init() {
       setIsLoading(true);
       try {
+        const params = selectedClientId ? { proprietaire_id: selectedClientId } : {};
         const [bauxList, lotsList, biensList, locatairesList, permissionIndex] = await Promise.all([
-          fetchBaux(),
-          fetchLots(),
-          fetchBiens(),
-          fetchLocataires(),
+          fetchBaux(params),
+          fetchLots(params),
+          fetchBiens(params),
+          fetchLocataires(params),
           fetchGestionnairePermissionIndex(),
         ]);
         setBaux(bauxList);
@@ -130,7 +134,7 @@ export default function AgenceBauxPage() {
       }
     }
     init();
-  }, []);
+  }, [selectedClientId]);
 
   const stats = useMemo(() => {
     return {

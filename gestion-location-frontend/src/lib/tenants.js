@@ -1,8 +1,8 @@
 import apiClient from "@/lib/apiClient";
 import { ROLES } from "@/lib/roles";
 
-export async function fetchLocataires() {
-  const { data } = await apiClient.get("/tenants/");
+export async function fetchLocataires(params = {}) {
+  const { data } = await apiClient.get("/tenants/", { params });
   return data;
 }
 

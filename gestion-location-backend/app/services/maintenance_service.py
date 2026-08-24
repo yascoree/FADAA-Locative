@@ -2,7 +2,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.api.deps import bien_ids_with_permission, gestionnaire_ids_for_proprietaire, has_permission_for_bien
+from app.api.deps import bien_ids_with_permission, can_access_proprietaire, gestionnaire_ids_for_proprietaire, has_permission_for_bien
 from app.models.bail import Bail
 from app.models.bien import Bien
 from app.models.demande_maintenance import DemandeMaintenance, DemandeMaintenanceStatus
@@ -23,7 +23,9 @@ def _chain_for_bail(db: Session, bail_id: int):
     return bail, bien
 
 
-def list_demandes(db: Session, current_user: Utilisateur) -> list[DemandeMaintenance]:
+def list_demandes(db: Session, current_user: Utilisateur, proprietaire_id: int | None = None) -> list[DemandeMaintenance]:
+    if proprietaire_id is not None and not can_access_proprietaire(db, current_user, proprietaire_id):
+        raise Forbidden("Not allowed to access this proprietaire")
     query = db.query(DemandeMaintenance).filter(DemandeMaintenance.deleted_at.is_(None))
     if current_user.role == UtilisateurRole.LOCATAIRE:
         query = query.filter(DemandeMaintenance.locataire_id == current_user.id)
@@ -46,6 +48,10 @@ def list_demandes(db: Session, current_user: Utilisateur) -> list[DemandeMainten
             .join(Bien, Bien.id == Lot.bien_id)
             .filter(Bien.id.in_(ids), Bail.deleted_at.is_(None), Lot.deleted_at.is_(None))
         )
+    if proprietaire_id is not None:
+        if current_user.role == UtilisateurRole.LOCATAIRE:
+            query = query.join(Bail, Bail.id == DemandeMaintenance.bail_id).join(Lot, Lot.id == Bail.lot_id).join(Bien, Bien.id == Lot.bien_id)
+        query = query.filter(Bien.proprietaire_id == proprietaire_id, Bail.deleted_at.is_(None), Lot.deleted_at.is_(None), Bien.deleted_at.is_(None))
     return query.order_by(DemandeMaintenance.date_creation.desc()).all()
 
 

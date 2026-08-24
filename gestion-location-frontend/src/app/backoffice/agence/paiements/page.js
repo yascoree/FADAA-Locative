@@ -33,7 +33,9 @@ import PlanLimitPopup from "@/components/PlanLimitPopup";
 import ChargesPanel from "@/components/ChargesPanel";
 import LoadingState from "@/components/LoadingState";
 import EmptyState from "@/components/EmptyState";
+import ErrorState from "@/components/ErrorState";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAgencyPortfolio } from "@/context/AgencyPortfolioContext";
 import uiStyles from "@/components/ui.module.css";
 import styles from "../agence.module.css";
 
@@ -114,15 +116,18 @@ export default function AgencePaiementsPage() {
   const [encaissementBusy, setEncaissementBusy] = useState(false);
   const [encaissementError, setEncaissementError] = useState(null);
 
+  const { selectedClientId } = useAgencyPortfolio();
+
   useEffect(() => {
     async function init() {
       setIsLoading(true);
       try {
+        const params = selectedClientId ? { proprietaire_id: selectedClientId } : {};
         const [paiementsList, echeancesList, biensList, locatairesList, permissionIndex] = await Promise.all([
-          fetchPaiements(),
-          fetchEcheances(),
-          fetchBiens(),
-          fetchLocataires(),
+          fetchPaiements(params),
+          fetchEcheances(params),
+          fetchBiens(params),
+          fetchLocataires(params),
           fetchGestionnairePermissionIndex(),
         ]);
         setPaiements(paiementsList);
@@ -137,7 +142,7 @@ export default function AgencePaiementsPage() {
       }
     }
     init();
-  }, []);
+  }, [selectedClientId]);
 
   const stats = useMemo(() => {
     const now = new Date();

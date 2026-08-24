@@ -18,10 +18,14 @@ router = APIRouter(prefix="/lots", tags=["lots"])
 def list_lots(
     skip: int = 0,
     limit: int = 100,
+    proprietaire_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    return lot_service.list_lots(db, current_user, skip, limit)
+    try:
+        return lot_service.list_lots(db, current_user, skip, limit, proprietaire_id=proprietaire_id)
+    except Forbidden as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
 
 
 @router.post("/", response_model=LotRead, status_code=status.HTTP_201_CREATED)

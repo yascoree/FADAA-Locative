@@ -48,8 +48,8 @@ export async function deleteCategorie(categorieId) {
   await apiClient.delete(`/categories/${categorieId}`);
 }
 
-export async function fetchBiens() {
-  const { data } = await apiClient.get("/properties/");
+export async function fetchBiens(params = {}) {
+  const { data } = await apiClient.get("/properties/", { params });
   return data;
 }
 
@@ -100,8 +100,8 @@ export async function deleteBienPhoto(bienId, photoId) {
   await apiClient.delete(`/properties/${bienId}/photos/${photoId}`);
 }
 
-export async function fetchLots() {
-  const { data } = await apiClient.get("/lots/");
+export async function fetchLots(params = {}) {
+  const { data } = await apiClient.get("/lots/", { params });
   return data;
 }
 
@@ -140,13 +140,13 @@ export async function deleteLotPhoto(lotId, photoId) {
   await apiClient.delete(`/lots/${lotId}/photos/${photoId}`);
 }
 
-export async function fetchBaux() {
-  const { data } = await apiClient.get("/leases/");
+export async function fetchBaux(params = {}) {
+  const { data } = await apiClient.get("/leases/", { params });
   return data;
 }
 
-export async function fetchEcheances() {
-  const { data } = await apiClient.get("/due-dates/");
+export async function fetchEcheances(params = {}) {
+  const { data } = await apiClient.get("/due-dates/", { params });
   return data;
 }
 
@@ -174,8 +174,8 @@ export async function relanceEcheance(echeanceId) {
   return data;
 }
 
-export async function fetchPaiements() {
-  const { data } = await apiClient.get("/payments/");
+export async function fetchPaiements(params = {}) {
+  const { data } = await apiClient.get("/payments/", { params });
   return data;
 }
 

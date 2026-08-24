@@ -8,8 +8,8 @@ export const MAINTENANCE_STATUS_LABELS = {
   4: "Rejetée",
 };
 
-export async function fetchDemandesMaintenance() {
-  const { data } = await apiClient.get("/maintenance-requests/");
+export async function fetchDemandesMaintenance(params = {}) {
+  const { data } = await apiClient.get("/maintenance-requests/", { params });
   return data;
 }
 

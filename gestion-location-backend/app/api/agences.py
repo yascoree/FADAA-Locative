@@ -10,6 +10,7 @@ from app.schemas.agence import (
     AgenceMembreRead,
     AgenceMembreUpdate,
     AgenceRead,
+    AgenceClientRead,
 )
 from app.schemas.invitation_client import InvitationClientCreate, InvitationClientCreateResult, InvitationClientRead
 from app.services import agence_service, invitation_client_service
@@ -28,6 +29,21 @@ def get_my_agence(
     if not agence:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="You are not a member of any agence")
     return agence
+
+
+@router.get("/me/clients", response_model=list[AgenceClientRead])
+def list_my_clients(
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(get_current_user),
+):
+    """Retourne la liste des propriétaires (clients) gérés par l'agence du
+    current_user. L'accès est dérivé du membership actif (active_agence_id) via
+    managed_proprietaire_ids — le frontend ne peut pas demander une agence_id
+    arbitraire."""
+    try:
+        return agence_service.list_agence_clients(db, current_user)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
 
 
 @router.get("/{agence_id}/membres", response_model=list[AgenceMembreRead])

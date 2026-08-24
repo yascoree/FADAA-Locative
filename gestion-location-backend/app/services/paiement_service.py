@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import (
     bien_ids_with_permission,
+    can_access_proprietaire,
     gestionnaire_ids_for_proprietaire,
     has_permission_for_bien,
 )
@@ -63,7 +64,11 @@ def _can_view_paiement(db: Session, user: Utilisateur, paiement: Paiement) -> bo
     return bool(bien) and has_permission_for_bien(db, user, bien, "VIEW_PAYMENT")
 
 
-def list_paiements(db: Session, current_user: Utilisateur, skip: int = 0, limit: int = 100) -> list[Paiement]:
+def list_paiements(
+    db: Session, current_user: Utilisateur, skip: int = 0, limit: int = 100, proprietaire_id: int | None = None
+) -> list[Paiement]:
+    if proprietaire_id is not None and not can_access_proprietaire(db, current_user, proprietaire_id):
+        raise Forbidden("Not allowed to access this proprietaire")
     query = db.query(Paiement).filter(Paiement.deleted_at.is_(None))
     if current_user.role == UtilisateurRole.PROPRIETAIRE:
         query = (
@@ -99,6 +104,15 @@ def list_paiements(db: Session, current_user: Utilisateur, skip: int = 0, limit:
             query.join(Echeance, Echeance.id == Paiement.echeance_id)
             .join(Bail, Bail.id == Echeance.bail_id)
             .filter(Bail.locataire_id == current_user.id)
+        )
+    if proprietaire_id is not None:
+        if current_user.role == UtilisateurRole.LOCATAIRE:
+            query = query.join(Lot, Lot.id == Bail.lot_id).join(Bien, Bien.id == Lot.bien_id)
+        query = query.filter(
+            Bien.proprietaire_id == proprietaire_id,
+            Bail.deleted_at.is_(None),
+            Lot.deleted_at.is_(None),
+            Bien.deleted_at.is_(None),
         )
     return query.offset(skip).limit(limit).all()
 

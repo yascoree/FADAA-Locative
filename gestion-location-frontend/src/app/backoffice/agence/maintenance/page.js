@@ -17,6 +17,7 @@ import SelectField from "@/components/SelectField";
 import LoadingState from "@/components/LoadingState";
 import EmptyState from "@/components/EmptyState";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAgencyPortfolio } from "@/context/AgencyPortfolioContext";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -59,13 +60,16 @@ export default function AgenceMaintenancePage() {
   const [respondBusy, setRespondBusy] = useState(false);
   const [respondBanner, setRespondBanner] = useState(null);
 
+  const { selectedClientId } = useAgencyPortfolio();
+
   useEffect(() => {
     async function init() {
       setIsLoading(true);
       try {
+        const params = selectedClientId ? { proprietaire_id: selectedClientId } : {};
         const [demandesList, biensList, permissionIndex] = await Promise.all([
-          fetchDemandesMaintenance(),
-          fetchBiens(),
+          fetchDemandesMaintenance(params),
+          fetchBiens(params),
           fetchGestionnairePermissionIndex(),
         ]);
         setDemandes(demandesList);
@@ -78,7 +82,7 @@ export default function AgenceMaintenancePage() {
       }
     }
     init();
-  }, []);
+  }, [selectedClientId]);
 
   function bienLotLabel(bail) {
     if (!bail?.lot) return "—";

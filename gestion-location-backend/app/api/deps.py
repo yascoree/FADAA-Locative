@@ -119,9 +119,25 @@ def managed_proprietaire_ids(db: Session, gestionnaire_id: int) -> list[int]:
     rows = (
         db.query(Mandat.proprietaire_id)
         .filter(Mandat.agence_id == agence_id, Mandat.statut == MandatStatus.ACTIF)
+        .distinct()
         .all()
     )
     return [row[0] for row in rows]
+
+
+def can_access_proprietaire(db: Session, user: Utilisateur, proprietaire_id: int) -> bool:
+    """Whether `user` is allowed to access data scoped to this proprietaire id.
+
+    This is a scope check helper (portfolio membership), not a permission code
+    check: per-resource permissions must still be enforced separately.
+    """
+    if user.role == UtilisateurRole.ADMINISTRATEUR:
+        return True
+    if user.role == UtilisateurRole.PROPRIETAIRE:
+        return user.id == proprietaire_id
+    if user.role == UtilisateurRole.GESTIONNAIRE:
+        return proprietaire_id in managed_proprietaire_ids(db, user.id)
+    return False
 
 
 def gestionnaire_ids_for_proprietaire(db: Session, proprietaire_id: int) -> list[int]:

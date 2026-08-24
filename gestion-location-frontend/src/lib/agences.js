@@ -50,3 +50,10 @@ export async function updateAgenceMember(agenceId, utilisateurId, { roleAgence, 
   });
   return data;
 }
+
+// Retourne la liste des clients (propriétaires) gérés par l'agence du current_user.
+// Le backend garantit la sécurité : l'agence est résolue à partir du compte connecté.
+export async function fetchMyClients() {
+  const { data } = await apiClient.get(`/agences/me/clients`);
+  return data;
+}

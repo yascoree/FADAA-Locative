@@ -17,10 +17,14 @@ router = APIRouter(prefix="/properties", tags=["properties"])
 def list_biens(
     skip: int = 0,
     limit: int = 100,
+    proprietaire_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    return bien_service.list_biens(db, current_user, skip, limit)
+    try:
+        return bien_service.list_biens(db, current_user, skip, limit, proprietaire_id=proprietaire_id)
+    except Forbidden as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
 
 
 @router.post("/", response_model=BienRead, status_code=status.HTTP_201_CREATED)

@@ -19,6 +19,7 @@ import LoadingState from "@/components/LoadingState";
 import EmptyState from "@/components/EmptyState";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAgencyPortfolio } from "@/context/AgencyPortfolioContext";
 import styles from "../agence.module.css";
 
 function Banner({ banner }) {
@@ -107,16 +108,19 @@ export default function AgenceLocatairesPage() {
   const [statusBanner, setStatusBanner] = useState(null);
   const [deactivateTarget, setDeactivateTarget] = useState(null);
 
+  const { selectedClientId } = useAgencyPortfolio();
+
   useEffect(() => {
     async function init() {
       setIsLoading(true);
       try {
+        const params = selectedClientId ? { proprietaire_id: selectedClientId } : {};
         const [locatairesList, bauxList, echeancesList, paiementsList, biensList] = await Promise.all([
-          fetchLocataires(),
-          fetchBaux(),
-          fetchEcheances(),
-          fetchPaiements(),
-          fetchBiens(),
+          fetchLocataires(params),
+          fetchBaux(params),
+          fetchEcheances(params),
+          fetchPaiements(params),
+          fetchBiens(params),
         ]);
         setLocataires(locatairesList);
         setBaux(bauxList);
@@ -130,7 +134,7 @@ export default function AgenceLocatairesPage() {
       }
     }
     init();
-  }, []);
+  }, [selectedClientId]);
 
   function bauxOf(locataireId) {
     return baux.filter((b) => b.locataire_id === locataireId);

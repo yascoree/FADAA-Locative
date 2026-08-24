@@ -1,7 +1,7 @@
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.api.deps import bien_ids_with_permission, gestionnaire_ids_for_proprietaire, managed_proprietaire_ids
+from app.api.deps import bien_ids_with_permission, can_access_proprietaire, gestionnaire_ids_for_proprietaire, managed_proprietaire_ids
 from app.core.security import hash_password
 from app.models.bail import Bail
 from app.models.bien import Bien
@@ -35,7 +35,11 @@ def _is_my_tenant(db: Session, current_user: Utilisateur, tenant_id: int) -> boo
     )
 
 
-def list_locataires(db: Session, current_user: Utilisateur, skip: int = 0, limit: int = 1000) -> list[Utilisateur]:
+def list_locataires(
+    db: Session, current_user: Utilisateur, skip: int = 0, limit: int = 1000, proprietaire_id: int | None = None
+) -> list[Utilisateur]:
+    if proprietaire_id is not None and not can_access_proprietaire(db, current_user, proprietaire_id):
+        raise Forbidden("Not allowed to access this proprietaire")
     query = db.query(Utilisateur).filter(
         Utilisateur.role == UtilisateurRole.LOCATAIRE,
         Utilisateur.deleted_at.is_(None),
@@ -71,6 +75,14 @@ def list_locataires(db: Session, current_user: Utilisateur, skip: int = 0, limit
         )
     elif current_user.role != UtilisateurRole.ADMINISTRATEUR:
         return []
+    if proprietaire_id is not None:
+        tenant_ids_for_owner = (
+            db.query(Bail.locataire_id)
+            .join(Lot, Lot.id == Bail.lot_id)
+            .join(Bien, Bien.id == Lot.bien_id)
+            .filter(Bien.proprietaire_id == proprietaire_id)
+        )
+        query = query.filter(Utilisateur.id.in_(tenant_ids_for_owner))
     return query.offset(skip).limit(limit).all()
 
 

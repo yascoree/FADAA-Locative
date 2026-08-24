@@ -3,7 +3,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from app.api.deps import bien_ids_with_permission, has_permission, has_permission_for_bien
+from app.api.deps import bien_ids_with_permission, can_access_proprietaire, has_permission, has_permission_for_bien
 from app.models.bail import Bail, BailStatus
 from app.models.bien import Bien, BienStatus
 from app.models.bien_photo import BienPhoto
@@ -80,8 +80,14 @@ def _can_view_bien(db: Session, user: Utilisateur, bien: Bien) -> bool:
     return user.role == UtilisateurRole.LOCATAIRE and _is_tenant_of_bien(db, user.id, bien.id)
 
 
-def list_biens(db: Session, current_user: Utilisateur, skip: int = 0, limit: int = 100) -> list[Bien]:
+def list_biens(
+    db: Session, current_user: Utilisateur, skip: int = 0, limit: int = 100, proprietaire_id: int | None = None
+) -> list[Bien]:
+    if proprietaire_id is not None and not can_access_proprietaire(db, current_user, proprietaire_id):
+        raise Forbidden("Not allowed to access this proprietaire")
     query = db.query(Bien).filter(Bien.deleted_at.is_(None))
+    if proprietaire_id is not None:
+        query = query.filter(Bien.proprietaire_id == proprietaire_id)
     if current_user.role == UtilisateurRole.PROPRIETAIRE:
         query = query.filter(Bien.proprietaire_id == current_user.id)
     elif current_user.role == UtilisateurRole.GESTIONNAIRE:

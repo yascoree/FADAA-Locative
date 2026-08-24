@@ -53,3 +53,13 @@ class AgenceMembreUpdate(BaseModel):
     # le titulaire du compte serait une porte ouverte à un détournement de compte.
     nom: Optional[str] = Field(default=None, min_length=1, max_length=100)
     prenom: Optional[str] = Field(default=None, min_length=1, max_length=100)
+
+
+class AgenceClientRead(UtilisateurMini):
+    """Représentation minimale d'un client géré par l'agence, avec quelques
+    statistiques utiles côté interface (comptages de biens/lots). Ces champs sont
+    optionnels côté backend si le comptage est coûteux — le frontend peut afficher
+    une UI dégradée si absent."""
+
+    biens_count: int = 0
+    lots_count: int = 0

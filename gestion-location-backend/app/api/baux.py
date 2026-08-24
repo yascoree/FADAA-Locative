@@ -15,10 +15,14 @@ router = APIRouter(prefix="/leases", tags=["leases"])
 def list_baux(
     skip: int = 0,
     limit: int = 100,
+    proprietaire_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    return bail_service.list_baux(db, current_user, skip, limit)
+    try:
+        return bail_service.list_baux(db, current_user, skip, limit, proprietaire_id=proprietaire_id)
+    except Forbidden as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
 
 
 @router.post("/", response_model=BailRead, status_code=status.HTTP_201_CREATED)
