@@ -64,7 +64,7 @@ def create_gestionnaire_invite(
 
     # Vérifié avant toute création pour ne jamais laisser un compte utilisateur
     # orphelin (sans mandat) si la limite du plan est atteinte.
-    enforce_limit(db, proprietaire.id, "gestionnaires")
+    enforce_limit(db, current_user, "gestionnaires", target_proprietaire_id=proprietaire.id)
 
     utilisateur = Utilisateur(
         nom=payload.nom,
@@ -144,7 +144,7 @@ def create_utilisateur(db: Session, utilisateur_in: UtilisateurCreate) -> Utilis
 
     if utilisateur_in.role == UtilisateurRole.PROPRIETAIRE:
         # Checked before any write: see subscription_service.ensure_trial_plan_available.
-        subscription_service.ensure_trial_plan_available(db)
+        subscription_service.ensure_trial_plan_available(db, target_role=UtilisateurRole.PROPRIETAIRE)
 
     utilisateur = Utilisateur(
         nom=utilisateur_in.nom,
@@ -160,7 +160,7 @@ def create_utilisateur(db: Session, utilisateur_in: UtilisateurCreate) -> Utilis
     db.refresh(utilisateur)
 
     if utilisateur.role == UtilisateurRole.PROPRIETAIRE:
-        subscription_service.create_trial_subscription(db, utilisateur.id)
+        subscription_service.create_trial_subscription(db, utilisateur.id, target_role=UtilisateurRole.PROPRIETAIRE)
 
     return utilisateur
 

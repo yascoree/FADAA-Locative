@@ -793,6 +793,7 @@ const fr = {
       role: "Gestionnaire",
       roleAdmin: "Administrateur",
       roleMembre: "Membre",
+      abonnement: "Mon Abonnement",
     },
     agenceDashboard: {
       subtitle: "Voici l'aperçu des portefeuilles que vous gérez.",
@@ -816,6 +817,7 @@ const fr = {
       roleLabel: "Rôle",
       roleAdmin: "Administrateur",
       roleMembre: "Membre",
+      abonnement: "Mon Abonnement",
       invite: "Inviter",
       inviting: "Envoi...",
       inviteLinkHint: "Aucun e-mail n'a pu être envoyé — transmettez ce lien manuellement :",

@@ -62,7 +62,7 @@ export default function PortfolioSelector() {
   }
 
   return (
-    <div ref={containerRef} style={{ position: "relative", minWidth: "220px", fontFamily: "var(--font-geist-sans)" }}>
+    <div ref={containerRef} style={{ position: "relative", minWidth: "190px", fontFamily: "var(--font-geist-sans)" }}>
       <button
         onClick={() => setOpen(!open)}
         style={{
@@ -70,14 +70,14 @@ export default function PortfolioSelector() {
           alignItems: "center",
           justifyContent: "space-between",
           width: "100%",
-          padding: "0.5rem 0.9rem",
+          padding: "0.4rem 0.7rem",
           background: "var(--brand-surface)",
           border: "1px solid var(--brand-border)",
           borderRadius: "8px",
           boxShadow: "var(--brand-shadow-sm)",
           cursor: "pointer",
           textAlign: "left",
-          fontSize: "0.9rem",
+          fontSize: "0.85rem",
           fontWeight: 500,
           color: "var(--brand-text)",
           transition: "border-color 0.2s, box-shadow 0.2s"

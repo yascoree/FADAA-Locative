@@ -2591,3 +2591,1614 @@
   padding-top: 1.2rem;
   border-top: 1px solid var(--border);
 }
+
+
+/* Abonnement Styles Copied from Proprietaire */
+.planHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.planName {
+  font-weight: 700;
+  color: var(--secondary);
+  font-size: 1.02rem;
+}
+
+.planMeta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.usageGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.usageItem {
+  font-size: 0.82rem;
+}
+
+.usageLabelRow {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+  color: var(--secondary);
+  font-weight: 650;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.usageLabelText {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.usageCount {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  font-weight: 650;
+  flex-shrink: 0;
+}
+
+.usageTrack {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.usageFill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary);
+  transition: width 0.3s ease;
+}
+
+.usageFillWarning {
+  background: var(--warning);
+}
+
+.usageFillDanger {
+  background: var(--danger);
+}
+
+.trialPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.74rem;
+  font-weight: 650;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+}
+
+.trialPillActive {
+  background: var(--primary-soft);
+  color: #4e5738;
+}
+
+.trialPillWarning {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.trialPillExpired {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* ---------- Filters + table ---------- */
+
+.filtersRow {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 1.2rem;
+}
+
+.filtersRow input[type="text"],
+.filtersRow select {
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field);
+  font-size: 0.84rem;
+  background: var(--surface);
+  color: var(--text);
+  color-scheme: light;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.filtersRow input[type="text"]:focus,
+.filtersRow select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.filtersRow input[type="text"] {
+  flex: 1;
+  min-width: 220px;
+}
+
+.filtersRow select option {
+  color: var(--text);
+  background: var(--surface);
+}
+
+.searchFieldWrap {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+}
+
+.searchFieldWrap input[type="text"] {
+  width: 100%;
+  padding-left: 2.3rem;
+}
+
+.searchFieldIcon {
+  position: absolute;
+  left: 0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.table th {
+  text-align: left;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  font-weight: 700;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr {
+  transition: background 0.12s ease;
+}
+
+.table tbody tr:hover {
+  background: var(--primary-soft);
+}
+
+.bienCell,
+.userCell {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.avatarSm {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  background: linear-gradient(155deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.72rem;
+  flex-shrink: 0;
+}
+
+.tableRowActive {
+  background: var(--primary-soft) !important;
+}
+
+/* ---------- Identité locataire en ligne de tableau ---------- */
+
+.tenantAvatarRing {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 50%;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 2px solid var(--border);
+  transition: border-color 0.15s ease;
+}
+
+.tenantAvatarRingActive {
+  border-color: var(--primary);
+}
+
+.tenantAvatarRingOverdue {
+  border-color: var(--danger);
+}
+
+.tenantAvatarRingPending {
+  border-color: var(--warning);
+}
+
+.tenantAvatarRingDisabled {
+  border-color: var(--text-muted);
+  opacity: 0.75;
+}
+
+.tenantAvatarRingLg {
+  width: 3.6rem;
+  height: 3.6rem;
+  border-width: 2.5px;
+  padding: 3px;
+}
+
+.tenantAvatarRingLg .tenantAvatarInner {
+  font-size: 1.1rem;
+}
+
+.tenantAvatarInner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(155deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.78rem;
+  overflow: hidden;
+}
+
+.tenantOverdueTag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--danger);
+  background: var(--danger-soft);
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: fit-content;
+  margin-top: 0.2rem;
+}
+
+.tenantBiensRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.tenantBienChip {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tenantBienChip i {
+  color: var(--primary);
+  font-size: 0.68rem;
+  flex-shrink: 0;
+}
+
+.tenantRowOverdue td:first-child {
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+
+.badgeWithIcon {
+  gap: 0.3rem;
+}
+
+.badgeWithIcon::before {
+  display: none;
+}
+
+.badgeWithIcon i {
+  font-size: 0.78rem;
+}
+
+/* ---------- Detail panel ---------- */
+
+.detailTitle {
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: var(--secondary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.detailHeaderIdentity {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.detailHeaderMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.tenantStatTiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.8rem;
+  margin: 1.3rem 0 1.6rem;
+}
+
+.tenantStatTile {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  background: var(--bg);
+  border-radius: var(--radius-field);
+  padding: 0.75rem 0.9rem;
+}
+
+.tenantStatTileIcon {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 10px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.tenantStatTileIconDanger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.tenantStatTileLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.tenantStatTileValue {
+  font-size: 1.1rem;
+  font-weight: 750;
+  color: var(--secondary);
+  margin-top: 0.1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.detailBlockTitle {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.detailLine {
+  font-size: 0.87rem;
+  color: var(--text);
+  margin-bottom: 0.35rem;
+}
+
+.detailLine strong {
+  color: var(--secondary);
+}
+
+/* ---------- Messagerie ---------- */
+
+.msgShell {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  height: min(70vh, 620px);
+  background: var(--surface);
+}
+
+@media (max-width: 760px) {
+  .msgShell {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+}
+
+.msgContacts {
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.msgContactsHeader {
+  padding: 0.9rem 1rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.msgContactsTitle {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.msgContactItem {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  width: 100%;
+}
+
+.msgContactItem:hover {
+  background: var(--bg);
+}
+
+.msgContactItemActive {
+  background: var(--primary-soft);
+}
+
+.msgContactBody {
+  min-width: 0;
+  flex: 1;
+}
+
+.msgContactTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.msgContactName {
+  font-weight: 650;
+  color: var(--secondary);
+  font-size: 0.86rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.msgContactMeta {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.msgContactPreviewRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.msgContactPreview {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.msgContactRole {
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--primary-dark);
+  background: var(--primary-soft);
+  padding: 0.1rem 0.4rem;
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+
+.msgThread {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.msgThreadHeader {
+  padding: 0.85rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-shrink: 0;
+}
+
+.msgMessages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+@keyframes msgFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.msgBubbleRow {
+  display: flex;
+  animation: msgFadeIn 0.3s ease both;
+}
+
+.msgBubbleRowMine {
+  justify-content: flex-end;
+}
+
+.msgBubbleGroup {
+  max-width: 72%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.msgBubble {
+  padding: 0.55rem 0.85rem;
+  border-radius: 14px;
+  font-size: 0.86rem;
+  line-height: 1.42;
+  position: relative;
+  word-break: break-word;
+}
+
+.msgBubbleTheirs {
+  background: #f0e6d2;
+  color: #4a4130;
+  border-bottom-left-radius: 4px;
+  align-self: flex-start;
+}
+
+.msgBubbleMine {
+  background: var(--primary);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+  align-self: flex-end;
+}
+
+.msgBubbleTime {
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  padding: 0 0.2rem;
+}
+
+.msgBubbleTimeMine {
+  text-align: right;
+}
+
+.msgComposer {
+  border-top: 1px solid var(--border);
+  padding: 0.8rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.msgComposerRow {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+}
+
+.msgStagedPreview {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--bg);
+  border-radius: var(--radius-field);
+}
+
+.msgStagedThumb {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.msgStagedFileIcon {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 6px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.msgStagedName {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msgStagedRemove {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0.2rem;
+  flex-shrink: 0;
+}
+
+.msgStagedRemove:hover {
+  color: var(--danger);
+}
+
+.msgComposer textarea {
+  flex: 1;
+  resize: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field);
+  padding: 0.6rem 0.8rem;
+  font-size: 0.86rem;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface);
+  max-height: 110px;
+  line-height: 1.4;
+}
+
+.msgComposer textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.msgSendBtn {
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  flex-shrink: 0;
+  transition: background 0.12s ease;
+}
+
+.msgSendBtn:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
+.msgSendBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.msgAttachBtn {
+  border: none;
+  background: var(--bg);
+  color: var(--text-muted);
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  flex-shrink: 0;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.msgAttachBtn:hover {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.msgAttachmentWrap {
+  position: relative;
+  display: inline-block;
+  border-radius: 12px;
+}
+
+.msgAttachmentImage {
+  display: block;
+  max-width: 140px;
+  max-height: 140px;
+  border-radius: 8px;
+  object-fit: cover;
+  cursor: pointer;
+  border: 4px solid #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.msgAttachmentWrap:hover .msgAttachmentImage {
+  transform: scale(1.05);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+.msgAttachmentZoomIcon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.75);
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+
+.msgAttachmentWrap:hover .msgAttachmentZoomIcon {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.msgAttachmentFile {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  max-width: 220px;
+}
+
+.msgAttachmentFile i {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.msgAttachmentFile span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msgAttachmentCaption {
+  margin-top: 0.4rem;
+}
+
+.msgEmptyState {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  flex-direction: column;
+  gap: 0.6rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+.msgEmptyState i {
+  font-size: 1.8rem;
+  opacity: 0.4;
+}
+
+/* ---------- Notifications ---------- */
+
+.notifList {
+  display: flex;
+  flex-direction: column;
+}
+
+.notifItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.12s ease;
+}
+
+.notifItem:hover {
+  background: var(--bg);
+}
+
+.notifItem:last-child {
+  border-bottom: none;
+}
+
+.notifItemUnread {
+  background: var(--primary-soft);
+}
+
+.notifIcon {
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.notifIconPrimary {
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+}
+.notifIconAccent {
+  background: var(--accent-soft);
+  color: #8a6a34;
+}
+.notifIconDanger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.notifBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.notifTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.notifTitle {
+  font-weight: 700;
+  color: var(--secondary);
+  font-size: 0.9rem;
+}
+
+.notifDate {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.notifDesc {
+  font-size: 0.83rem;
+  color: var(--text);
+  margin-top: 0.2rem;
+  line-height: 1.4;
+}
+
+.notifActions {
+  display: flex;
+  gap: 0.3rem;
+  margin-left: 0.5rem;
+  flex-shrink: 0;
+}
+
+.notifDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  flex-shrink: 0;
+  margin-top: 0.42rem;
+}
+
+/* ---------- Dashboard — tuiles pleines couleurs ---------- */
+
+.heroTilesGrid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.1rem;
+  margin-bottom: 1.5rem;
+}
+
+.heroTile {
+  border-radius: var(--radius-card);
+  padding: 1.35rem 1.5rem;
+  color: #fff;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  min-width: 0;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.heroTile:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lift);
+}
+
+.heroTilePrimary {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--tone-olive) 85%, transparent),
+    color-mix(in srgb, var(--tone-olive-dark) 88%, transparent)
+  );
+}
+.heroTileDanger {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--tone-terracotta) 85%, transparent),
+    color-mix(in srgb, var(--tone-terracotta-dark) 88%, transparent)
+  );
+}
+.heroTileGold {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--tone-charcoal) 85%, transparent),
+    color-mix(in srgb, var(--tone-charcoal-dark) 88%, transparent)
+  );
+}
+.heroTileInfo {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--tone-navy) 85%, transparent),
+    color-mix(in srgb, var(--tone-navy-dark) 88%, transparent)
+  );
+}
+
+.heroTileTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.heroTileIcon {
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.02rem;
+  flex-shrink: 0;
+}
+
+.heroTileLabel {
+  font-size: 0.76rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.85;
+}
+
+.heroTileValue {
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Dashboard — jauges radiales ---------- */
+
+.metersRow {
+  display: grid;
+  gap: 1.1rem;
+  height: 100%;
+}
+
+.meterCard {
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid color-mix(in srgb, white 50%, var(--border));
+  border-radius: var(--radius-card);
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  flex: 1;
+  justify-content: center;
+}
+
+.meterWrap {
+  position: relative;
+  width: 118px;
+  height: 118px;
+  margin-bottom: 0.6rem;
+}
+
+.meterCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.meterValue {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.meterLabel {
+  font-weight: 700;
+  color: var(--secondary);
+  font-size: 0.86rem;
+}
+
+.meterSublabel {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.meterTrackNavy {
+  stroke: var(--tone-navy-soft);
+}
+.meterFillNavy {
+  stroke: var(--tone-navy);
+}
+.meterTrackOlive {
+  stroke: var(--tone-olive-soft);
+}
+.meterFillOlive {
+  stroke: var(--tone-olive);
+}
+.meterTrackTerracotta {
+  stroke: var(--tone-terracotta-soft);
+}
+.meterFillTerracotta {
+  stroke: var(--tone-terracotta);
+}
+
+.heroGrid {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: 1.5rem;
+  align-items: stretch;
+}
+
+@media (max-width: 980px) {
+  .heroGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.thumbSm {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.thumbPlaceholder {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+
+.tableActions {
+  display: flex;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.iconBtn {
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text-muted);
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.12s ease, color 0.12s ease, transform 0.12s ease;
+}
+
+.iconBtn:hover {
+  color: var(--primary);
+  background: var(--primary-soft);
+  transform: translateY(-1px);
+}
+
+.iconBtn:active {
+  transform: translateY(0) scale(0.92);
+}
+
+.iconBtnDanger:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.paginationRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.paginationButtons {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* ---------- Photo gallery ---------- */
+
+.photoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 0.6rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.photoThumb {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.photoThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.photoRemoveBtn {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  border: none;
+  background: rgba(42, 40, 32, 0.65);
+  color: #fff;
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.photoRemoveBtn:hover {
+  background: var(--danger);
+}
+
+.photoUpload {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px dashed var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.55rem 0.9rem;
+  border-radius: var(--radius-field);
+  cursor: pointer;
+}
+
+.photoUpload:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.photoUpload input {
+  display: none;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.32rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--secondary);
+}
+
+.editActions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.recentEmail {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ---------- Revenue chart ---------- */
+
+.chartHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.chartEndValue {
+  text-align: right;
+}
+
+.chartEndLabel {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.chartEndAmount {
+  font-size: 1.3rem;
+  font-weight: 750;
+  color: var(--secondary);
+  letter-spacing: -0.01em;
+}
+
+.chartWrap {
+  position: relative;
+  width: 100%;
+}
+
+.chartSvg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.chartGrid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.chartAxisText {
+  font-size: 10.5px;
+  fill: var(--text-muted);
+  font-family: inherit;
+}
+
+.chartArea {
+  fill: var(--tone-olive);
+  opacity: 0.14;
+}
+
+.chartLine {
+  fill: none;
+  stroke: var(--tone-olive);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chartDot {
+  fill: var(--tone-olive);
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+.chartDotEnd {
+  fill: var(--tone-olive-dark);
+  stroke: var(--surface);
+  stroke-width: 2.5;
+}
+
+.chartCrosshair {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.5;
+}
+
+.chartHit {
+  fill: transparent;
+}
+
+.chartTooltip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--secondary);
+  color: #f4f1e8;
+  font-size: 0.76rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 9px;
+  box-shadow: var(--shadow-md);
+  transform: translate(-50%, -122%);
+  white-space: nowrap;
+  z-index: 5;
+  transition: left 0.06s linear;
+}
+
+.chartTooltipLabel {
+  color: rgba(244, 241, 232, 0.7);
+  font-weight: 600;
+  text-transform: capitalize;
+  margin-bottom: 0.15rem;
+}
+
+.chartTooltipValue {
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.chartTooltipRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  justify-content: space-between;
+}
+
+.chartLineMuted {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.55;
+}
+
+.chartDotMuted {
+  fill: var(--text-muted);
+  stroke: var(--surface);
+  stroke-width: 2;
+  opacity: 0.7;
+}
+
+.chartLegend {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  margin-bottom: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.chartLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--secondary);
+}
+
+.chartLegendSwatch {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--tone-olive);
+  flex-shrink: 0;
+}
+
+.chartLegendSwatchMuted {
+  background: var(--text-muted);
+  opacity: 0.55;
+}
+
+.viewToggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  background: var(--bg);
+  gap: 2px;
+  margin-bottom: 0.9rem;
+}
+
+.viewToggleBtn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 650;
+  padding: 0.42rem 0.95rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.viewToggleBtn:hover {
+  color: var(--secondary);
+}
+
+.viewToggleBtnActive {
+  background: var(--surface);
+  color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.discussionToggle {
+  position: relative;
+  display: inline-flex;
+  gap: 0.25rem;
+  /* var() plutôt que les teintes fixes d'origine : ce toggle vivait avec des
+     couleurs codées en dur, illisibles une fois le mode sombre activé (texte
+     var(--secondary) clair sur fond resté clair). */
+  background: var(--bg);
+  border-radius: 999px;
+  padding: 0.3rem;
+  margin-bottom: 1rem;
+}
+
+.discussionToggleBubble {
+  position: absolute;
+  top: 0.3rem;
+  bottom: 0.3rem;
+  left: 0;
+  border-radius: 999px;
+  background: var(--primary);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 0;
+}
+
+.discussionToggleBtn {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 650;
+  padding: 0.55rem 1.2rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.25s ease;
+}
+
+.discussionToggleBtn:hover {
+  color: var(--secondary);
+}
+
+.discussionToggleBtnActive {
+  color: #fff;
+}
+
+.discussionToggleBtnActive:hover {
+  color: #fff;
+}
+
+.discussionToggleBtnActive {
+  opacity: 1;
+}
+
+.chartFade {
+  animation: chartFadeIn 0.4s ease;
+}
+
+@keyframes chartFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

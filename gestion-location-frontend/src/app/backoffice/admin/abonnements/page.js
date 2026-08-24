@@ -9,6 +9,7 @@ import {
   PLAN_CHANGE_REQUEST_STATUS,
   UNLIMITED,
   LIMIT_FIELDS,
+  ALL_LIMIT_FIELDS,
   LIMIT_TO_USAGE_KEY,
   PLAN_COLOR_OPTIONS,
   formatLimit,
@@ -98,7 +99,7 @@ function accountStatusLabels(t) {
 }
 
 function emptyLimits(fill) {
-  return Object.fromEntries(LIMIT_FIELDS.map((f) => [f.key, fill]));
+  return Object.fromEntries(ALL_LIMIT_FIELDS.map((f) => [f.key, fill]));
 }
 
 function planToDraft(plan) {
@@ -108,8 +109,8 @@ function planToDraft(plan) {
     price: String(plan.price),
     duration_days: String(plan.duration_days),
     color: plan.color || "olive",
-    limits: Object.fromEntries(LIMIT_FIELDS.map((f) => [f.key, plan[f.key] === UNLIMITED ? "0" : String(plan[f.key])])),
-    unlimited: Object.fromEntries(LIMIT_FIELDS.map((f) => [f.key, plan[f.key] === UNLIMITED])),
+    limits: Object.fromEntries(ALL_LIMIT_FIELDS.map((f) => [f.key, plan[f.key] === UNLIMITED ? "0" : String(plan[f.key])])),
+    unlimited: Object.fromEntries(ALL_LIMIT_FIELDS.map((f) => [f.key, plan[f.key] === UNLIMITED])),
   };
 }
 
@@ -129,7 +130,7 @@ function diffEntries(plan, draft, t) {
     const colorLabel = (value) => PLAN_COLOR_OPTIONS.find((c) => c.value === value)?.label || value;
     entries.push({ label: t("bo.adminAbonnements.diffColor"), before: colorLabel(plan.color || "olive"), after: colorLabel(draft.color) });
   }
-  LIMIT_FIELDS.forEach((f) => {
+  ALL_LIMIT_FIELDS.forEach((f) => {
     const newVal = draft.unlimited[f.key] ? UNLIMITED : Number(draft.limits[f.key] || 0);
     if (newVal !== plan[f.key]) {
       entries.push({ label: f.label, before: formatLimit(plan[f.key]), after: formatLimit(newVal) });
@@ -166,6 +167,7 @@ export default function AdminAbonnementsPage() {
   const [loadError, setLoadError] = useState(null);
 
   const [editingPlanId, setEditingPlanId] = useState(null);
+  const [activePlanTab, setActivePlanTab] = useState("PROPRIETAIRE");
   const [editDraft, setEditDraft] = useState(null);
   const [planSaving, setPlanSaving] = useState(false);
   const [planBanner, setPlanBanner] = useState(null);
@@ -250,6 +252,7 @@ export default function AdminAbonnementsPage() {
   );
 
   const activePlans = useMemo(() => sortedPlans.filter((p) => p.is_active), [sortedPlans]);
+  const displayedPlans = useMemo(() => sortedPlans.filter((p) => (p.target_type || "PROPRIETAIRE") === activePlanTab), [sortedPlans, activePlanTab]);
 
   const rows = useMemo(() => {
     return subscriptions
@@ -359,13 +362,14 @@ export default function AdminAbonnementsPage() {
     setPlanBanner(null);
     try {
       const payload = {
+        target_type: activePlanTab,
         name: editDraft.name,
         description: editDraft.description || null,
         price: Number(editDraft.price),
         duration_days: Number(editDraft.duration_days),
         color: editDraft.color,
       };
-      LIMIT_FIELDS.forEach((f) => {
+      ALL_LIMIT_FIELDS.forEach((f) => {
         payload[f.key] = editDraft.unlimited[f.key] ? UNLIMITED : Number(editDraft.limits[f.key] || 0);
       });
       const updated = await updatePlan(plan.id, payload);
@@ -412,6 +416,7 @@ export default function AdminAbonnementsPage() {
     setCreateBusy(true);
     try {
       const payload = {
+        target_type: activePlanTab,
         name: newPlan.name,
         description: newPlan.description || null,
         price: Number(newPlan.price || 0),
@@ -419,7 +424,7 @@ export default function AdminAbonnementsPage() {
         is_trial: newPlan.is_trial,
         color: newPlan.color,
       };
-      LIMIT_FIELDS.forEach((f) => {
+      ALL_LIMIT_FIELDS.forEach((f) => {
         payload[f.key] = newPlan.unlimited[f.key] ? UNLIMITED : Number(newPlan.limits[f.key] || 0);
       });
       const plan = await createPlan(payload);
@@ -559,8 +564,33 @@ export default function AdminAbonnementsPage() {
         <p className={styles.sectionSubtitle}>{t("bo.adminAbonnements.plansSectionSubtitle")}</p>
         <Banner banner={planBanner} />
 
+        <div className={styles.tabsContainer} style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+          <button
+            type="button"
+            className={`${styles.tabBtn} ${activePlanTab === "PROPRIETAIRE" ? styles.tabBtnActive : ""}`}
+            onClick={() => {
+              setActivePlanTab("PROPRIETAIRE");
+              setEditingPlanId(null);
+            }}
+            style={{ padding: '0.5rem 1rem', background: 'none', border: 'none', borderBottom: activePlanTab === "PROPRIETAIRE" ? '2px solid var(--primary-color)' : 'none', cursor: 'pointer', fontWeight: activePlanTab === "PROPRIETAIRE" ? '600' : 'normal', color: activePlanTab === "PROPRIETAIRE" ? 'var(--primary-color)' : 'var(--text-color-muted)' }}
+          >
+            Plans Propriétaires
+          </button>
+          <button
+            type="button"
+            className={`${styles.tabBtn} ${activePlanTab === "AGENCE" ? styles.tabBtnActive : ""}`}
+            onClick={() => {
+              setActivePlanTab("AGENCE");
+              setEditingPlanId(null);
+            }}
+            style={{ padding: '0.5rem 1rem', background: 'none', border: 'none', borderBottom: activePlanTab === "AGENCE" ? '2px solid var(--primary-color)' : 'none', cursor: 'pointer', fontWeight: activePlanTab === "AGENCE" ? '600' : 'normal', color: activePlanTab === "AGENCE" ? 'var(--primary-color)' : 'var(--text-color-muted)' }}
+          >
+            Plans Agences
+          </button>
+        </div>
+
         <div className={styles.plansCarouselWrap}>
-          {sortedPlans.length > 1 && (
+          {displayedPlans.length > 1 && (
             <button
               type="button"
               className={`${styles.plansNavBtn} ${styles.plansNavBtnPrev}`}
@@ -572,8 +602,8 @@ export default function AdminAbonnementsPage() {
           )}
           <div className={styles.plansGrid} ref={plansScrollRef}>
           {(() => {
-            const cheapestPaid = sortedPlans.find((p) => !p.is_trial);
-            return sortedPlans.map((plan, index) => {
+            const cheapestPaid = displayedPlans.find((p) => !p.is_trial);
+            return displayedPlans.map((plan, index) => {
               const isEditing = editingPlanId === plan.id;
               const impactCount = subscriptions.filter((s) => s.plan_id === plan.id).length;
               const tone = planTones[plan.id];
@@ -603,7 +633,7 @@ export default function AdminAbonnementsPage() {
 
                 <div className={styles.planCardBody}>
                     <div className={styles.planLimitsList}>
-                      {LIMIT_FIELDS.map((f) => (
+                      {LIMIT_FIELDS[plan.target_type || 'PROPRIETAIRE'].map((f) => (
                         <div className={styles.planLimitRow} key={f.key}>
                           <span>{f.label}</span>
                           <span className={styles.planLimitValue}>{formatLimit(plan[f.key])}</span>
@@ -643,14 +673,14 @@ export default function AdminAbonnementsPage() {
               );
             });
           })()}
-          <button type="button" className={styles.planCardAdd} onClick={openCreatePlan} style={{ "--i": sortedPlans.length }}>
+          <button type="button" className={styles.planCardAdd} onClick={openCreatePlan} style={{ "--i": displayedPlans.length }}>
             <span className={styles.planCardAddIcon}>
               <i className="bi bi-plus-lg" />
             </span>
             <span className={styles.planCardAddLabel}>{t("bo.adminAbonnements.createPlanTitle")}</span>
           </button>
           </div>
-          {sortedPlans.length > 1 && (
+          {displayedPlans.length > 1 && (
             <button
               type="button"
               className={`${styles.plansNavBtn} ${styles.plansNavBtnNext}`}
@@ -757,7 +787,7 @@ export default function AdminAbonnementsPage() {
               </div>
 
               <div className={styles.limitEditList}>
-                {LIMIT_FIELDS.map((f) => (
+                {LIMIT_FIELDS[activePlanTab].map((f) => (
                   <div className={styles.limitEditRow} key={f.key}>
                     <span className={styles.limitEditIcon}>
                       <i className={`bi ${f.icon}`} />
@@ -810,7 +840,7 @@ export default function AdminAbonnementsPage() {
                   is_trial: newPlan.is_trial,
                   color: newPlan.color,
                   ...Object.fromEntries(
-                    LIMIT_FIELDS.map((f) => [
+                    LIMIT_FIELDS[activePlanTab].map((f) => [
                       f.key,
                       newPlan.unlimited[f.key] ? UNLIMITED : Number(newPlan.limits[f.key] || 0),
                     ])
@@ -835,7 +865,7 @@ export default function AdminAbonnementsPage() {
                         <p className={styles.newPlanPreviewDesc}>{previewPlan.description}</p>
                       )}
                       <div className={styles.planLimitsList}>
-                        {LIMIT_FIELDS.map((f) => (
+                        {LIMIT_FIELDS[activePlanTab].map((f) => (
                           <div className={styles.planLimitRow} key={f.key}>
                             <span>{f.label}</span>
                             <span className={styles.planLimitValue}>{formatLimit(previewPlan[f.key])}</span>
@@ -953,7 +983,7 @@ export default function AdminAbonnementsPage() {
                       </div>
 
                       <div className={styles.limitEditList}>
-                        {LIMIT_FIELDS.map((f) => (
+                        {LIMIT_FIELDS[editingPlan.target_type || 'PROPRIETAIRE'].map((f) => (
                           <div className={styles.limitEditRow} key={f.key}>
                             <span className={styles.limitEditIcon}>
                               <i className={`bi ${f.icon}`} />
@@ -1042,7 +1072,7 @@ export default function AdminAbonnementsPage() {
                           is_trial: editingPlan.is_trial,
                           color: editDraft.color,
                           ...Object.fromEntries(
-                            LIMIT_FIELDS.map((f) => [
+                            LIMIT_FIELDS[editingPlan.target_type || 'PROPRIETAIRE'].map((f) => [
                               f.key,
                               editDraft.unlimited[f.key] ? UNLIMITED : Number(editDraft.limits[f.key] || 0),
                             ])
@@ -1069,7 +1099,7 @@ export default function AdminAbonnementsPage() {
                                 <p className={styles.newPlanPreviewDesc}>{previewPlan.description}</p>
                               )}
                               <div className={styles.planLimitsList}>
-                                {LIMIT_FIELDS.map((f) => (
+                                {LIMIT_FIELDS[editingPlan.target_type || 'PROPRIETAIRE'].map((f) => (
                                   <div className={styles.planLimitRow} key={f.key}>
                                     <span>{f.label}</span>
                                     <span className={styles.planLimitValue}>{formatLimit(previewPlan[f.key])}</span>
@@ -1383,7 +1413,7 @@ export default function AdminAbonnementsPage() {
 
                       {changePlanTarget && (
                         <div className={styles.previewGrid}>
-                          {LIMIT_FIELDS.map((f) => (
+                          {LIMIT_FIELDS[sortedPlans.find((p) => String(p.id) === String(changePlanTarget))?.target_type || 'PROPRIETAIRE'].map((f) => (
                             <div className={styles.limitItem} key={f.key}>
                               <span className={styles.limitIcon}>
                                 <i className={`bi ${f.icon}`} />
@@ -1530,7 +1560,7 @@ export default function AdminAbonnementsPage() {
             {usageLoading && <p className={styles.empty}>{t("bo.adminAbonnements.loadingUsage")}</p>}
             {!usageLoading && usage && (
               <div className={styles.usageGrid}>
-                {LIMIT_FIELDS.map((f) => {
+                {LIMIT_FIELDS[selectedRow.subscription.plan.target_type || 'PROPRIETAIRE'].map((f) => {
                   const limit = selectedRow.subscription.plan[f.key];
                   const used = usage[LIMIT_TO_USAGE_KEY[f.key]];
                   const percent = limit === UNLIMITED ? null : Math.min(100, (used / Math.max(limit, 1)) * 100);

@@ -246,7 +246,7 @@ def create_bail(db: Session, current_user: Utilisateur, bail_in: BailCreate) -> 
             raise BadRequest("Ce lot a déjà un bail actif ou planifié sur cette période.")
 
     if bail_in.statut == BailStatus.ACTIF:
-        enforce_limit(db, bien.proprietaire_id, "baux_actifs")
+        enforce_limit(db, current_user, "baux_actifs", target_proprietaire_id=bien.proprietaire_id)
     # Ne re-vérifie le quota locataires QUE si ce locataire n'est pas déjà compté
     # dans l'usage du propriétaire (voir usage_service._counted_locataire_ids) —
     # un locataire déjà onboardé (donc déjà compté) qui reçoit son premier bail ne
@@ -256,7 +256,7 @@ def create_bail(db: Session, current_user: Utilisateur, bail_in: BailCreate) -> 
     # max_locataires=N dès lors qu'il avait été créé (donc compté) avant le bail
     # — le seul ordre possible, locataire_id devant déjà exister.
     if not is_locataire_counted(db, bien.proprietaire_id, bail_in.locataire_id):
-        enforce_limit(db, bien.proprietaire_id, "locataires")
+        enforce_limit(db, current_user, "locataires", target_proprietaire_id=bien.proprietaire_id)
 
     bail = Bail(**bail_in.model_dump())
     db.add(bail)
@@ -289,7 +289,7 @@ def update_bail(db: Session, current_user: Utilisateur, bail_id: int, bail_in: B
         if conflict:
             raise BadRequest("Ce lot a déjà un bail actif ou planifié sur cette période.")
     if prospective_statut == BailStatus.ACTIF and bail.statut != BailStatus.ACTIF:
-        enforce_limit(db, bien.proprietaire_id, "baux_actifs")
+        enforce_limit(db, current_user, "baux_actifs", target_proprietaire_id=bien.proprietaire_id)
 
     if FIELDS_LOCKED_ONCE_PAID & update_data.keys() and _has_paid_echeances(db, bail.id):
         raise BadRequest(

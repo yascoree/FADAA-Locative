@@ -19,7 +19,12 @@ class SubscriptionPlanLimits(BaseModel):
     max_gestionnaires: int = Field(default=UNLIMITED, ge=-1)
     max_locataires: int = Field(default=UNLIMITED, ge=-1)
     max_quittances_mois: int = Field(default=UNLIMITED, ge=-1)
+    max_membres_agence: int = Field(default=UNLIMITED, ge=-1)
+    max_storage_mb: int = Field(default=UNLIMITED, ge=-1)
+    can_export: bool = Field(default=True)
 
+
+from app.models.subscription_plan import SubscriptionTarget
 
 class SubscriptionPlanBase(SubscriptionPlanLimits):
     name: str = Field(min_length=1, max_length=100)
@@ -28,6 +33,7 @@ class SubscriptionPlanBase(SubscriptionPlanLimits):
     duration_days: int = Field(gt=0)
     is_trial: bool = False
     color: str = Field(default="olive", pattern="^(" + "|".join(PLAN_COLORS) + ")$")
+    target_type: SubscriptionTarget = Field(default=SubscriptionTarget.PROPRIETAIRE)
 
 
 class SubscriptionPlanCreate(SubscriptionPlanBase):
@@ -41,12 +47,16 @@ class SubscriptionPlanUpdate(BaseModel):
     duration_days: Optional[int] = Field(default=None, gt=0)
     is_trial: Optional[bool] = None
     color: Optional[str] = Field(default=None, pattern="^(" + "|".join(PLAN_COLORS) + ")$")
+    target_type: Optional[SubscriptionTarget] = None
     max_biens: Optional[int] = Field(default=None, ge=-1)
     max_lots: Optional[int] = Field(default=None, ge=-1)
     max_baux_actifs: Optional[int] = Field(default=None, ge=-1)
     max_gestionnaires: Optional[int] = Field(default=None, ge=-1)
     max_locataires: Optional[int] = Field(default=None, ge=-1)
     max_quittances_mois: Optional[int] = Field(default=None, ge=-1)
+    max_membres_agence: Optional[int] = Field(default=None, ge=-1)
+    max_storage_mb: Optional[int] = Field(default=None, ge=-1)
+    can_export: Optional[bool] = None
 
 
 class SubscriptionPlanRead(SubscriptionPlanBase):

@@ -8,10 +8,11 @@ from app.schemas.subscription_plan import SubscriptionPlanRead
 
 
 class SubscriptionAssign(BaseModel):
-    """Assigne (ou change) le plan d'un propriétaire. Crée la souscription si elle
+    """Assigne (ou change) le plan d'une entité. Crée la souscription si elle
     n'existe pas encore, la met à jour sinon."""
 
-    owner_id: int = Field(gt=0)
+    owner_id: Optional[int] = Field(default=None, gt=0)
+    agence_id: Optional[int] = Field(default=None, gt=0)
     plan_id: int = Field(gt=0)
 
 
@@ -23,7 +24,8 @@ class SubscriptionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    owner_id: int
+    owner_id: Optional[int] = None
+    agence_id: Optional[int] = None
     plan_id: int
     plan: SubscriptionPlanRead
     status: SubscriptionStatus
@@ -39,6 +41,8 @@ class SubscriptionUsageRead(BaseModel):
     biens: int
     lots: int
     baux_actifs: int
-    gestionnaires: int
+    gestionnaires: int # Pour les propriétaires
     locataires: int
     quittances_mois: int
+    membres_agence: int = 0
+    storage_mb: int = 0

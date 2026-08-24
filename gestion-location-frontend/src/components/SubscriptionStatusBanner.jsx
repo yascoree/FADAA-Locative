@@ -11,7 +11,7 @@ import {
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "./SubscriptionStatusBanner.module.css";
 
-const ABONNEMENT_PATH = "/backoffice/proprietaire/abonnement";
+
 
 /** Bannière persistante, visible sur tout l'espace propriétaire (pas seulement
     la page Abonnement), quand l'abonnement est bientôt expiré ou déjà bloqué —
@@ -43,7 +43,10 @@ export default function SubscriptionStatusBanner() {
     };
   }, []);
 
-  if (!subscription || pathname === ABONNEMENT_PATH) return null;
+  const isAgence = pathname.startsWith("/backoffice/agence");
+  const abonnementPath = isAgence ? "/backoffice/agence/abonnement" : "/backoffice/proprietaire/abonnement";
+
+  if (!subscription || pathname === abonnementPath) return null;
 
   const blocked = !isSubscriptionUsable(subscription);
   const daysRemaining = subscriptionDaysRemaining(subscription);
@@ -68,7 +71,7 @@ export default function SubscriptionStatusBanner() {
     <div className={`${styles.banner} ${blocked ? styles.bannerDanger : styles.bannerWarning}`}>
       <i className={`bi ${blocked ? "bi-exclamation-octagon-fill" : "bi-hourglass-split"}`} />
       <span className={styles.text}>{text}</span>
-      <Link href={ABONNEMENT_PATH} className={styles.cta}>
+      <Link href={abonnementPath} className={styles.cta}>
         {t("bo.subscriptionBanner.cta")}
         <i className="bi bi-arrow-right" />
       </Link>

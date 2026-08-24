@@ -16,14 +16,27 @@ export const SUBSCRIPTION_STATUS_LABELS = {
 
 export const UNLIMITED = -1;
 
-// Une entrée par limite affichée : clé du champ API + libellé français + icône.
-export const LIMIT_FIELDS = [
-  { key: "max_biens", label: "Biens maximum", icon: "bi-house-door" },
-  { key: "max_lots", label: "Lots maximum", icon: "bi-grid-3x3-gap" },
-  { key: "max_baux_actifs", label: "Baux actifs maximum", icon: "bi-file-earmark-text" },
-  { key: "max_gestionnaires", label: "Gestionnaires maximum", icon: "bi-person-badge" },
-  { key: "max_locataires", label: "Locataires maximum", icon: "bi-people" },
-  { key: "max_quittances_mois", label: "Quittances / mois", icon: "bi-receipt" },
+export const LIMIT_FIELDS = {
+  PROPRIETAIRE: [
+    { key: "max_biens", label: "Biens maximum", icon: "bi-house-door" },
+    { key: "max_lots", label: "Lots maximum", icon: "bi-grid-3x3-gap" },
+    { key: "max_baux_actifs", label: "Baux actifs maximum", icon: "bi-file-earmark-text" },
+    { key: "max_gestionnaires", label: "Gestionnaires maximum", icon: "bi-person-badge" },
+    { key: "max_locataires", label: "Locataires maximum", icon: "bi-people" },
+    { key: "max_quittances_mois", label: "Quittances / mois", icon: "bi-receipt" },
+  ],
+  AGENCE: [
+    { key: "max_biens", label: "Biens maximum", icon: "bi-house-door" },
+    { key: "max_lots", label: "Lots maximum", icon: "bi-grid-3x3-gap" },
+    { key: "max_baux_actifs", label: "Baux actifs maximum", icon: "bi-file-earmark-text" },
+    { key: "max_membres_agence", label: "Membres d'agence", icon: "bi-person-badge" },
+    { key: "max_locataires", label: "Locataires maximum", icon: "bi-people" },
+    { key: "max_quittances_mois", label: "Quittances / mois", icon: "bi-receipt" },
+  ]
+};
+
+export const ALL_LIMIT_FIELDS = [
+  ...new Map([...LIMIT_FIELDS.PROPRIETAIRE, ...LIMIT_FIELDS.AGENCE].map(item => [item.key, item])).values()
 ];
 
 // Clé de limite -> clé du même compteur dans SubscriptionUsageRead (backend).
@@ -34,6 +47,7 @@ export const LIMIT_TO_USAGE_KEY = {
   max_gestionnaires: "gestionnaires",
   max_locataires: "locataires",
   max_quittances_mois: "quittances_mois",
+  max_membres_agence: "membres_agence",
 };
 
 export function formatLimit(value) {
@@ -229,8 +243,9 @@ export async function setPlanActive(planId, isActive) {
 
 // Plans consultables par un propriétaire (pas seulement l'admin) — alimente la
 // popup de choix de plan (voir components/PlanLimitPopup.jsx).
-export async function fetchActivePlans() {
-  const { data } = await apiClient.get("/subscription-plans/active");
+export async function fetchActivePlans(targetType = undefined) {
+  const params = targetType ? { target_type: targetType } : {};
+  const { data } = await apiClient.get("/subscription-plans/active", { params });
   return data;
 }
 

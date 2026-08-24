@@ -1,9 +1,15 @@
+import enum
 from datetime import datetime
 
-from sqlalchemy import DECIMAL, Boolean, Column, DateTime, Integer, String, Text
+from sqlalchemy import DECIMAL, Boolean, Column, DateTime, Enum, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+
+
+class SubscriptionTarget(str, enum.Enum):
+    PROPRIETAIRE = "PROPRIETAIRE"
+    AGENCE = "AGENCE"
 
 
 class SubscriptionPlan(Base):
@@ -20,15 +26,25 @@ class SubscriptionPlan(Base):
     # une des 4 teintes de la palette de marque, pas une couleur libre.
     color = Column(String(20), nullable=False, default="olive")
 
-    # Limites d'usage : combien de ressources un propriétaire sur ce plan peut
-    # avoir. -1 = illimité. Ce ne sont PAS des permissions — les permissions
-    # restent gérées séparément par le propriétaire via les Mandats.
+    # Cible de l'abonnement : PROPRIETAIRE (par défaut) ou AGENCE.
+    target_type = Column(
+        Enum(SubscriptionTarget, name="subscription_target_enum", create_type=True),
+        nullable=False,
+        default=SubscriptionTarget.PROPRIETAIRE,
+    )
+
+    # Limites d'usage : combien de ressources un propriétaire/agence sur ce plan peut avoir. -1 = illimité.
     max_biens = Column(Integer, nullable=False, default=-1)
     max_lots = Column(Integer, nullable=False, default=-1)
     max_baux_actifs = Column(Integer, nullable=False, default=-1)
-    max_gestionnaires = Column(Integer, nullable=False, default=-1)
+    max_gestionnaires = Column(Integer, nullable=False, default=-1) # Limite pour les PROPRIETAIRE (partage via mandat)
     max_locataires = Column(Integer, nullable=False, default=-1)
     max_quittances_mois = Column(Integer, nullable=False, default=-1)
+
+    # Limites spécifiques AGENCE
+    max_membres_agence = Column(Integer, nullable=False, default=-1)
+    max_storage_mb = Column(Integer, nullable=False, default=-1)
+    can_export = Column(Boolean, nullable=False, default=True)
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)

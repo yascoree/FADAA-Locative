@@ -30,7 +30,7 @@ def get_my_agence(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="You are not a member of any agence")
     return agence
 
-
+## Endpoint utilisé pour l'affichage du portefeuille
 @router.get("/me/clients", response_model=list[AgenceClientRead])
 def list_my_clients(
     db: Session = Depends(get_db),

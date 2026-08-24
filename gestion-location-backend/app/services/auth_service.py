@@ -21,6 +21,7 @@ from app.models.agence_membre import AgenceMembre, AgenceMembreStatus, RoleAgenc
 from app.models.utilisateur import StatutCompte, Utilisateur, UtilisateurRole
 from app.schemas.auth import Token
 from app.schemas.utilisateur import UtilisateurCreate
+from app.models.subscription_plan import SubscriptionTarget
 from app.services import subscription_service
 from app.services.email_service import send_email
 from app.services.exceptions import BadRequest, Forbidden, NotFound
@@ -47,9 +48,9 @@ def register(db: Session, utilisateur_in: UtilisateurCreate) -> Utilisateur:
     if existing:
         raise BadRequest("Email already registered")
 
-    if utilisateur_in.role == UtilisateurRole.PROPRIETAIRE:
-        # Checked before any write: see subscription_service.ensure_trial_plan_available.
-        subscription_service.ensure_trial_plan_available(db)
+    if utilisateur_in.role in (UtilisateurRole.PROPRIETAIRE, UtilisateurRole.GESTIONNAIRE):
+        target = SubscriptionTarget.AGENCE if utilisateur_in.role == UtilisateurRole.GESTIONNAIRE else SubscriptionTarget.PROPRIETAIRE
+        subscription_service.ensure_trial_plan_available(db, target_type=target)
 
     utilisateur = Utilisateur(
         nom=utilisateur_in.nom,
@@ -65,10 +66,7 @@ def register(db: Session, utilisateur_in: UtilisateurCreate) -> Utilisateur:
     db.refresh(utilisateur)
 
     if utilisateur.role == UtilisateurRole.PROPRIETAIRE:
-        # Each proprietaire starts automatically with a free trial subscription.
-        # Gestionnaires have no subscription of their own — their agence is billed
-        # through the proprietaires who mandate it.
-        subscription_service.create_trial_subscription(db, utilisateur.id)
+        subscription_service.create_trial_subscription(db, owner_id=utilisateur.id, target_type=SubscriptionTarget.PROPRIETAIRE)
     elif utilisateur.role == UtilisateurRole.GESTIONNAIRE:
         agence = Agence(nom=utilisateur_in.agence_nom.strip())
         db.add(agence)
@@ -85,6 +83,9 @@ def register(db: Session, utilisateur_in: UtilisateurCreate) -> Utilisateur:
             )
         )
         db.commit()
+        
+        # Le premier membre de l'agence (ADMIN) reçoit l'abonnement d'essai pour l'agence.
+        subscription_service.create_trial_subscription(db, agence_id=agence.id, target_type=SubscriptionTarget.AGENCE)
 
     return utilisateur
 

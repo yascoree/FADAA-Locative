@@ -58,7 +58,7 @@ export default function PlanChoiceGrid({ plans, selectedPlanId, onSelect }) {
 
             <div className={styles.planCardBody}>
               <div className={styles.planLimitsList}>
-                {LIMIT_FIELDS.map((f) => (
+                {LIMIT_FIELDS[plan.target_type || 'PROPRIETAIRE'].map((f) => (
                   <div className={styles.planLimitRow} key={f.key}>
                     <span>{f.label}</span>
                     <span className={styles.planLimitValue}>{formatLimit(plan[f.key])}</span>

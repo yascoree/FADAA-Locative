@@ -27,6 +27,17 @@ def get_by_owner(db: Session, owner_id: int) -> Subscription | None:
         )
 
 
+def get_by_agence(db: Session, agence_id: int) -> Subscription | None:
+    return (
+        db.query(Subscription)
+        .filter(
+            Subscription.agence_id == agence_id,
+            Subscription.deleted_at.is_(None)
+        )
+        .first()
+    )
+
+
 def get_multi(db: Session, skip: int = 0, limit: int = 100) -> list[Subscription]:
     # return db.query(Subscription).offset(skip).limit(limit).all()
 

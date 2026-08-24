@@ -12,33 +12,29 @@ from app.models.paiement import Paiement
 from app.models.quittance import Quittance
 from app.models.subscription import Subscription
 from app.models.utilisateur import Utilisateur, UtilisateurRole
+from app.api.deps import gestionnaire_ids_for_proprietaire, managed_proprietaire_ids, active_agence_id
 from app.services import subscription_service
 from app.services.exceptions import PaymentRequired
 
 
 def _counted_locataire_ids(db: Session, owner_id: int) -> set[int]:
-    """Locataire ids that count against owner_id's `locataires` quota: rattachés à
-    un bail (quel que soit son statut) sur un bien de ce propriétaire, OU créés
-    par lui/l'un de ses gestionnaires même sans bail encore — même périmètre que
-    "mes locataires" côté locataire_service.list_locataires. Sans ce deuxième
-    ensemble, la limite du plan ne mordait jamais à la création du compte (un
-    locataire tout juste créé n'a par définition encore aucun bail), seulement
-    bien plus tard au moment du bail — trop tard pour empêcher d'onboarder plus
-    de locataires que le plan n'en autorise.
+    owner = db.get(Utilisateur, owner_id)
+    is_gestionnaire = owner and owner.role == UtilisateurRole.GESTIONNAIRE
+    
+    if is_gestionnaire:
+        target_proprietaire_ids = managed_proprietaire_ids(db, owner_id)
+        if not target_proprietaire_ids:
+            target_proprietaire_ids = [-1]
+    else:
+        target_proprietaire_ids = [owner_id]
 
-    Extrait de compute_owner_usage pour être aussi utilisable comme test
-    d'appartenance (voir is_locataire_counted) par bail_service.create_bail, qui
-    doit savoir si UN locataire précis est déjà comptabilisé avant de rappeler
-    enforce_limit — plutôt que de dupliquer cette règle avec un raccourci du
-    genre "un bail existe-t-il déjà pour cette paire ?", qui ignore le cas d'un
-    locataire déjà créé (donc déjà compté) mais pas encore sous bail."""
     bail_linked_locataire_ids = {
         row[0]
         for row in db.query(Bail.locataire_id)
         .join(Lot, Lot.id == Bail.lot_id)
         .join(Bien, Bien.id == Lot.bien_id)
         .filter(
-            Bien.proprietaire_id == owner_id,
+            Bien.proprietaire_id.in_(target_proprietaire_ids),
             Bien.deleted_at.is_(None),
             Lot.deleted_at.is_(None),
             Bail.deleted_at.is_(None),
@@ -46,7 +42,19 @@ def _counted_locataire_ids(db: Session, owner_id: int) -> set[int]:
         .distinct()
         .all()
     }
-    creator_ids = [owner_id, *gestionnaire_ids_for_proprietaire(db, owner_id)]
+    
+    if is_gestionnaire:
+        # Pour une agence, on compte les locataires créés par tous les collaborateurs actifs
+        from app.models.agence_membre import AgenceMembre, AgenceMembreStatus
+        agence_id = active_agence_id(db, owner_id)
+        if agence_id:
+            gestionnaires = db.query(AgenceMembre.utilisateur_id).filter(AgenceMembre.agence_id == agence_id, AgenceMembre.statut == AgenceMembreStatus.ACTIF).all()
+            creator_ids = [g[0] for g in gestionnaires]
+        else:
+            creator_ids = [owner_id]
+    else:
+        creator_ids = [owner_id, *gestionnaire_ids_for_proprietaire(db, owner_id)]
+        
     created_locataire_ids = {
         row[0]
         for row in db.query(Utilisateur.id).filter(
@@ -67,21 +75,16 @@ def is_locataire_counted(db: Session, owner_id: int, locataire_id: int) -> bool:
     return locataire_id in _counted_locataire_ids(db, owner_id)
 
 
-def compute_owner_usage(db: Session, owner_id: int) -> dict:
-    """Compte l'usage réel d'un propriétaire, pour le comparer aux limites de son
-    plan (voir app.models.subscription_plan.SubscriptionPlan). Utilisé à la fois
-    pour l'affichage (dashboard abonnement) et par enforce_limit ci-dessous pour
-    bloquer la création de nouvelles ressources au-delà de ces limites."""
-    biens = (
-        db.query(Bien)
-        .filter(Bien.proprietaire_id == owner_id, Bien.deleted_at.is_(None))
-        .count()
-    )
+def compute_proprietaire_usage(db: Session, proprietaire_id: int) -> dict:
+    """Compte l'usage réel d'un propriétaire pour son propre abonnement (Owner)."""
+    target_proprietaire_ids = [proprietaire_id]
+
+    biens = db.query(Bien).filter(Bien.proprietaire_id.in_(target_proprietaire_ids), Bien.deleted_at.is_(None)).count()
 
     lots = (
         db.query(Lot)
         .join(Bien, Bien.id == Lot.bien_id)
-        .filter(Bien.proprietaire_id == owner_id, Bien.deleted_at.is_(None), Lot.deleted_at.is_(None))
+        .filter(Bien.proprietaire_id.in_(target_proprietaire_ids), Bien.deleted_at.is_(None), Lot.deleted_at.is_(None))
         .count()
     )
 
@@ -90,7 +93,7 @@ def compute_owner_usage(db: Session, owner_id: int) -> dict:
         .join(Lot, Lot.id == Bail.lot_id)
         .join(Bien, Bien.id == Lot.bien_id)
         .filter(
-            Bien.proprietaire_id == owner_id,
+            Bien.proprietaire_id.in_(target_proprietaire_ids),
             Bien.deleted_at.is_(None),
             Lot.deleted_at.is_(None),
             Bail.deleted_at.is_(None),
@@ -102,14 +105,14 @@ def compute_owner_usage(db: Session, owner_id: int) -> dict:
     gestionnaires = (
         db.query(Mandat)
         .filter(
-            Mandat.proprietaire_id == owner_id,
+            Mandat.proprietaire_id == proprietaire_id,
             Mandat.deleted_at.is_(None),
             Mandat.statut == MandatStatus.ACTIF,
         )
         .count()
     )
 
-    locataires = len(_counted_locataire_ids(db, owner_id))
+    locataires = len(_counted_locataire_ids(db, proprietaire_id))
 
     month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     quittances_mois = (
@@ -120,7 +123,7 @@ def compute_owner_usage(db: Session, owner_id: int) -> dict:
         .join(Lot, Lot.id == Bail.lot_id)
         .join(Bien, Bien.id == Lot.bien_id)
         .filter(
-            Bien.proprietaire_id == owner_id,
+            Bien.proprietaire_id.in_(target_proprietaire_ids),
             Bien.deleted_at.is_(None),
             Lot.deleted_at.is_(None),
             Bail.deleted_at.is_(None),
@@ -139,11 +142,117 @@ def compute_owner_usage(db: Session, owner_id: int) -> dict:
         "gestionnaires": gestionnaires,
         "locataires": locataires,
         "quittances_mois": quittances_mois,
+        "membres_agence": 0,
+        "storage_mb": 0,
     }
 
 
-# Nom de la limite sur SubscriptionPlan pour chaque clé retournée par
-# compute_owner_usage, et libellé lisible pour le message d'erreur.
+def compute_agence_usage(db: Session, agence_id: int) -> dict:
+    """Compte l'usage global d'une agence (via ses mandats actifs) pour son abonnement (Agency)."""
+    
+    from app.models.agence_membre import AgenceMembre, AgenceMembreStatus
+    
+    gestionnaires_ids = [
+        row[0] for row in db.query(AgenceMembre.utilisateur_id)
+        .filter(AgenceMembre.agence_id == agence_id, AgenceMembre.statut == AgenceMembreStatus.ACTIF)
+        .all()
+    ]
+    
+    target_proprietaire_ids = set()
+    for g_id in gestionnaires_ids:
+        target_proprietaire_ids.update(managed_proprietaire_ids(db, g_id))
+        
+    target_proprietaire_ids = list(target_proprietaire_ids)
+    if not target_proprietaire_ids:
+        target_proprietaire_ids = [-1]
+
+    biens = db.query(Bien).filter(Bien.proprietaire_id.in_(target_proprietaire_ids), Bien.deleted_at.is_(None)).count()
+
+    lots = (
+        db.query(Lot)
+        .join(Bien, Bien.id == Lot.bien_id)
+        .filter(Bien.proprietaire_id.in_(target_proprietaire_ids), Bien.deleted_at.is_(None), Lot.deleted_at.is_(None))
+        .count()
+    )
+
+    baux_actifs = (
+        db.query(Bail)
+        .join(Lot, Lot.id == Bail.lot_id)
+        .join(Bien, Bien.id == Lot.bien_id)
+        .filter(
+            Bien.proprietaire_id.in_(target_proprietaire_ids),
+            Bien.deleted_at.is_(None),
+            Lot.deleted_at.is_(None),
+            Bail.deleted_at.is_(None),
+            Bail.statut == BailStatus.ACTIF,
+        )
+        .count()
+    )
+
+    # Membres d'agence actifs
+    membres_agence = len(gestionnaires_ids)
+    
+    # Locataires (on récupère les locataires créés par les gestionnaires ou liés aux baux)
+    bail_linked_locataire_ids = {
+        row[0]
+        for row in db.query(Bail.locataire_id)
+        .join(Lot, Lot.id == Bail.lot_id)
+        .join(Bien, Bien.id == Lot.bien_id)
+        .filter(
+            Bien.proprietaire_id.in_(target_proprietaire_ids),
+            Bien.deleted_at.is_(None),
+            Lot.deleted_at.is_(None),
+            Bail.deleted_at.is_(None),
+        )
+        .distinct()
+        .all()
+    }
+    created_locataire_ids = {
+        row[0]
+        for row in db.query(Utilisateur.id).filter(
+            Utilisateur.role == UtilisateurRole.LOCATAIRE,
+            Utilisateur.deleted_at.is_(None),
+            Utilisateur.cree_par_id.in_(gestionnaires_ids),
+        )
+    }
+    locataires = len(bail_linked_locataire_ids | created_locataire_ids)
+
+    month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    quittances_mois = (
+        db.query(Quittance)
+        .join(Paiement, Paiement.id == Quittance.paiement_id)
+        .join(Echeance, Echeance.id == Paiement.echeance_id)
+        .join(Bail, Bail.id == Echeance.bail_id)
+        .join(Lot, Lot.id == Bail.lot_id)
+        .join(Bien, Bien.id == Lot.bien_id)
+        .filter(
+            Bien.proprietaire_id.in_(target_proprietaire_ids),
+            Bien.deleted_at.is_(None),
+            Lot.deleted_at.is_(None),
+            Bail.deleted_at.is_(None),
+            Echeance.deleted_at.is_(None),
+            Paiement.deleted_at.is_(None),
+            Quittance.deleted_at.is_(None),
+            Quittance.date_generation >= month_start,
+        )
+        .count()
+    )
+
+    return {
+        "biens": biens,
+        "lots": lots,
+        "baux_actifs": baux_actifs,
+        "gestionnaires": 0, # Uniquement pour les abonnements PROPRIETAIRE
+        "locataires": locataires,
+        "quittances_mois": quittances_mois,
+        "membres_agence": membres_agence,
+        "storage_mb": 0, # Not implemented yet
+    }
+
+# Rétrocompatibilité pour les appels non modifiés dans usage_service
+def compute_owner_usage(db: Session, owner_id: int) -> dict:
+    return compute_proprietaire_usage(db, owner_id)
+
 _LIMIT_FIELDS = {
     "biens": ("max_biens", "biens"),
     "lots": ("max_lots", "lots"),
@@ -151,45 +260,55 @@ _LIMIT_FIELDS = {
     "gestionnaires": ("max_gestionnaires", "gestionnaires"),
     "locataires": ("max_locataires", "locataires"),
     "quittances_mois": ("max_quittances_mois", "quittances ce mois-ci"),
+    "membres_agence": ("max_membres_agence", "membres d'agence"),
 }
 
 
-def enforce_limit(db: Session, owner_id: int, resource: str) -> None:
-    """Bloque la création d'une nouvelle ressource si le propriétaire a déjà
-    atteint la limite de son plan pour ce type de ressource (-1 = illimité).
-    Ne bloque rien si le propriétaire n'a pas d'abonnement exploitable — ne
-    devrait pas arriver en usage normal (le trial est assigné à l'inscription),
-    mais on ne veut pas casser une création légitime sur un cas limite de
-    configuration plutôt qu'un vrai dépassement de quota.
+def enforce_limit(db: Session, current_user: Utilisateur, resource: str, target_proprietaire_id: int = None) -> None:
+    """Vérifie les limites. Si `current_user` est GESTIONNAIRE, vérifie l'abonnement de son Agence.
+    Sinon, vérifie l'abonnement du Propriétaire (`current_user` ou `target_proprietaire_id`)."""
+    
+    is_agence = current_user.role == UtilisateurRole.GESTIONNAIRE
+    
+    if is_agence:
+        agence_id = active_agence_id(db, current_user.id)
+        if not agence_id:
+            return
+        
+        subscription = (
+            db.query(Subscription)
+            .filter(Subscription.agence_id == agence_id, Subscription.deleted_at.is_(None))
+            .with_for_update()
+            .first()
+        )
+    else:
+        owner_id = target_proprietaire_id or current_user.id
+        subscription = (
+            db.query(Subscription)
+            .filter(Subscription.owner_id == owner_id, Subscription.deleted_at.is_(None))
+            .with_for_update()
+            .first()
+        )
 
-    Verrouille la ligne Subscription du propriétaire (SELECT ... FOR UPDATE) le
-    temps de la requête : count-puis-insert n'est pas atomique, donc deux
-    créations concurrentes peuvent toutes les deux lire un compte encore sous la
-    limite avant qu'aucune n'ait committé, et donc toutes les deux passer. Ce
-    verrou est relâché au commit (ou rollback) de la transaction appelante — qui
-    inclut toujours l'INSERT de la ressource elle-même (voir bien_service.
-    create_bien et les autres appelants) — donc une deuxième requête concurrente
-    sur le MÊME propriétaire attend que la première ait fini avant de compter à
-    son tour, avec un compte qui reflète déjà l'insertion précédente."""
-    subscription = (
-        db.query(Subscription)
-        .filter(Subscription.owner_id == owner_id, Subscription.deleted_at.is_(None))
-        .with_for_update()
-        .first()
-    )
     plan = subscription.plan if subscription else None
     if plan is None:
         return
     if not subscription_service.is_active(subscription):
         raise PaymentRequired(
-            f"Votre abonnement « {plan.name} » a expiré ou est suspendu. "
+            f"L'abonnement « {plan.name} » a expiré ou est suspendu. "
             "Renouvelez-le ou passez à un plan supérieur pour continuer."
         )
+        
     field_name, label = _LIMIT_FIELDS[resource]
     limit = getattr(plan, field_name)
     if limit is None or limit < 0:
         return
-    usage = compute_owner_usage(db, owner_id)
+        
+    if is_agence:
+        usage = compute_agence_usage(db, agence_id)
+    else:
+        usage = compute_proprietaire_usage(db, target_proprietaire_id or current_user.id)
+        
     if usage[resource] >= limit:
         raise PaymentRequired(
             f"Limite du plan « {plan.name} » atteinte pour {label} ({limit}). "

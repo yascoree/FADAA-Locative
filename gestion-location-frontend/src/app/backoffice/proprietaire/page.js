@@ -471,7 +471,7 @@ export default function ProprietaireDashboardPage() {
 
               {usage && (
                 <div className={styles.usageGrid}>
-                  {LIMIT_FIELDS.map((f) => {
+                  {LIMIT_FIELDS[subscription?.plan?.target_type || 'PROPRIETAIRE'].map((f) => {
                     const limit = subscription.plan[f.key];
                     const used = usage[LIMIT_TO_USAGE_KEY[f.key]];
                     const percent = limit === UNLIMITED ? null : Math.min(100, (used / Math.max(limit, 1)) * 100);

@@ -10,7 +10,7 @@ import LogoIcon from "@/components/LogoIcon";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "./agence.module.css";
 
-function useNavSections() {
+function useNavSections(roleAgence) {
   const { t } = useLanguage();
   return [
     {
@@ -69,6 +69,9 @@ function useNavSections() {
       label: t("bo.agenceSidebar.account"),
       items: [
         { href: "/backoffice/agence/parametres", label: t("bo.agenceSidebar.settings"), icon: "bi-gear" },
+        ...(roleAgence === ROLE_AGENCE.ADMIN
+          ? [{ href: "/backoffice/agence/abonnement", label: t("bo.agenceSidebar.abonnement"), icon: "bi-credit-card" }]
+          : []),
       ],
     },
   ];
@@ -76,13 +79,13 @@ function useNavSections() {
 
 export default function AgenceSidebar({ user, onLogout }) {
   const { t } = useLanguage();
-  const NAV_SECTIONS = useNavSections();
+  const [roleAgence, setRoleAgence] = useState(null);
+  const NAV_SECTIONS = useNavSections(roleAgence);
   const pathname = usePathname();
   const initial = `${user?.prenom?.[0] || ""}${user?.nom?.[0] || ""}`.toUpperCase();
   const itemRefs = useRef({});
   const [bubble, setBubble] = useState(null);
   const [badges, setBadges] = useState({ discussions: 0, notifications: 0, maintenance: 0 });
-  const [roleAgence, setRoleAgence] = useState(null);
 
   useEffect(() => {
     let cancelled = false;

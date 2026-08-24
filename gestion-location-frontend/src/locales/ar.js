@@ -786,6 +786,7 @@ const ar = {
       role: "مدير",
       roleAdmin: "مسؤول",
       roleMembre: "عضو",
+      abonnement: "الاشتراك",
     },
     agenceCollaborateurs: {
       title: "المتعاونون — {agence}",
@@ -804,6 +805,7 @@ const ar = {
       roleLabel: "الدور",
       roleAdmin: "مسؤول",
       roleMembre: "عضو",
+      abonnement: "الاشتراك",
       invite: "دعوة",
       inviting: "جارٍ الإرسال...",
       inviteLinkHint: "تعذر إرسال بريد إلكتروني — شارك هذا الرابط يدويًا:",

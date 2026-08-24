@@ -104,7 +104,7 @@ def create_mandat(db: Session, current_user: Utilisateur, mandat_in: MandatCreat
         raise BadRequest("An active mandate already exists for this agence on this scope")
 
     if mandat_in.statut == MandatStatus.ACTIF:
-        enforce_limit(db, mandat_in.proprietaire_id, "gestionnaires")
+        enforce_limit(db, current_user, "gestionnaires", target_proprietaire_id=mandat_in.proprietaire_id)
 
     mandat = Mandat(**mandat_in.model_dump(), created_by=current_user.id)
     db.add(mandat)
@@ -135,7 +135,7 @@ def update_mandat(db: Session, current_user: Utilisateur, mandat_id: int, mandat
         # Réactiver un mandat révoqué remet un gestionnaire actif dans le quota du
         # plan, exactement comme en créer un nouveau (voir create_mandat) — même
         # garde-fou qu'un bail qu'on repasse à ACTIF (bail_service.update_bail).
-        enforce_limit(db, mandat.proprietaire_id, "gestionnaires")
+        enforce_limit(db, current_user, "gestionnaires", target_proprietaire_id=mandat.proprietaire_id)
 
     for field, value in update_data.items():
         setattr(mandat, field, value)

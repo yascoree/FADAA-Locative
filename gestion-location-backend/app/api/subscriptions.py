@@ -5,7 +5,7 @@ from app.api.deps import get_current_user, require_admin
 from app.crud import subscription as subscription_crud
 from app.crud import subscription_plan as subscription_plan_crud
 from app.database import get_db
-from app.models.utilisateur import Utilisateur
+from app.models.utilisateur import Utilisateur, UtilisateurRole
 from app.schemas.subscription import SubscriptionAssign, SubscriptionExtend, SubscriptionRead, SubscriptionUsageRead
 from app.services import subscription_service, usage_service
 from app.services.subscription_service import SubscriptionError
@@ -31,7 +31,16 @@ def read_my_subscription(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    subscription = subscription_crud.get_by_owner(db, current_user.id)
+    from app.api.deps import active_agence_id
+
+    if current_user.role == UtilisateurRole.GESTIONNAIRE:
+        agence_id = active_agence_id(db, current_user.id)
+        if not agence_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No agence for this user")
+        subscription = subscription_crud.get_by_agence(db, agence_id)
+    else:
+        subscription = subscription_crud.get_by_owner(db, current_user.id)
+
     if not subscription:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No subscription for this account")
     return subscription
@@ -42,9 +51,17 @@ def read_my_usage(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
-    """Équivalent self-service de /by-owner/{id}/usage, pour que le propriétaire
-    consulte sa propre consommation depuis son dashboard sans droits admin."""
-    return usage_service.compute_owner_usage(db, current_user.id)
+    """Équivalent self-service de /by-owner/{id}/usage, pour que le propriétaire ou l'agence
+    consulte sa propre consommation depuis son dashboard."""
+    from app.api.deps import active_agence_id
+
+    if current_user.role == UtilisateurRole.GESTIONNAIRE:
+        agence_id = active_agence_id(db, current_user.id)
+        if not agence_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No agence for this user")
+        return usage_service.compute_agence_usage(db, agence_id)
+    else:
+        return usage_service.compute_proprietaire_usage(db, current_user.id)
 
 
 @router.get("/by-owner/{owner_id}", response_model=SubscriptionRead)

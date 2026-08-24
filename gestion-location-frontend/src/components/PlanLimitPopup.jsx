@@ -93,7 +93,7 @@ export default function PlanLimitPopup({ message, contactHref = "/front/contact"
     if (plans.length > 0) return;
     setPlansLoading(true);
     try {
-      setPlans(await fetchActivePlans());
+      setPlans(await fetchActivePlans(user?.role === ROLES.GESTIONNAIRE ? 'AGENCE' : 'PROPRIETAIRE'));
     } catch {
       setError("Impossible de charger les plans disponibles.");
     } finally {

@@ -44,15 +44,15 @@ def get_multi(db: Session, skip: int = 0, limit: int = 100) -> list[Subscription
         )
 
 
-def get_active(db: Session) -> list[SubscriptionPlan]:
+from app.models.subscription_plan import SubscriptionTarget
+
+def get_active(db: Session, target_type: SubscriptionTarget | None = None) -> list[SubscriptionPlan]:
     """Plans consultables par un propriétaire (pas seulement l'admin) — sert à la
     popup de choix de plan, voir app.services.plan_change_request_service."""
-    return (
-        db.query(SubscriptionPlan)
-        .filter(SubscriptionPlan.deleted_at.is_(None), SubscriptionPlan.is_active.is_(True))
-        .order_by(SubscriptionPlan.id)
-        .all()
-    )
+    query = db.query(SubscriptionPlan).filter(SubscriptionPlan.deleted_at.is_(None), SubscriptionPlan.is_active.is_(True))
+    if target_type:
+        query = query.filter(SubscriptionPlan.target_type == target_type)
+    return query.order_by(SubscriptionPlan.id).all()
 
 
 def create(db: Session, plan_in: SubscriptionPlanCreate) -> SubscriptionPlan:

@@ -15,8 +15,12 @@ router = APIRouter(prefix="/subscription-plans", tags=["subscription-plans"])
 # app.services.subscription_service pour la logique d'attribution aux propriétaires).
 
 
+from typing import Optional
+from app.models.subscription_plan import SubscriptionTarget
+
 @router.get("/active", response_model=list[SubscriptionPlanRead])
 def list_active_subscription_plans(
+    target_type: Optional[SubscriptionTarget] = None,
     db: Session = Depends(get_db),
     _current_user: Utilisateur = Depends(get_current_user),
 ):
@@ -24,7 +28,7 @@ def list_active_subscription_plans(
     l'admin) : alimente la popup de choix de plan côté propriétaire (voir
     app.api.plan_change_requests). Déclarée avant /{plan_id} par précaution,
     même si "active" ne matche pas le convertisseur int de /{plan_id}."""
-    return subscription_plan_crud.get_active(db)
+    return subscription_plan_crud.get_active(db, target_type=target_type)
 
 
 @router.get("/", response_model=list[SubscriptionPlanRead])

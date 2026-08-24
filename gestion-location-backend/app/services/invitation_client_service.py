@@ -110,7 +110,7 @@ def create_invitation(
 
     if target is None:
         # Checked before any write: see subscription_service.ensure_trial_plan_available.
-        subscription_service.ensure_trial_plan_available(db)
+        subscription_service.ensure_trial_plan_available(db, target_role=UtilisateurRole.PROPRIETAIRE)
 
         # Aucun nom n'est collecté à l'invitation (voir InvitationClient) — l'email
         # est la seule information connue. nom/prenom ne peuvent pas rester vides
@@ -131,7 +131,7 @@ def create_invitation(
         db.refresh(target)
         # Même règle qu'à l'auto-inscription (voir auth_service.register) : un
         # propriétaire démarre toujours avec un essai gratuit actif.
-        subscription_service.create_trial_subscription(db, target.id)
+        subscription_service.create_trial_subscription(db, target.id, target_role=UtilisateurRole.PROPRIETAIRE)
     else:
         already_client = (
             db.query(InvitationClient)

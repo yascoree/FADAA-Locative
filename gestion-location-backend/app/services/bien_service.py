@@ -121,7 +121,7 @@ def get_bien(db: Session, current_user: Utilisateur, bien_id: int) -> Bien:
 def create_bien(db: Session, current_user: Utilisateur, bien_in: BienCreate) -> Bien:
     if not has_permission(db, current_user, bien_in.proprietaire_id, "CREATE_PROPERTY"):
         raise Forbidden("Cannot create a property for this proprietaire")
-    enforce_limit(db, bien_in.proprietaire_id, "biens")
+    enforce_limit(db, current_user, "biens", target_proprietaire_id=bien_in.proprietaire_id)
     bien = Bien(**bien_in.model_dump())
     db.add(bien)
     db.commit()

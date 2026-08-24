@@ -107,7 +107,7 @@ def create_locataire(db: Session, current_user: Utilisateur, locataire_in: Utili
     # expiré/suspendu doit bloquer TOUTE création — y compris un compte locataire
     # pas encore rattaché à un bail — pas seulement le dépassement de quota.
     if current_user.role == UtilisateurRole.PROPRIETAIRE:
-        enforce_limit(db, current_user.id, "locataires")
+        enforce_limit(db, current_user, "locataires")
 
     locataire = Utilisateur(
         nom=locataire_in.nom,

@@ -162,7 +162,7 @@ def create_paiement(db: Session, current_user: Utilisateur, paiement_in: Paiemen
     # lui-même, avant toute écriture, pour ne jamais laisser un paiement orphelin
     # sans quittance.
     if bien:
-        enforce_limit(db, bien.proprietaire_id, "quittances_mois")
+        enforce_limit(db, current_user, "quittances_mois", target_proprietaire_id=bien.proprietaire_id)
 
     paiement_data = paiement_in.model_dump()
     encaisse = paiement_in.mode_paiement not in MODES_ENCAISSEMENT_DIFFERE

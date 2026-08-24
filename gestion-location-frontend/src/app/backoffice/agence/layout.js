@@ -12,6 +12,7 @@ import RouteProgressBar from "@/components/RouteProgressBar";
 import AgenceSidebar from "./AgenceSidebar";
 import PortfolioSelector from "@/components/PortfolioSelector";
 import { AgencyPortfolioProvider } from "@/context/AgencyPortfolioContext";
+import SubscriptionStatusBanner from "@/components/SubscriptionStatusBanner";
 import styles from "./agence.module.css";
 
 export default function AgenceLayout({ children }) {
@@ -80,6 +81,7 @@ export default function AgenceLayout({ children }) {
           </div>
         </header>
         <main className={styles.content} onScroll={handleContentScroll}>
+          <SubscriptionStatusBanner />
           <PageTransition>{children}</PageTransition>
         </main>
       </div>

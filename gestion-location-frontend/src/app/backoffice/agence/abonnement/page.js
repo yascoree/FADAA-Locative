@@ -17,7 +17,7 @@ import {
 } from "@/lib/subscriptions";
 import PlanLimitPopup from "@/components/PlanLimitPopup";
 import { useLanguage } from "@/context/LanguageContext";
-import styles from "../proprietaire.module.css";
+import styles from "../agence.module.css";
 
 function formatCurrency(value) {
   return `${Number(value || 0).toLocaleString("fr-FR", { maximumFractionDigits: 0 })} MAD`;
@@ -36,7 +36,7 @@ function trialPillClass(state) {
   return styles.trialPillActive;
 }
 
-export default function ProprietaireAbonnementPage() {
+export default function AgenceAbonnementPage() {
   const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -82,9 +82,8 @@ export default function ProprietaireAbonnementPage() {
           <span className={styles.sectionIconBadge}>
             <i className="bi bi-credit-card-2-front-fill" />
           </span>
-          {t("bo.proprietaireAbonnement.title")}
+          {t("bo.agenceSidebar.abonnement")}
         </h2>
-        <p className={styles.sectionSubtitle}>{t("bo.proprietaireAbonnement.subtitle")}</p>
       </div>
 
       <PlanLimitPopup message={planPopupMessage} onClose={() => setPlanPopupMessage(null)} />
@@ -138,7 +137,7 @@ export default function ProprietaireAbonnementPage() {
 
           {usage && (
             <div className={styles.usageGrid}>
-              {LIMIT_FIELDS[subscription.plan.target_type || 'PROPRIETAIRE'].map((f) => {
+              {LIMIT_FIELDS[subscription.plan.target_type || 'AGENCE'].map((f) => {
                 const limit = subscription.plan[f.key];
                 const used = usage[LIMIT_TO_USAGE_KEY[f.key]];
                 const percent = limit === UNLIMITED ? null : Math.min(100, (used / Math.max(limit, 1)) * 100);

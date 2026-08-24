@@ -788,6 +788,7 @@ const en = {
       role: "Manager",
       roleAdmin: "Administrator",
       roleMembre: "Member",
+      abonnement: "Subscription",
     },
     agenceCollaborateurs: {
       title: "Collaborators — {agence}",
@@ -806,6 +807,7 @@ const en = {
       roleLabel: "Role",
       roleAdmin: "Admin",
       roleMembre: "Member",
+      abonnement: "Subscription",
       invite: "Invite",
       inviting: "Sending...",
       inviteLinkHint: "No email could be sent — share this link manually:",

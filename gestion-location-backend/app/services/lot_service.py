@@ -134,7 +134,7 @@ def create_lot(db: Session, current_user: Utilisateur, lot_in: LotCreate) -> Lot
     if not has_permission_for_bien(db, current_user, bien, "CREATE_LOT"):
         raise Forbidden("Not allowed to add a lot to this property")
     _check_categorie_matches_bien_type(db, bien, lot_in.categorie_id)
-    enforce_limit(db, bien.proprietaire_id, "lots")
+    enforce_limit(db, current_user, "lots", target_proprietaire_id=bien.proprietaire_id)
     lot = Lot(**lot_in.model_dump())
     db.add(lot)
     db.commit()

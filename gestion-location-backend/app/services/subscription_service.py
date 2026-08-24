@@ -11,47 +11,48 @@ from app.models.subscription_plan import SubscriptionPlan
 from app.services.push_service import send_push_to_user
 
 
+from app.models.subscription_plan import SubscriptionTarget
+
 class SubscriptionError(Exception):
     """Raised for subscription business-rule violations (no active trial plan,
     assigning an inactive plan, ...). Routers translate this to an HTTP 400."""
 
 
-def _get_trial_plan(db: Session) -> SubscriptionPlan:
+def _get_trial_plan(db: Session, target_type: SubscriptionTarget) -> SubscriptionPlan:
     plan = (
         db.query(SubscriptionPlan)
-        .filter(SubscriptionPlan.is_trial.is_(True), SubscriptionPlan.is_active.is_(True))
+        .filter(SubscriptionPlan.is_trial.is_(True), SubscriptionPlan.is_active.is_(True), SubscriptionPlan.target_type == target_type)
         .order_by(SubscriptionPlan.id)
         .first()
     )
     if not plan:
-        raise SubscriptionError("No active trial plan is configured")
+        raise SubscriptionError(f"No active trial plan is configured for {target_type.name}")
     return plan
 
 
-def ensure_trial_plan_available(db: Session) -> None:
-    """Fail fast, BEFORE any write, when a new PROPRIETAIRE account is about to be
-    created — the three callers (auth_service.register, utilisateur_service.
-    create_utilisateur, invitation_client_service.create_invitation) all commit
-    the new Utilisateur row and only then call create_trial_subscription. If no
-    active trial plan exists, that call raises SubscriptionError *after* the
-    account is already committed, leaving an orphaned user with no subscription.
-    Calling this first means the whole request raises before a single row is
-    written, so nothing is ever left orphaned."""
-    _get_trial_plan(db)
+def ensure_trial_plan_available(db: Session, target_type: SubscriptionTarget) -> None:
+    """Fail fast, BEFORE any write, when a new account is about to be created"""
+    _get_trial_plan(db, target_type)
 
 
-def create_trial_subscription(db: Session, owner_id: int) -> Subscription:
-    """Called right after a property owner registers: assigns the Trial plan for
-    duration_days, starting now. Idempotent — returns the existing subscription
-    unchanged if the owner already has one."""
-    existing = subscription_crud.get_by_owner(db, owner_id)
+def create_trial_subscription(db: Session, owner_id: int = None, agence_id: int = None, target_type: SubscriptionTarget = SubscriptionTarget.PROPRIETAIRE) -> Subscription:
+    """Assigns the Trial plan for the specified role. Idempotent."""
+    if not owner_id and not agence_id:
+        raise ValueError("Must provide either owner_id or agence_id")
+        
+    if owner_id:
+        existing = subscription_crud.get_by_owner(db, owner_id)
+    else:
+        existing = subscription_crud.get_by_agence(db, agence_id)
+        
     if existing:
         return existing
 
-    plan = _get_trial_plan(db)
+    plan = _get_trial_plan(db, target_type)
     now = datetime.utcnow()
     subscription = Subscription(
         owner_id=owner_id,
+        agence_id=agence_id,
         plan_id=plan.id,
         status=SubscriptionStatus.ACTIF,
         trial_start=now,
@@ -65,18 +66,28 @@ def create_trial_subscription(db: Session, owner_id: int) -> Subscription:
     return subscription
 
 
-def assign_plan(db: Session, owner_id: int, plan: SubscriptionPlan) -> Subscription:
-    """Assigns `plan` to `owner_id`, creating the subscription if it doesn't exist
+def assign_plan(db: Session, plan: SubscriptionPlan, owner_id: int = None, agence_id: int = None) -> Subscription:
+    """Assigns `plan` to an entity, creating the subscription if it doesn't exist
     yet or switching the existing one otherwise. This is how an admin both
     "assigns a plan" and "changes a customer's subscription" — same operation."""
     if not plan.is_active:
         raise SubscriptionError("Cannot assign an inactive plan")
 
+    if not owner_id and not agence_id:
+        raise ValueError("Must provide either owner_id or agence_id")
+
     now = datetime.utcnow()
-    subscription = subscription_crud.get_by_owner(db, owner_id)
-    if subscription is None:
-        subscription = Subscription(owner_id=owner_id)
-        db.add(subscription)
+    
+    if owner_id:
+        subscription = subscription_crud.get_by_owner(db, owner_id)
+        if subscription is None:
+            subscription = Subscription(owner_id=owner_id)
+            db.add(subscription)
+    else:
+        subscription = subscription_crud.get_by_agence(db, agence_id)
+        if subscription is None:
+            subscription = Subscription(agence_id=agence_id)
+            db.add(subscription)
 
     subscription.plan_id = plan.id
     subscription.status = SubscriptionStatus.ACTIF
